@@ -9,9 +9,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -23,7 +22,7 @@ import (
 type fakeDriver struct {
 	client   k8s.Client
 	watches  watches.DynamicWatches
-	recorder record.EventRecorder
+	recorder toolsevents.EventRecorder
 }
 
 func (f fakeDriver) K8sClient() k8s.Client {
@@ -34,7 +33,7 @@ func (f fakeDriver) DynamicWatches() watches.DynamicWatches {
 	return f.watches
 }
 
-func (f fakeDriver) Recorder() record.EventRecorder {
+func (f fakeDriver) Recorder() toolsevents.EventRecorder {
 	return f.recorder
 }
 
@@ -43,48 +42,53 @@ var _ driver.Interface = fakeDriver{}
 func TestParsePipelinesRef(t *testing.T) {
 	// any resource Kind would work here (eg. Beat, EnterpriseSearch, etc.)
 	resNsn := types.NamespacedName{Namespace: "ns", Name: "resource"}
-	res := corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: resNsn.Namespace, Name: resNsn.Name}}
-	watchName := RefWatchName(resNsn)
+	res := corev1.ConfigMap{Namespace: resNsn.Namespace, Name: resNsn.Name}
+	secretWatchName := SecretRefWatchName(resNsn)
+	cmWatchName := ConfigMapRefWatchName(resNsn)
 
 	tests := []struct {
-		name            string
-		pipelinesRef    *commonv1.ConfigSource
-		secretKey       string
-		runtimeObjs     []client.Object
-		want            *Config
-		wantErr         bool
-		existingWatches []string
-		wantWatches     []string
-		wantEvent       string
+		name                  string
+		pipelinesRef          *commonv1.ConfigMapOrSecretSource
+		secretKey             string
+		runtimeObjs           []client.Object
+		want                  *Config
+		wantErr               bool
+		existingSecretWatches []string
+		existingCMWatches     []string
+		wantSecretWatches     []string
+		wantCMWatches         []string
+		wantEvent             string
 	}{
 		{
-			name:         "happy path",
-			pipelinesRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			name:         "happy path - secret",
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{SecretName: "my-secret"},
 			secretKey:    "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
+					Namespace: "ns", Name: "my-secret",
 					Data: map[string][]byte{
 						"configFile.yml": []byte(`- "pipeline.id": "main"`),
 					}},
 			},
-			want:        MustParse([]byte(`- "pipeline.id": "main"`)),
-			wantWatches: []string{watchName},
+			want:              MustParse([]byte(`- "pipeline.id": "main"`)),
+			wantSecretWatches: []string{secretWatchName},
+			wantCMWatches:     []string{},
 		},
 		{
-			name:         "happy path, secret already watched",
-			pipelinesRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			name:         "happy path - secret already watched",
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{SecretName: "my-secret"},
 			secretKey:    "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
+					Namespace: "ns", Name: "my-secret",
 					Data: map[string][]byte{
 						"configFile.yml": []byte(`- "pipeline.id": "main"`),
 					}},
 			},
-			want:            MustParse([]byte(`- "pipeline.id": "main"`)),
-			existingWatches: []string{watchName},
-			wantWatches:     []string{watchName},
+			want:                  MustParse([]byte(`- "pipeline.id": "main"`)),
+			existingSecretWatches: []string{secretWatchName},
+			wantSecretWatches:     []string{secretWatchName},
+			wantCMWatches:         []string{},
 		},
 		{
 			name:         "no pipelinesRef specified",
@@ -92,13 +96,14 @@ func TestParsePipelinesRef(t *testing.T) {
 			secretKey:    "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
+					Namespace: "ns", Name: "my-secret",
 					Data: map[string][]byte{
 						"configFile.yml": []byte(`- "pipeline.id": "main"`),
 					}},
 			},
-			want:        nil,
-			wantWatches: []string{},
+			want:              nil,
+			wantSecretWatches: []string{},
+			wantCMWatches:     []string{},
 		},
 		{
 			name:         "no pipelinesRef specified: clear existing watches",
@@ -106,61 +111,158 @@ func TestParsePipelinesRef(t *testing.T) {
 			secretKey:    "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
+					Namespace: "ns", Name: "my-secret",
 					Data: map[string][]byte{
 						"configFile.yml": []byte(`- "pipeline.id": "main"`),
 					}},
 			},
-			want:            nil,
-			existingWatches: []string{watchName},
-			wantWatches:     []string{},
+			want:                  nil,
+			existingSecretWatches: []string{secretWatchName},
+			existingCMWatches:     []string{cmWatchName},
+			wantSecretWatches:     []string{},
+			wantCMWatches:         []string{},
 		},
 		{
-			name:         "secret not found: error out but watch the future secret",
-			pipelinesRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
-			secretKey:    "configFile.yml",
-			runtimeObjs:  []client.Object{},
-			want:         nil,
-			wantErr:      true,
-			wantWatches:  []string{watchName},
+			name:              "secret not found: error out but watch the future secret",
+			pipelinesRef:      &commonv1.ConfigMapOrSecretSource{SecretName: "my-secret"},
+			secretKey:         "configFile.yml",
+			runtimeObjs:       []client.Object{},
+			want:              nil,
+			wantErr:           true,
+			wantSecretWatches: []string{secretWatchName},
+			wantCMWatches:     []string{},
 		},
 		{
 			name:         "missing key in the referenced secret: error out, watch the secret and emit an event",
-			pipelinesRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{SecretName: "my-secret"},
 			secretKey:    "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
+					Namespace: "ns", Name: "my-secret",
 					Data: map[string][]byte{
 						"unexpected-key": []byte(`- "pipeline.id": "main"`),
 					}},
 			},
-			wantErr:     true,
-			wantWatches: []string{watchName},
-			wantEvent:   "Warning Unexpected unable to parse configRef secret ns/my-secret: missing key configFile.yml",
+			wantErr:           true,
+			wantSecretWatches: []string{secretWatchName},
+			wantCMWatches:     []string{},
+			wantEvent:         "Warning Unexpected unable to retrieve pipelinesRef secret ns/my-secret: missing key configFile.yml",
 		},
 		{
-			name:         "invalid config the referenced secret: error out, watch the secret and emit an event",
-			pipelinesRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: "my-secret"}},
+			name:         "invalid config in the referenced secret: error out, watch the secret and emit an event",
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{SecretName: "my-secret"},
 			secretKey:    "configFile.yml",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "my-secret"},
+					Namespace: "ns", Name: "my-secret",
 					Data: map[string][]byte{
 						"configFile.yml": []byte("this.is invalid config"),
 					}},
 			},
-			wantErr:     true,
-			wantWatches: []string{watchName},
-			wantEvent:   "Warning Unexpected unable to parse configFile.yml in configRef secret ns/my-secret",
+			wantErr:           true,
+			wantSecretWatches: []string{secretWatchName},
+			wantCMWatches:     []string{},
+			wantEvent:         "Warning Unexpected unable to parse configFile.yml in pipelinesRef secret ns/my-secret",
+		},
+		{
+			name:         "happy path - configmap",
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{ConfigMapName: "my-cm"},
+			secretKey:    "configFile.yml",
+			runtimeObjs: []client.Object{
+				&corev1.ConfigMap{
+					Namespace: "ns", Name: "my-cm",
+					Data: map[string]string{
+						"configFile.yml": `- "pipeline.id": "main"`,
+					}},
+			},
+			want:              MustParse([]byte(`- "pipeline.id": "main"`)),
+			wantSecretWatches: []string{},
+			wantCMWatches:     []string{cmWatchName},
+		},
+		{
+			name:              "configmap not found: error out but watch the future configmap",
+			pipelinesRef:      &commonv1.ConfigMapOrSecretSource{ConfigMapName: "my-cm"},
+			secretKey:         "configFile.yml",
+			runtimeObjs:       []client.Object{},
+			want:              nil,
+			wantErr:           true,
+			wantSecretWatches: []string{},
+			wantCMWatches:     []string{cmWatchName},
+		},
+		{
+			name:         "missing key in the referenced configmap: error out, watch the configmap and emit an event",
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{ConfigMapName: "my-cm"},
+			secretKey:    "configFile.yml",
+			runtimeObjs: []client.Object{
+				&corev1.ConfigMap{
+					Namespace: "ns", Name: "my-cm",
+					Data: map[string]string{
+						"unexpected-key": `- "pipeline.id": "main"`,
+					}},
+			},
+			wantErr:           true,
+			wantSecretWatches: []string{},
+			wantCMWatches:     []string{cmWatchName},
+			wantEvent:         "Warning Unexpected unable to retrieve pipelinesRef configmap ns/my-cm: missing key configFile.yml",
+		},
+		{
+			name:         "invalid config in the referenced configmap: error out, watch the configmap and emit an event",
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{ConfigMapName: "my-cm"},
+			secretKey:    "configFile.yml",
+			runtimeObjs: []client.Object{
+				&corev1.ConfigMap{
+					Namespace: "ns", Name: "my-cm",
+					Data: map[string]string{
+						"configFile.yml": "this.is invalid config",
+					}},
+			},
+			wantErr:           true,
+			wantSecretWatches: []string{},
+			wantCMWatches:     []string{cmWatchName},
+			wantEvent:         "Warning Unexpected unable to parse configFile.yml in pipelinesRef configmap ns/my-cm",
+		},
+		{
+			name:         "switch from secret to configmap: secret watch cleared",
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{ConfigMapName: "my-cm"},
+			secretKey:    "configFile.yml",
+			runtimeObjs: []client.Object{
+				&corev1.ConfigMap{
+					Namespace: "ns", Name: "my-cm",
+					Data: map[string]string{
+						"configFile.yml": `- "pipeline.id": "main"`,
+					}},
+			},
+			existingSecretWatches: []string{secretWatchName},
+			want:                  MustParse([]byte(`- "pipeline.id": "main"`)),
+			wantSecretWatches:     []string{},
+			wantCMWatches:         []string{cmWatchName},
+		},
+		{
+			name:         "switch from configmap to secret: configmap watch cleared",
+			pipelinesRef: &commonv1.ConfigMapOrSecretSource{SecretName: "my-secret"},
+			secretKey:    "configFile.yml",
+			runtimeObjs: []client.Object{
+				&corev1.Secret{
+					Namespace: "ns", Name: "my-secret",
+					Data: map[string][]byte{
+						"configFile.yml": []byte(`- "pipeline.id": "main"`),
+					}},
+			},
+			existingCMWatches: []string{cmWatchName},
+			want:              MustParse([]byte(`- "pipeline.id": "main"`)),
+			wantSecretWatches: []string{secretWatchName},
+			wantCMWatches:     []string{},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fakeRecorder := record.NewFakeRecorder(10)
+			fakeRecorder := toolsevents.NewFakeRecorder(10)
 			w := watches.NewDynamicWatches()
-			for _, existingWatch := range tt.existingWatches {
+			for _, existingWatch := range tt.existingSecretWatches {
 				require.NoError(t, w.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{Name: existingWatch}))
+			}
+			for _, existingWatch := range tt.existingCMWatches {
+				require.NoError(t, w.ConfigMaps.AddHandler(watches.NamedWatch[*corev1.ConfigMap]{Name: existingWatch}))
 			}
 			d := fakeDriver{
 				client:   k8s.NewFakeClient(tt.runtimeObjs...),
@@ -173,7 +275,8 @@ func TestParsePipelinesRef(t *testing.T) {
 				return
 			}
 			require.Equal(t, tt.want, got)
-			require.Equal(t, tt.wantWatches, d.watches.Secrets.Registrations())
+			require.Equal(t, tt.wantSecretWatches, d.watches.Secrets.Registrations())
+			require.Equal(t, tt.wantCMWatches, d.watches.ConfigMaps.Registrations())
 
 			if tt.wantEvent != "" {
 				require.Equal(t, tt.wantEvent, <-fakeRecorder.Events)

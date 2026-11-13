@@ -8,10 +8,11 @@ import (
 	"context"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
@@ -21,7 +22,7 @@ func isRemoteClusterAssociationAllowed(
 	ctx context.Context,
 	accessReviewer rbac.AccessReviewer,
 	localEs, remoteEs *esv1.Elasticsearch,
-	eventRecorder record.EventRecorder,
+	eventRecorder toolsevents.EventRecorder,
 ) (bool, error) {
 	accessAllowed, err := accessReviewer.AccessAllowed(ctx, localEs.Spec.ServiceAccountName, localEs.Namespace, remoteEs)
 	if err != nil {
@@ -42,7 +43,7 @@ func isRemoteClusterAssociationAllowed(
 	return true, nil
 }
 
-func logNotAllowedAssociation(ctx context.Context, localEs, remoteEs *esv1.Elasticsearch, eventRecorder record.EventRecorder) {
+func logNotAllowedAssociation(ctx context.Context, localEs, remoteEs *esv1.Elasticsearch, eventRecorder toolsevents.EventRecorder) {
 	ulog.FromContext(ctx).Info("Remote cluster association not allowed",
 		"local_name", localEs.Name,
 		"local_namespace", localEs.GetNamespace(),
@@ -50,10 +51,12 @@ func logNotAllowedAssociation(ctx context.Context, localEs, remoteEs *esv1.Elast
 		"remote_namespace", remoteEs.GetNamespace(),
 		"remote_name", remoteEs.GetName(),
 	)
-	eventRecorder.Eventf(
+	k8s.EmitEventf(
+		eventRecorder,
 		localEs,
 		corev1.EventTypeWarning,
 		events.EventAssociationError,
+		events.EventActionRemoteClusterAssociation,
 		"Remote cluster association not allowed: %s/%s to %s/%s",
 		localEs.Namespace, localEs.Name, remoteEs.Namespace, remoteEs.Name,
 	)

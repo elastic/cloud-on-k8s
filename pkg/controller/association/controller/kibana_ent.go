@@ -25,6 +25,7 @@ import (
 func AddKibanaEnt(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedObjTemplate:     func() commonv1.Associated { return &kbv1.Kibana{} },
+		AssociatedObjListTemplate: func() client.ObjectList { return &kbv1.KibanaList{} },
 		ReferencedObjTemplate:     func() client.Object { return &entv1.EnterpriseSearch{} },
 		ExternalServiceURL:        getEntExternalURL,
 		ReferencedResourceVersion: referencedEntStatusVersion,
@@ -42,20 +43,21 @@ func AddKibanaEnt(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		AssociationConfAnnotationNameBase:     commonv1.EntConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      entctl.EnterpriseSearchNameLabelName,
 		AssociationResourceNamespaceLabelName: entctl.EnterpriseSearchNamespaceLabelName,
+		ElasticsearchRef:                      nil, // no transitive ES association for Kibana->Ent connection
 		ElasticsearchUserCreation:             nil, // no dedicated ES user required for Kibana->Ent connection
 	})
 }
 
 func getEntExternalURL(c k8s.Client, assoc commonv1.Association) (string, error) {
 	entRef := assoc.AssociationRef()
-	if !entRef.IsDefined() {
+	if !entRef.IsSet() {
 		return "", nil
 	}
 	ent := entv1.EnterpriseSearch{}
 	if err := c.Get(context.Background(), entRef.NamespacedName(), &ent); err != nil {
 		return "", err
 	}
-	serviceName := entRef.ServiceName
+	serviceName := entRef.GetServiceName()
 	if serviceName == "" {
 		serviceName = entctl.HTTPServiceName(ent.Name)
 	}

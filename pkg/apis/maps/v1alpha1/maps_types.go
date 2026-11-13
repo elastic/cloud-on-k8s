@@ -15,7 +15,7 @@ import (
 
 const (
 	MapsContainerName = "maps"
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "ElasticMapsServer"
 )
@@ -32,9 +32,9 @@ type MapsSpec struct {
 	Count int32 `json:"count,omitempty"`
 
 	// ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
-	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
+	ElasticsearchRef commonv1.ElasticsearchSelector `json:"elasticsearchRef,omitempty"`
 
-	// Config holds the ElasticMapsServer configuration. See: https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-configuration
+	// Config holds the ElasticMapsServer configuration. See: https://www.elastic.co/docs/explore-analyze/visualize/maps/maps-connect-to-ems#elastic-maps-server-configuration
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Config *commonv1.Config `json:"config,omitempty"`
 
@@ -46,7 +46,13 @@ type MapsSpec struct {
 	// HTTP holds the HTTP layer configuration for Elastic Maps Server.
 	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
 
-	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Maps Server pods
+	// Resources provides a shorthand to set CPU and Memory resources on the Elastic Maps Server container. When set,
+	// these values override any CPU or memory resource settings specified in the PodTemplate for the primary Elastic
+	// Maps Server container. To set resources on other containers, use the PodTemplate.
+	// +kubebuilder:validation:Optional
+	Resources commonv1.Resources `json:"resources,omitzero"`
+
+	// PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Maps Server pods
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
@@ -90,7 +96,7 @@ func (m *ElasticMapsServer) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
-func (m *ElasticMapsServer) AssociationRef() commonv1.ObjectSelector {
+func (m *ElasticMapsServer) AssociationRef() commonv1.AssociationRef {
 	return m.Spec.ElasticsearchRef.WithDefaultNamespace(m.Namespace)
 }
 
@@ -108,11 +114,11 @@ func (m *ElasticMapsServer) SetAssociationConf(assocConf *commonv1.AssociationCo
 
 // RequiresAssociation returns true if the spec specifies an Elasticsearch reference.
 func (m *ElasticMapsServer) RequiresAssociation() bool {
-	return m.Spec.ElasticsearchRef.IsDefined()
+	return m.Spec.ElasticsearchRef.IsSet()
 }
 
 func (m *ElasticMapsServer) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
-	if typ == commonv1.ElasticsearchAssociationType && m.Spec.ElasticsearchRef.IsDefined() {
+	if typ == commonv1.ElasticsearchAssociationType && m.Spec.ElasticsearchRef.IsSet() {
 		return commonv1.NewSingleAssociationStatusMap(m.Status.AssociationStatus)
 	}
 
@@ -139,7 +145,7 @@ func (m *ElasticMapsServer) ElasticServiceAccount() (commonv1.ServiceAccountName
 
 func (m *ElasticMapsServer) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
-	if m.Spec.ElasticsearchRef.IsDefined() {
+	if m.Spec.ElasticsearchRef.IsSet() {
 		associations = append(associations, m)
 	}
 	return associations
@@ -153,12 +159,22 @@ func (m *ElasticMapsServer) AssociationID() string {
 	return commonv1.SingletonAssociationID
 }
 
-var _ commonv1.Associated = &ElasticMapsServer{}
-var _ commonv1.Association = &ElasticMapsServer{}
+var _ commonv1.Associated = (*ElasticMapsServer)(nil)
+var _ commonv1.Association = (*ElasticMapsServer)(nil)
 
 // GetObservedGeneration will return the observed generation from the Elastic Maps status.
 func (m *ElasticMapsServer) GetObservedGeneration() int64 {
 	return m.Status.ObservedGeneration
+}
+
+// MergeConditions provides a nil-safe way to merge the MapsStatus's Conditions with the new Condition(s).
+func (m *ElasticMapsServer) MergeConditions(conditions ...commonv1.Condition) {
+	m.Status.Conditions = m.Status.Conditions.MergeWith(conditions...)
+}
+
+// Conditions returns this ElasticMapsServer's MapsStatus Conditions.
+func (m *ElasticMapsServer) Conditions() commonv1.Conditions {
+	return m.Status.Conditions
 }
 
 // +kubebuilder:object:root=true
@@ -188,8 +204,4 @@ type ElasticMapsServerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ElasticMapsServer `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&ElasticMapsServer{}, &ElasticMapsServerList{})
 }

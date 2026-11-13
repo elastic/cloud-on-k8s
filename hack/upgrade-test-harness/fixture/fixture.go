@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
@@ -116,7 +117,7 @@ func retryRetriable(name string, action func(*TestContext) error) *TestStep {
 		Name:   name,
 		Action: action,
 		Retriable: func(err error) bool {
-			return errors.Is(err, ErrRetry) || apierrors.IsNotFound(err) || apierrors.IsConflict(err)
+			return errors.Is(err, ErrRetry) || apierrors.IsNotFound(err) || apierrors.IsConflict(err) || apimeta.IsNoMatchError(err)
 		},
 	}
 }
@@ -161,9 +162,12 @@ func applyManifests(path string) func(*TestContext) error {
 			return err
 		}
 
-		ctx.AddCleanupFunc(deleteResources(manifests))
+		err = ctx.CreateOrUpdate(manifests)
+		if err == nil {
+			ctx.AddCleanupFunc(deleteResources(manifests))
+		}
 
-		return ctx.CreateOrUpdate(manifests)
+		return err
 	}
 }
 

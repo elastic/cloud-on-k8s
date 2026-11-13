@@ -92,7 +92,11 @@ func TestNonMasterFirstUpgradeComplexTopology(t *testing.T) {
 		WithVersion(srcVersion).
 		WithESMasterNodes(3, elasticsearch.DefaultResources).
 		WithESDataNodes(2, elasticsearch.DefaultResources).
-		WithESCoordinatingNodes(1, elasticsearch.DefaultResources)
+		WithESCoordinatingNodes(1, elasticsearch.DefaultResources).
+		// Tolerate mutation check failures as the upgrade can briefly turn the cluster RED
+		// if a node shuts down before a newly created replica completes its initialization.
+		// See https://github.com/elastic/cloud-on-k8s/issues/8267.
+		TolerateMutationChecksFailures()
 
 	mutated := initial.WithVersion(dstVersion).WithMutatedFrom(&initial)
 

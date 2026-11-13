@@ -66,7 +66,7 @@ type RemoteClusterAPIKey struct {
 	Access RemoteClusterAccess `json:"access,omitempty"`
 }
 
-// RemoteClusterAccess models the API key specification as documented in https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html
+// RemoteClusterAccess models the API key specification as documented in https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-security-create-cross-cluster-api-key
 type RemoteClusterAccess struct {
 	// +kubebuilder:validation:Optional
 	Search *Search `json:"search,omitempty"`

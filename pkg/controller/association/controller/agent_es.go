@@ -15,7 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
 
@@ -35,6 +34,7 @@ func AddAgentES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params 
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociationType:           commonv1.ElasticsearchAssociationType,
 		AssociatedObjTemplate:     func() commonv1.Associated { return &agentv1alpha1.Agent{} },
+		AssociatedObjListTemplate: func() client.ObjectList { return &agentv1alpha1.AgentList{} },
 		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
@@ -52,14 +52,23 @@ func AddAgentES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params 
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
 
+		ElasticsearchRef: directElasticsearchRef,
 		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
-			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
-				return true, association.AssociationRef(), nil
-			},
 			UserSecretSuffix: "agent-user",
 			ESUserRole: func(associated commonv1.Associated) (string, error) {
 				return "superuser", nil
 			},
+			SupportsAuthentication: agentSupportsAuthentication,
 		},
 	})
+}
+
+// agentSupportsAuthentication reports whether the Agent supports the given authentication mode towards
+// Elasticsearch. PKI is only supported by standalone Agents: fleet-managed Agents are configured through Fleet.
+func agentSupportsAuthentication(associated commonv1.Associated, mode commonv1.AuthenticationMode) bool {
+	if mode == commonv1.AuthenticationModeCredentials {
+		return true
+	}
+	agent, ok := associated.(*agentv1alpha1.Agent)
+	return ok && !agent.Spec.FleetModeEnabled()
 }

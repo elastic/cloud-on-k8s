@@ -99,10 +99,6 @@ func (c *Command) OutputContainsAny(tokens ...string) (bool, error) {
 		}
 	}
 
-	if err != nil {
-		// provide additional context to callers otherwise it is really hard to figure out what went wrong
-		err = fmt.Errorf("%s with err: %w", out, err)
-	}
 	return false, err
 }
 
@@ -169,5 +165,11 @@ func (c *Command) output() (string, error) {
 	}
 
 	err := cmd.Run()
-	return b.String(), err
+	out := b.String()
+	// When not streaming, the CLI output is only captured in the buffer.
+	// Include it in the error so callers get meaningful messages instead of just "exit status N".
+	if err != nil && !c.stream {
+		err = fmt.Errorf("%w: %s", err, strings.TrimSpace(out))
+	}
+	return out, err
 }

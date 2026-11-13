@@ -10,8 +10,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -37,33 +35,25 @@ func Test_listAffectedLicenses(t *testing.T) {
 			args: args{
 				initialObjects: []client.Object{
 					&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "foo-cluster",
-							Namespace: "default",
-							SelfLink:  "/apis/elasticsearch.k8s.elastic.co/",
-						},
+						Name:      "foo-cluster",
+						Namespace: "default",
+						SelfLink:  "/apis/elasticsearch.k8s.elastic.co/",
 					},
 					&esv1.Elasticsearch{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "bar-cluster",
-							Namespace: "default",
-							SelfLink:  "/apis/elasticsearch.k8s.elastic.co/",
-						},
+						Name:      "bar-cluster",
+						Namespace: "default",
+						SelfLink:  "/apis/elasticsearch.k8s.elastic.co/",
 					},
 				},
 			},
 			want: []reconcile.Request{
 				{
-					NamespacedName: types.NamespacedName{
-						Namespace: "default",
-						Name:      "bar-cluster",
-					},
+					Namespace: "default",
+					Name:      "bar-cluster",
 				},
 				{
-					NamespacedName: types.NamespacedName{
-						Namespace: "default",
-						Name:      "foo-cluster",
-					},
+					Namespace: "default",
+					Name:      "foo-cluster",
 				},
 			},
 			wantErr: false,

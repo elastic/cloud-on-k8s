@@ -25,6 +25,7 @@ import (
 	meta2 "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -72,6 +73,7 @@ func NewYAMLDecoder() *YAMLDecoder {
 	scheme.AddKnownTypes(rbacv1.SchemeGroupVersion, &rbacv1.ClusterRole{}, &rbacv1.ClusterRoleList{})
 	scheme.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.ServiceAccount{}, &corev1.ServiceAccountList{})
 	scheme.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.Service{}, &corev1.ServiceList{})
+	scheme.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.Secret{}, &corev1.SecretList{})
 	scheme.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.ConfigMap{}, &corev1.ConfigMapList{})
 	scheme.AddKnownTypes(appsv1.SchemeGroupVersion, &appsv1.DaemonSet{})
 	scheme.AddKnownTypes(appsv1.SchemeGroupVersion, &appsv1.Deployment{}, &appsv1.DeploymentList{})
@@ -260,6 +262,15 @@ func makeObjectSteps(
 }
 
 func transformToE2E(namespace, fullTestName, suffix string, transformers []BuilderTransform, objects []client.Object) ([]test.Builder, []client.Object) {
+	// Pre-pass: collect the names of Secrets defined in this file so that only
+	// those secretKeyRef references (not ECK-managed secrets) are suffixed.
+	secretsInFile := sets.New[string]()
+	for _, object := range objects {
+		if s, ok := object.(*corev1.Secret); ok {
+			secretsInFile.Insert(s.Name)
+		}
+	}
+
 	var builders []test.Builder
 	var otherObjects []client.Object
 	for _, object := range objects {
@@ -285,10 +296,11 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 		case *kbv1.Kibana:
 			b := kibana.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.Kibana = *decodedObj
+			tweakEnvSecretRefs(&b.Kibana.Spec.PodTemplate.Spec, suffix, secretsInFile)
 			builder = b.WithNamespace(namespace).
 				WithVersion(test.Ctx().ElasticStackVersion).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.Kibana.Spec.ElasticsearchRef, suffix)).
+				WithElasticsearchRef(tweakServiceRef(b.Kibana.Spec.ElasticsearchRef.ObjectSelector, suffix)).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName).
@@ -299,7 +311,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			builder = b.WithNamespace(namespace).
 				WithVersion(test.Ctx().ElasticStackVersion).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.ApmServer.Spec.ElasticsearchRef, suffix)).
+				WithElasticsearchRef(tweakServiceRef(b.ApmServer.Spec.ElasticsearchRef.ObjectSelector, suffix)).
 				WithKibanaRef(tweakServiceRef(b.ApmServer.Spec.KibanaRef, suffix)).
 				WithConfig(map[string]any{"apm-server.ilm.enabled": false}).
 				WithRestrictedSecurityContext().
@@ -310,7 +322,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			b = b.WithNamespace(namespace).
 				WithVersion(test.Ctx().ElasticStackVersion).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.Beat.Spec.ElasticsearchRef, suffix)).
+				WithElasticsearchRef(tweakServiceRef(b.Beat.Spec.ElasticsearchRef.ObjectSelector, suffix)).
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName).
 				WithESValidations(beat.HasEventFromBeat(beatcommon.Type(b.Beat.Spec.Type))).
@@ -320,6 +332,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 				b = b.WithPodTemplateServiceAccount(b.PodTemplate.Spec.ServiceAccountName + "-" + suffix)
 			}
 
+			tweakEnvSecretRefs(&b.PodTemplate.Spec, suffix, secretsInFile)
 			builder = b
 		case *entv1.EnterpriseSearch:
 			b := enterprisesearch.NewBuilderWithoutSuffix(decodedObj.Name)
@@ -327,7 +340,7 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			builder = b.WithNamespace(namespace).
 				WithVersion(test.Ctx().ElasticStackVersion).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.EnterpriseSearch.Spec.ElasticsearchRef, suffix)).
+				WithElasticsearchRef(tweakServiceRef(b.EnterpriseSearch.Spec.ElasticsearchRef.ObjectSelector, suffix)).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
@@ -340,12 +353,13 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName).
 				WithKibanaRef(tweakServiceRef(b.Agent.Spec.KibanaRef, suffix)).
-				WithFleetServerRef(tweakServiceRef(b.Agent.Spec.FleetServerRef, suffix))
+				WithFleetServerRef(tweakServiceRef(b.Agent.Spec.FleetServerRef.ObjectSelector, suffix))
 
 			if b.PodTemplate.Spec.ServiceAccountName != "" {
 				b = b.WithPodTemplateServiceAccount(b.PodTemplate.Spec.ServiceAccountName + "-" + suffix)
 			}
 
+			tweakEnvSecretRefs(&b.PodTemplate.Spec, suffix, secretsInFile)
 			builder = b
 		case *logstashv1alpha1.Logstash:
 			b := logstash.NewBuilderWithoutSuffix(decodedObj.Name)
@@ -353,8 +367,9 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			esRefs := make([]logstashv1alpha1.ElasticsearchCluster, 0, len(b.Logstash.Spec.ElasticsearchRefs))
 			for _, ref := range b.Logstash.Spec.ElasticsearchRefs {
 				esRefs = append(esRefs, logstashv1alpha1.ElasticsearchCluster{
-					ObjectSelector: tweakServiceRef(ref.ObjectSelector, suffix),
-					ClusterName:    ref.ClusterName,
+					ObjectSelector:              tweakServiceRef(ref.ElasticsearchSelector.ObjectSelector, suffix),
+					ClientCertificateSecretName: ref.ElasticsearchSelector.ClientCertificateSecretName,
+					ClusterName:                 ref.ClusterName,
 				})
 			}
 
@@ -379,9 +394,23 @@ func transformToE2E(namespace, fullTestName, suffix string, transformers []Build
 			decodedObj.Name = decodedObj.Name + "-" + suffix
 		case *rbacv1.ClusterRole:
 			decodedObj.Name = decodedObj.Name + "-" + suffix
+		case *corev1.Secret:
+			decodedObj.Namespace = namespace
+			decodedObj.Name = decodedObj.Name + "-" + suffix
 		case *corev1.Service:
 			decodedObj.Namespace = namespace
 			decodedObj.Name = decodedObj.Name + "-" + suffix
+			for _, labelKey := range []string{
+				"agent.k8s.elastic.co/name",
+				"beat.k8s.elastic.co/name",
+				"logstash.k8s.elastic.co/name",
+				"apm.k8s.elastic.co/name",
+				"enterprisesearch.k8s.elastic.co/name",
+			} {
+				if v, ok := decodedObj.Spec.Selector[labelKey]; ok {
+					decodedObj.Spec.Selector[labelKey] = v + "-" + suffix
+				}
+			}
 		case *appsv1.DaemonSet:
 			decodedObj.Namespace = namespace
 			decodedObj.Name = decodedObj.Name + "-" + suffix
@@ -464,6 +493,17 @@ func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace strin
 
 	data := config.Data
 
+	apmServerURLKey := "elastic.apm.serverUrl"
+	if untypedURL, ok := data[apmServerURLKey]; ok {
+		if url, ok := untypedURL.(string); ok {
+			data[apmServerURLKey] = strings.ReplaceAll(
+				url,
+				"apm.default",
+				fmt.Sprintf("apm-%s.%s", suffix, namespace),
+			)
+		}
+	}
+
 	elasticsearchHostsKey := "xpack.fleet.agents.elasticsearch.hosts"
 	if untypedHosts, ok := data[elasticsearchHostsKey]; ok {
 		if untypedHostsSlice, ok := untypedHosts.([]any); ok {
@@ -495,6 +535,27 @@ func tweakConfigLiterals(config *commonv1.Config, suffix string, namespace strin
 	}
 
 	return data
+}
+
+// tweakEnvSecretRefs appends suffix to env var secretKeyRef names that refer to Secrets
+// defined in the same recipe file (secretsInFileSet). Volume mounts, imagePullSecrets, and
+// other Secret references are out of scope.
+func tweakEnvSecretRefs(podSpec *corev1.PodSpec, suffix string, secretsInFileSet sets.Set[string]) {
+	applyToContainers := func(containers []corev1.Container) {
+		for i := range containers {
+			for j := range containers[i].Env {
+				ref := containers[i].Env[j].ValueFrom
+				if ref == nil || ref.SecretKeyRef == nil {
+					continue
+				}
+				if secretsInFileSet.Has(ref.SecretKeyRef.Name) {
+					ref.SecretKeyRef.Name = ref.SecretKeyRef.Name + "-" + suffix
+				}
+			}
+		}
+	}
+	applyToContainers(podSpec.InitContainers)
+	applyToContainers(podSpec.Containers)
 }
 
 func MkTestName(t *testing.T, path string) string {

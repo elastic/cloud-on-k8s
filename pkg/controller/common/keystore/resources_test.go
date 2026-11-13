@@ -12,8 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
@@ -26,10 +25,8 @@ import (
 var (
 	testSecureSettingsSecretName = "secure-settings-secret"
 	testSecureSettingsSecret     = corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "namespace",
-			Name:      testSecureSettingsSecretName,
-		},
+		Namespace: "namespace",
+		Name:      testSecureSettingsSecretName,
 		Data: map[string][]byte{
 			"key1": []byte("value1"),
 		},
@@ -38,15 +35,11 @@ var (
 		SecretName: testSecureSettingsSecretName,
 	}
 	testKibana = kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "namespace",
-			Name:      "kibana",
-		},
+		Namespace: "namespace",
+		Name:      "kibana",
 	}
 	testKibanaWithSecureSettings = kbv1.Kibana{
-		TypeMeta: metav1.TypeMeta{
-			Kind: kbv1.Kind,
-		},
+		Kind:       kbv1.Kind,
 		ObjectMeta: testKibana.ObjectMeta,
 		Spec: kbv1.KibanaSpec{
 			SecureSettings: []commonv1.SecretSource{testSecureSettingsSecretRef},
@@ -114,6 +107,7 @@ func TestReconcileResources(t *testing.T) {
 		client                  k8s.Client
 		kb                      kbv1.Kibana
 		initContainerParameters InitContainerParameters
+		wantErrMsg              string
 		wantNil                 bool
 		wantContainers          *corev1.Container
 		wantHash                string
@@ -126,6 +120,47 @@ func TestReconcileResources(t *testing.T) {
 			wantContainers:          nil,
 			wantHash:                "",
 			wantNil:                 true,
+		},
+		{
+			name:   "no secure settings specified with keystore password path: create resources",
+			client: k8s.NewFakeClient(),
+			kb:     testKibana,
+			initContainerParameters: InitContainerParameters{
+				KeystoreCreateCommand:         "/keystore/bin/keystore create",
+				KeystoreAddCommand:            `/keystore/bin/keystore add "$key" "$filename"`,
+				SecureSettingsVolumeMountPath: "/foo/secret",
+				KeystoreVolumePath:            "/bar/data",
+				KeystorePasswordPath:          "/mnt/elastic-internal/keystore-password/keystore-password",
+				Resources:                     testResourceRequirements,
+			},
+			wantContainers: wantContainer(`#!/usr/bin/env bash
+
+set -eux
+
+keystore_initialized_flag=/bar/data/elastic-internal-init-keystore.ok
+
+if [[ -f "${keystore_initialized_flag}" ]]; then
+    echo "Keystore already initialized."
+	exit 0
+fi
+
+echo "Initializing keystore."
+
+# create a keystore in the default data path
+/keystore/bin/keystore create
+
+# add all existing secret entries into it
+for filename in  /foo/secret/*; do
+	[[ -e "$filename" ]] || continue # glob does not match
+	key=$(basename "$filename")
+	echo "Adding "${key}" to the keystore."
+	/keystore/bin/keystore add "$key" "$filename"
+done
+touch /bar/data/elastic-internal-init-keystore.ok
+echo "Keystore initialization successful."
+`),
+			wantHash: "",
+			wantNil:  false,
 		},
 		{
 			name:                    "secure settings specified: return volume, init container and (empty) version",
@@ -152,10 +187,9 @@ echo "Initializing keystore."
 for filename in  /foo/secret/*; do
 	[[ -e "$filename" ]] || continue # glob does not match
 	key=$(basename "$filename")
-	echo "Adding "$key" to the keystore."
+	echo "Adding "${key}" to the keystore."
 	/keystore/bin/keystore add "$key" "$filename"
 done
-
 touch /bar/data/elastic-internal-init-keystore.ok
 echo "Keystore initialization successful."
 `),
@@ -181,10 +215,9 @@ echo "Initializing keystore."
 for filename in  /foo/secret/*; do
 	[[ -e "$filename" ]] || continue # glob does not match
 	key=$(basename "$filename")
-	echo "Adding "$key" to the keystore."
+	echo "Adding "${key}" to the keystore."
 	/keystore/bin/keystore add "$key" "$filename"
 done
-
 echo "Keystore initialization successful."
 `),
 			// since this will be created, it will be incremented
@@ -219,9 +252,13 @@ echo "Keystore initialization successful."
 			testDriver := driver.TestDriver{
 				Client:       tt.client,
 				Watches:      watches2.NewDynamicWatches(),
-				FakeRecorder: record.NewFakeRecorder(1000),
+				FakeRecorder: toolsevents.NewFakeRecorder(1000),
 			}
-			resources, err := ReconcileResources(context.Background(), testDriver, &tt.kb, kbNamer, metadata.Metadata{}, tt.initContainerParameters)
+			resources, err := ReconcileResources(context.Background(), testDriver, &tt.kb, kbNamer, metadata.Metadata{}, "", tt.initContainerParameters)
+			if tt.wantErrMsg != "" {
+				require.ErrorContains(t, err, tt.wantErrMsg)
+				return
+			}
 			require.NoError(t, err)
 			if tt.wantNil {
 				require.Nil(t, resources)

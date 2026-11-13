@@ -3,7 +3,7 @@ kind: Agent
 metadata:
   name: elastic-agent
 spec:
-  version: 9.3.0
+  version: 9.5.1
   elasticsearchRefs:
   - name: elasticsearch
   statefulSet:
@@ -298,6 +298,13 @@ rules:
       - get
       - watch
       - list
+  - apiGroups: ["events.k8s.io"]
+    resources:
+      - events
+    verbs:
+      - get
+      - watch
+      - list
   - apiGroups:
       - autoscaling
     resources:
@@ -450,7 +457,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 9.3.0
+  version: 9.5.1
   nodeSets:
   - name: default
     count: 3
@@ -462,7 +469,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 9.3.0
+  version: 9.5.1
   count: 1
   elasticsearchRef:
     name: elasticsearch

@@ -16,12 +16,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
@@ -49,7 +49,12 @@ const (
 // and start it when the manager is started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
-	c, err := common.NewController(mgr, controllerName, reconciler, params)
+	c, err := common.NewNamespacedController(mgr, controllerName, reconciler, params,
+		watches.ReconcileObjectsInNamespace(
+			mgr.GetCache(),
+			func() client.ObjectList { return &eprv1alpha1.PackageRegistryList{} },
+		),
+	)
 	if err != nil {
 		return err
 	}
@@ -60,20 +65,21 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcilePackageRegistry {
 	return &ReconcilePackageRegistry{
 		Client:         mgr.GetClient(),
-		recorder:       mgr.GetEventRecorderFor(controllerName),
+		recorder:       mgr.GetEventRecorder(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
 	}
 }
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcilePackageRegistry) error {
+	m := r.NamespaceMatcher
 	// Watch for changes to packageregistry
-	if err := c.Watch(source.Kind(mgr.GetCache(), &eprv1alpha1.PackageRegistry{}, &handler.TypedEnqueueRequestForObject[*eprv1alpha1.PackageRegistry]{})); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &eprv1alpha1.PackageRegistry{}, &handler.TypedEnqueueRequestForObject[*eprv1alpha1.PackageRegistry]{})); err != nil {
 		return err
 	}
 
 	// Watch deployments
-	if err := c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}, handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &appsv1.Deployment{}, handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&eprv1alpha1.PackageRegistry{}, handler.OnlyControllerOwner(),
 	))); err != nil {
@@ -82,12 +88,12 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcilePackag
 
 	// Watch Pods, to ensure `status.version` and version upgrades are correctly reconciled on any change.
 	// Watching Deployments only may lead to missing some events.
-	if err := watches.WatchPods(mgr, c, label.NameLabelName); err != nil {
+	if err := watches.WatchPods(mgr, c, m, label.NameLabelName); err != nil {
 		return err
 	}
 
 	// Watch services
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&eprv1alpha1.PackageRegistry{}, handler.OnlyControllerOwner(),
 	))); err != nil {
@@ -95,27 +101,31 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcilePackag
 	}
 
 	// Watch owned and soft-owned secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&eprv1alpha1.PackageRegistry{}, handler.OnlyControllerOwner(),
 	))); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(mgr, c, eprv1alpha1.Kind); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(mgr, c, m, eprv1alpha1.Kind); err != nil {
 		return err
 	}
 
 	// Dynamically watch referenced secrets
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+		return err
+	}
+	// Watch ConfigMaps referenced dynamically (additional HTTP certificate authorities)
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps))
 }
 
-var _ reconcile.Reconciler = &ReconcilePackageRegistry{}
+var _ reconcile.Reconciler = (*ReconcilePackageRegistry)(nil)
 
 // ReconcilePackageRegistry reconciles a PackageRegistry object
 type ReconcilePackageRegistry struct {
 	k8s.Client
 	operator.Parameters
-	recorder       record.EventRecorder
+	recorder       toolsevents.EventRecorder
 	dynamicWatches watches.DynamicWatches
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
@@ -129,11 +139,11 @@ func (r *ReconcilePackageRegistry) DynamicWatches() watches.DynamicWatches {
 	return r.dynamicWatches
 }
 
-func (r *ReconcilePackageRegistry) Recorder() record.EventRecorder {
+func (r *ReconcilePackageRegistry) Recorder() toolsevents.EventRecorder {
 	return r.recorder
 }
 
-var _ driver.Interface = &ReconcilePackageRegistry{}
+var _ driver.Interface = (*ReconcilePackageRegistry)(nil)
 
 // Reconcile reads that state of the cluster for a PackageRegistry object and makes changes based on the state read and what is
 // in the PackageRegistry.Spec
@@ -211,7 +221,7 @@ func (r *ReconcilePackageRegistry) doReconcile(ctx context.Context, epr eprv1alp
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		_, err := results.Aggregate()
-		k8s.MaybeEmitErrorEvent(r.recorder, err, &epr, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEventf(r.recorder, err, &epr, events.EventReconciliationError, events.EventActionCertificateReconciliation, "Certificate reconciliation error: %v", err)
 		return results, status
 	}
 
@@ -229,7 +239,7 @@ func (r *ReconcilePackageRegistry) doReconcile(ctx context.Context, epr eprv1alp
 	}
 
 	expectedDp := deployment.New(deployParams)
-	reconciledDp, err := deployment.Reconcile(ctx, r.K8sClient(), expectedDp, &epr)
+	reconciledDp, err := common.ReconcilePauseAware(ctx, r.K8sClient(), r.recorder, expectedDp, &epr, deployment.Reconcile)
 	if err != nil {
 		return results.WithError(err), status
 	}
@@ -257,10 +267,14 @@ func (r *ReconcilePackageRegistry) validate(ctx context.Context, epr eprv1alpha1
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	if _, err := epr.ValidateCreate(); err != nil {
+	warnings, err := eprv1alpha1.Validate(&epr, nil)
+	if err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, &epr, events.EventReasonValidation, err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, &epr, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
+	}
+	for _, warning := range warnings {
+		k8s.EmitEvent(r.recorder, &epr, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, warning)
 	}
 
 	return nil
@@ -319,7 +333,7 @@ func (r *ReconcilePackageRegistry) deploymentParams(epr eprv1alpha1.PackageRegis
 	return deployment.Params{
 		Name:                 DeploymentName(epr.Name),
 		Namespace:            epr.Namespace,
-		Replicas:             epr.Spec.Count,
+		Replicas:             new(epr.Spec.Count),
 		Selector:             deploymentLabels,
 		Metadata:             meta,
 		PodTemplateSpec:      podSpec,
@@ -333,7 +347,7 @@ func (r *ReconcilePackageRegistry) updateStatus(ctx context.Context, epr eprv1al
 		return nil // nothing to do
 	}
 	if status.IsDegraded(epr.Status.DeploymentStatus) {
-		r.recorder.Event(&epr, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Elastic Package Registry health degraded")
+		k8s.EmitEvent(r.recorder, &epr, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "Elastic Package Registry health degraded")
 	}
 	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),
@@ -345,11 +359,15 @@ func (r *ReconcilePackageRegistry) updateStatus(ctx context.Context, epr eprv1al
 	return common.UpdateStatus(ctx, r.Client, &epr)
 }
 
-func (r *ReconcilePackageRegistry) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	// Clean up watches set on custom http tls certificates
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(eprv1alpha1.Namer, obj.Name))
-	// same for the configRef secret
+// OnNamespaceOutOfScope releases all controller-local state associated with the given PackageRegistry
+// resource when its namespace no longer matches the operator's namespace selector.
+func (r *ReconcilePackageRegistry) OnNamespaceOutOfScope(obj types.NamespacedName) {
+	certificates.RemoveHTTPCertWatches(r.dynamicWatches, eprv1alpha1.Namer, obj)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
+}
+
+func (r *ReconcilePackageRegistry) onDelete(ctx context.Context, obj types.NamespacedName) error {
+	r.OnNamespaceOutOfScope(obj)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, eprv1alpha1.Kind)
 }
 

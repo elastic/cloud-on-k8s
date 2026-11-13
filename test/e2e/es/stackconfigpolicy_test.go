@@ -20,17 +20,20 @@ import (
 	"testing"
 
 	"github.com/ghodss/yaml"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/filesettings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 )
@@ -65,7 +68,7 @@ func TestStackConfigPolicy(t *testing.T) {
 	// set the policy Elasticsearch settings the policy using the external YAML file
 	var esConfigSpec policyv1alpha1.ElasticsearchConfigPolicySpec
 	err := yaml.Unmarshal([]byte(esConfig), &esConfigSpec)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// list of endpoints to check the existence or not of the settings defined in the esConfigSpec
 	configuredObjectsEndpoints := []string{
@@ -89,7 +92,7 @@ func TestStackConfigPolicy(t *testing.T) {
 		},
 	}
 
-	scpEsConfig := commonv1.NewConfig(map[string]interface{}{"cluster.name": clusterNameFromConfig})
+	scpEsConfig := commonv1.NewConfig(map[string]any{"cluster.name": clusterNameFromConfig})
 	esConfigSpec.Config = &scpEsConfig
 
 	policy := policyv1alpha1.StackConfigPolicy{
@@ -168,7 +171,9 @@ func TestStackConfigPolicy(t *testing.T) {
 				Name: "Cluster settings should be configured",
 				Test: test.Eventually(func() error {
 					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
-					assert.NoError(t, err)
+					if err != nil {
+						return err
+					}
 
 					var settings ClusterSettings
 					_, _, err = request(esClient, http.MethodGet, "/_cluster/settings", nil, &settings)
@@ -186,14 +191,18 @@ func TestStackConfigPolicy(t *testing.T) {
 				Name: "Cluster name should be as set in the config",
 				Test: test.Eventually(func() error {
 					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
-					assert.NoError(t, err)
+					if err != nil {
+						return err
+					}
 
 					var apiResponse ClusterInfoResponse
 					if _, _, err = request(esClient, http.MethodGet, "/", nil, &apiResponse); err != nil {
 						return err
 					}
 
-					require.Equal(t, clusterNameFromConfig, apiResponse.ClusterName)
+					if apiResponse.ClusterName != clusterNameFromConfig {
+						return fmt.Errorf("expected cluster name %q, got %q", clusterNameFromConfig, apiResponse.ClusterName)
+					}
 					return nil
 				}),
 			},
@@ -201,7 +210,9 @@ func TestStackConfigPolicy(t *testing.T) {
 				Name: "Snapshot repository should be configured",
 				Test: test.Eventually(func() error {
 					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
-					assert.NoError(t, err)
+					if err != nil {
+						return err
+					}
 
 					repoName := "repo_test"
 					var repos SnapshotRepositories
@@ -238,7 +249,9 @@ func TestStackConfigPolicy(t *testing.T) {
 				Name: "Role mappings should be set",
 				Test: test.Eventually(func() error {
 					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
-					assert.NoError(t, err)
+					if err != nil {
+						return err
+					}
 
 					metadataUUID := "b9a59ba9-6b92-4be2-bb8d-02bb270cb3a7" // from test/e2e/es/fixtures/stackconfigpolicy_esConfig.yaml
 
@@ -262,7 +275,9 @@ func TestStackConfigPolicy(t *testing.T) {
 				Name: "Other settings should be set",
 				Test: test.Eventually(func() error {
 					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
-					assert.NoError(t, err)
+					if err != nil {
+						return err
+					}
 
 					for _, ep := range configuredObjectsEndpoints {
 						if err := checkAPIStatusCode(esClient, ep, 200); err != nil {
@@ -280,14 +295,16 @@ func TestStackConfigPolicy(t *testing.T) {
 			test.Step{
 				Name: "Deleting the StackConfigPolicy should return no error",
 				Test: test.Eventually(func() error {
-					return k.Client.Delete(context.Background(), &policy)
+					return k.Client.Delete(t.Context(), &policy)
 				}),
 			},
 			test.Step{
 				Name: "Settings should be reset",
 				Test: test.Eventually(func() error {
 					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
-					assert.NoError(t, err)
+					if err != nil {
+						return err
+					}
 
 					for _, ep := range configuredObjectsEndpoints {
 						if err := checkAPIStatusCode(esClient, ep, 404); err != nil {
@@ -301,7 +318,9 @@ func TestStackConfigPolicy(t *testing.T) {
 				Name: "Role mappings should be reset",
 				Test: test.Eventually(func() error {
 					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
-					assert.NoError(t, err)
+					if err != nil {
+						return err
+					}
 
 					// starting 8.15.x, role mappings are correctly removed
 					if stackVersion.GTE(version.MinFor(8, 15, 0)) {
@@ -321,13 +340,13 @@ func TestStackConfigPolicy(t *testing.T) {
 			test.Step{
 				Name: "Delete secure settings secret",
 				Test: test.Eventually(func() error {
-					return k.Client.Delete(context.Background(), &secureSettingsSecret)
+					return k.Client.Delete(t.Context(), &secureSettingsSecret)
 				}),
 			},
 			test.Step{
 				Name: "Delete secure mounts secret",
 				Test: test.Eventually(func() error {
-					return k.Client.Delete(context.Background(), &secretMountsSecret)
+					return k.Client.Delete(t.Context(), &secretMountsSecret)
 				}),
 			},
 		}
@@ -373,13 +392,13 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 			},
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 				Config: &commonv1.Config{
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"cluster.name": "low-priority-cluster",
 					},
 				},
 				ClusterSettings: &commonv1.Config{
-					Data: map[string]interface{}{
-						"indices": map[string]interface{}{
+					Data: map[string]any{
+						"indices": map[string]any{
 							"recovery.max_bytes_per_sec": "50mb",
 						},
 					},
@@ -388,7 +407,34 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 		},
 	}
 
-	// Policy with weight 20 (higher priority) - should override cluster.name and settings
+	// variables ConfigMap and Secret feeding the high-priority policy via variablesFrom.
+	// The ConfigMap provides the recovery rate and the Secret provides the fielddata circuit
+	// breaker limit; both are mutated later in the test to verify that updates to the sources
+	// propagate to cluster settings. Standalone settings are used so neither value is coupled
+	// to other ES defaults (e.g. disk watermarks pair with max_headroom).
+	const (
+		initialHighPrioRecovery     = "200mb"
+		updatedHighPrioRecovery     = "150mb"
+		initialHighPrioBreakerLimit = "50%"
+		updatedHighPrioBreakerLimit = "60%"
+	)
+	highPrioVarsCMName := fmt.Sprintf("high-priority-scp-vars-cm-%s", rand.String(4))
+	highPrioVarsSecretName := fmt.Sprintf("high-priority-scp-vars-secret-%s", rand.String(4))
+	highPrioVarsConfigMap := corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: highPrioVarsCMName},
+		Data: map[string]string{
+			"HIGH_PRIO_RECOVERY": initialHighPrioRecovery,
+		},
+	}
+	highPrioVarsSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: highPrioVarsSecretName},
+		Data: map[string][]byte{
+			"HIGH_PRIO_BREAKER_LIMIT": []byte(initialHighPrioBreakerLimit),
+		},
+	}
+
+	// Policy with weight 20 (higher priority) - should override cluster.name and settings.
+	// Uses variablesFrom to source ClusterSettings values from a ConfigMap and a Secret.
 	highPriorityPolicy := policyv1alpha1.StackConfigPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
@@ -399,21 +445,22 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 			ResourceSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": "elasticsearch"},
 			},
+			VariablesFrom: []policyv1alpha1.VariableSource{
+				{Kind: policyv1alpha1.VariableSourceKindConfigMap, Name: highPrioVarsCMName},
+				{Kind: policyv1alpha1.VariableSourceKindSecret, Name: highPrioVarsSecretName},
+			},
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 				Config: &commonv1.Config{
-					Data: map[string]interface{}{
-						"cluster": map[string]interface{}{
+					Data: map[string]any{
+						"cluster": map[string]any{
 							"name": "high-priority-cluster",
 						},
 					},
 				},
 				ClusterSettings: &commonv1.Config{
-					Data: map[string]interface{}{
-						"indices": map[string]interface{}{
-							"recovery": map[string]interface{}{
-								"max_bytes_per_sec": "200mb",
-							},
-						},
+					Data: map[string]any{
+						"indices.recovery.max_bytes_per_sec": "${HIGH_PRIO_RECOVERY}",
+						"indices.breaker.fielddata.limit":    "${HIGH_PRIO_BREAKER_LIMIT}",
 					},
 				},
 			},
@@ -433,7 +480,7 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 			},
 			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
 				Config: &commonv1.Config{
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"cluster.name": "should-not-apply",
 					},
 				},
@@ -443,12 +490,87 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 
 	esWithlicense := test.LicenseTestBuilder(es)
 
+	// checkClusterSettings asserts that both the ConfigMap-sourced and Secret-sourced
+	// variables have been substituted and applied to the live cluster settings.
+	checkClusterSettings := func(k *test.K8sClient, wantRecovery, wantBreakerLimit string) test.Step {
+		return test.Step{
+			Name: fmt.Sprintf("Cluster settings should reflect HIGH_PRIO_RECOVERY=%s HIGH_PRIO_BREAKER_LIMIT=%s", wantRecovery, wantBreakerLimit),
+			Test: test.Eventually(func() error {
+				esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
+				if err != nil {
+					return err
+				}
+				var settings ClusterSettings
+				if _, _, err = request(esClient, http.MethodGet, "/_cluster/settings", nil, &settings); err != nil {
+					return err
+				}
+				if got := settings.Persistent.Indices.Recovery.MaxBytesPerSec; got != wantRecovery {
+					return fmt.Errorf("expected max_bytes_per_sec %q, got %q", wantRecovery, got)
+				}
+				if got := settings.Persistent.Indices.Breaker.Fielddata.Limit; got != wantBreakerLimit {
+					return fmt.Errorf("expected indices.breaker.fielddata.limit %q, got %q", wantBreakerLimit, got)
+				}
+				return nil
+			}),
+		}
+	}
+
+	// mutateVarsConfigMap and mutateVarsSecret use Get/modify/Update so they
+	// pick up the current resourceVersion - test.K8sClient.CreateOrUpdate does a naive Update
+	// with no resourceVersion which optimistic concurrency rejects.
+	ctx := t.Context()
+
+	mutateVarsConfigMap := func(k *test.K8sClient, value string) test.Step {
+		return test.Step{
+			Name: fmt.Sprintf("Mutate variables ConfigMap HIGH_PRIO_RECOVERY=%s", value),
+			Test: test.Eventually(func() error {
+				var cm corev1.ConfigMap
+				if err := k.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: highPrioVarsCMName}, &cm); err != nil {
+					return err
+				}
+				if cm.Data == nil {
+					cm.Data = map[string]string{}
+				}
+				cm.Data["HIGH_PRIO_RECOVERY"] = value
+				return k.Client.Update(ctx, &cm)
+			}),
+		}
+	}
+	mutateVarsSecret := func(k *test.K8sClient, value string) test.Step {
+		return test.Step{
+			Name: fmt.Sprintf("Mutate variables Secret HIGH_PRIO_BREAKER_LIMIT=%s", value),
+			Test: test.Eventually(func() error {
+				var s corev1.Secret
+				if err := k.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: highPrioVarsSecretName}, &s); err != nil {
+					return err
+				}
+				if s.Data == nil {
+					s.Data = map[string][]byte{}
+				}
+				s.Data["HIGH_PRIO_BREAKER_LIMIT"] = []byte(value)
+				return k.Client.Update(ctx, &s)
+			}),
+		}
+	}
+
 	steps := func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			test.Step{
 				Name: "Create low priority StackConfigPolicy",
 				Test: test.Eventually(func() error {
 					return k.CreateOrUpdate(&lowPriorityPolicy)
+				}),
+			},
+			test.Step{
+				Name: "Create variables ConfigMap for high priority policy",
+				Test: test.Eventually(func() error {
+					return k.CreateOrUpdate(&highPrioVarsConfigMap)
+				}),
+			},
+			test.Step{
+				Name: "Create variables Secret for high priority policy",
+				Test: test.Eventually(func() error {
+					return k.CreateOrUpdate(&highPrioVarsSecret)
 				}),
 			},
 			test.Step{
@@ -482,30 +604,20 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 					return nil
 				}),
 			},
-			test.Step{
-				Name: "High priority cluster settings should be applied",
-				Test: test.Eventually(func() error {
-					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
-					if err != nil {
-						return err
-					}
+			checkClusterSettings(k, initialHighPrioRecovery, initialHighPrioBreakerLimit),
 
-					var settings ClusterSettings
-					_, _, err = request(esClient, http.MethodGet, "/_cluster/settings", nil, &settings)
-					if err != nil {
-						return err
-					}
+			// Mutate the ConfigMap and verify the substituted value updates in cluster settings.
+			mutateVarsConfigMap(k, updatedHighPrioRecovery),
+			checkClusterSettings(k, updatedHighPrioRecovery, initialHighPrioBreakerLimit),
 
-					if settings.Persistent.Indices.Recovery.MaxBytesPerSec != "200mb" {
-						return fmt.Errorf("expected max_bytes_per_sec '200mb', got '%s'", settings.Persistent.Indices.Recovery.MaxBytesPerSec)
-					}
-					return nil
-				}),
-			},
+			// Mutate the Secret and verify the substituted value updates in cluster settings.
+			mutateVarsSecret(k, updatedHighPrioBreakerLimit),
+			checkClusterSettings(k, updatedHighPrioRecovery, updatedHighPrioBreakerLimit),
+
 			test.Step{
 				Name: "Delete high priority policy - low priority should take effect",
 				Test: test.Eventually(func() error {
-					return k.Client.Delete(context.Background(), &highPriorityPolicy)
+					return k.Client.Delete(ctx, &highPriorityPolicy)
 				}),
 			},
 			test.Step{
@@ -548,12 +660,21 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 				}),
 			},
 			test.Step{
-				Name: "Clean up remaining policies",
+				Name: "Clean up remaining policies and variable sources",
 				Test: test.Eventually(func() error {
-					if err := k.Client.Delete(context.Background(), &lowPriorityPolicy); err != nil {
+					if err := k.Client.Delete(ctx, &lowPriorityPolicy); err != nil && !apierrors.IsNotFound(err) {
 						return err
 					}
-					return k.Client.Delete(context.Background(), &nonConflictingPolicy)
+					if err := k.Client.Delete(ctx, &nonConflictingPolicy); err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					if err := k.Client.Delete(ctx, &highPrioVarsConfigMap); err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					if err := k.Client.Delete(ctx, &highPrioVarsSecret); err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					return nil
 				}),
 			},
 		}
@@ -562,8 +683,288 @@ func TestStackConfigPolicyMultipleWeights(t *testing.T) {
 	test.Sequence(nil, steps, esWithlicense).RunSequential(t)
 }
 
+// TestStackConfigPolicySecurityRoles tests that roles defined through StackConfigPolicy securityRoles
+// are correctly merged into the roles.yml file and loaded by Elasticsearch.
+func TestStackConfigPolicySecurityRoles(t *testing.T) {
+	if test.Ctx().TestLicense == "" {
+		t.SkipNow()
+	}
+
+	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
+	// SecurityRoles is delivered via roles.yml (not the file-based settings API), but the SCP
+	// controller itself rejects ES clusters older than FileBasedSettingsMinPreVersion, so this
+	// is still the correct gate.
+	if !stackVersion.GTE(filesettings.FileBasedSettingsMinPreVersion) {
+		t.SkipNow()
+	}
+	// Elasticsearch versions affected by https://github.com/elastic/elasticsearch/issues/152582 can keep a stale
+	// role cached after roles.yml is reloaded, which makes this test flaky.
+	if !isRoleCacheInvalidationFixed(stackVersion) {
+		t.Skipf("version %s is affected by https://github.com/elastic/elasticsearch/issues/152582", stackVersion)
+	}
+
+	namespace := test.Ctx().ManagedNamespace(0)
+
+	// fileRealmSecret defines scp_e2e_user in the file realm assigned to scp_e2e_role.
+	// The role definition itself comes from the SCP — the file realm provides the credentials.
+	// bcrypt hash below corresponds to password "testpass123!" (cost 10). //nolint:gosec
+	const fileRealmUser = "scp_e2e_user"
+	fileRealmSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      "scp-e2e-file-realm",
+		},
+		StringData: map[string]string{
+			filerealm.UsersFile:      fileRealmUser + ":$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi",
+			filerealm.UsersRolesFile: "scp_e2e_role:" + fileRealmUser,
+		},
+	}
+
+	es := elasticsearch.NewBuilder("test-es-scp-roles").
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithLabel("label", "test-scp-roles")
+	es.Elasticsearch.Spec.Auth = esv1.Auth{
+		FileRealm: []esv1.FileRealmSource{
+			{SecretRef: commonv1.SecretRef{SecretName: fileRealmSecret.Name}},
+		},
+	}
+
+	policy := policyv1alpha1.StackConfigPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      fmt.Sprintf("test-scp-roles-%s", rand.String(4)),
+		},
+		Spec: policyv1alpha1.StackConfigPolicySpec{
+			ResourceSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{"label": "test-scp-roles"},
+			},
+			Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+				SecurityRoles: &commonv1.Config{Data: map[string]interface{}{
+					"scp_e2e_role": map[string]interface{}{
+						"cluster": []interface{}{"monitor"},
+						"indices": []interface{}{
+							map[string]interface{}{
+								"names":      []interface{}{"logs-*"},
+								"privileges": []interface{}{"read", "view_index_metadata"},
+							},
+						},
+					},
+				}},
+			},
+		},
+	}
+
+	esWithLicense := test.LicenseTestBuilder(es)
+
+	// initialPodUIDs captures the ES pod UIDs before SCP changes so we can later
+	// verify that role updates do NOT trigger a pod restart.
+	initialPodUIDs := map[string]types.UID{}
+
+	before := test.StepsFunc(func(k *test.K8sClient) test.StepList {
+		return test.StepList{}.WithStep(test.Step{
+			Name: "Create file realm secret",
+			Test: test.Eventually(func() error {
+				return k.CreateOrUpdateSecrets(fileRealmSecret)
+			}),
+		})
+	})
+
+	steps := func(k *test.K8sClient) test.StepList {
+		return test.StepList{
+			test.Step{
+				Name: "Capture initial pod UIDs",
+				Test: test.Eventually(func() error {
+					pods, err := k.GetPods(test.ESPodListOptions(es.Elasticsearch.Namespace, es.Elasticsearch.Name)...)
+					if err != nil {
+						return err
+					}
+					if len(pods) == 0 {
+						return fmt.Errorf("no Elasticsearch pods found yet")
+					}
+					for _, p := range pods {
+						initialPodUIDs[p.Name] = p.UID
+					}
+					return nil
+				}),
+			},
+			test.Step{
+				Name: "Create a StackConfigPolicy with securityRoles",
+				Test: test.Eventually(func() error {
+					return k.CreateOrUpdate(&policy)
+				}),
+			},
+			test.Step{
+				Name: "SCP role should be present in the roles-and-file-realm secret",
+				Test: test.Eventually(func() error {
+					var secret corev1.Secret
+					if err := k.Client.Get(t.Context(), types.NamespacedName{
+						Namespace: es.Elasticsearch.Namespace,
+						Name:      esv1.RolesAndFileRealmSecret(es.Elasticsearch.Name),
+					}, &secret); err != nil {
+						return err
+					}
+					rolesYml := string(secret.Data["roles.yml"])
+					if !strings.Contains(rolesYml, "scp_e2e_role") {
+						return fmt.Errorf("roles.yml does not contain scp_e2e_role, got: %s", rolesYml)
+					}
+					return nil
+				}),
+			},
+			test.Step{
+				Name: "SCP role should grant expected privileges to the file realm user",
+				Test: test.Eventually(func() error {
+					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
+					if err != nil {
+						return err
+					}
+					hasPrivResp, err := hasPrivilegesAs(t.Context(), esClient, fileRealmUser, `{
+						"cluster": ["monitor"],
+						"index": [
+							{"names": ["logs-test"], "privileges": ["read"]},
+							{"names": ["secret-index"], "privileges": ["write"]}
+						]
+					}`)
+					if err != nil {
+						return err
+					}
+					if !hasPrivResp.Cluster["monitor"] {
+						return fmt.Errorf("expected cluster:monitor=true, got false")
+					}
+					logsPriv, ok := hasPrivResp.Index["logs-test"]
+					if !ok || !logsPriv["read"] {
+						return fmt.Errorf("expected logs-test:read=true, got %v", hasPrivResp.Index)
+					}
+					if hasPrivResp.Index["secret-index"]["write"] {
+						return fmt.Errorf("expected secret-index:write=false, got true")
+					}
+					return nil
+				}),
+			},
+			test.Step{
+				Name: "Verify pods have not been restarted",
+				Test: test.Eventually(func() error {
+					pods, err := k.GetPods(test.ESPodListOptions(es.Elasticsearch.Namespace, es.Elasticsearch.Name)...)
+					if err != nil {
+						return err
+					}
+					if len(pods) != len(initialPodUIDs) {
+						return fmt.Errorf("expected %d pods, got %d", len(initialPodUIDs), len(pods))
+					}
+					for _, p := range pods {
+						initial, ok := initialPodUIDs[p.Name]
+						if !ok {
+							return fmt.Errorf("pod %s was not present before SCP was applied (likely restarted)", p.Name)
+						}
+						if p.UID != initial {
+							return fmt.Errorf("pod %s was restarted: UID changed from %s to %s", p.Name, initial, p.UID)
+						}
+					}
+					return nil
+				}),
+			},
+			test.Step{
+				Name: "Delete the StackConfigPolicy",
+				Test: test.Eventually(func() error {
+					return k.Client.Delete(t.Context(), &policy)
+				}),
+			},
+			test.Step{
+				Name: "SCP role should be removed from roles.yml after policy deletion",
+				Test: test.Eventually(func() error {
+					var secret corev1.Secret
+					if err := k.Client.Get(t.Context(), types.NamespacedName{
+						Namespace: es.Elasticsearch.Namespace,
+						Name:      esv1.RolesAndFileRealmSecret(es.Elasticsearch.Name),
+					}, &secret); err != nil {
+						return err
+					}
+					if strings.Contains(string(secret.Data["roles.yml"]), "scp_e2e_role") {
+						return fmt.Errorf("roles.yml still contains scp_e2e_role after policy deletion")
+					}
+					return nil
+				}),
+			},
+			test.Step{
+				Name: "File realm user should lose privileges once the SCP role is removed",
+				Test: test.Eventually(func() error {
+					esClient, err := elasticsearch.NewElasticsearchClient(es.Elasticsearch, k)
+					if err != nil {
+						return err
+					}
+					hasPrivResp, err := hasPrivilegesAs(t.Context(), esClient, fileRealmUser, `{
+						"cluster": ["monitor"],
+						"index": [{"names": ["logs-test"], "privileges": ["read"]}]
+					}`)
+					if err != nil {
+						return err
+					}
+					if hasPrivResp.Cluster["monitor"] {
+						return fmt.Errorf("expected cluster:monitor=false after role removal, got true")
+					}
+					return nil
+				}),
+			},
+			test.Step{
+				Name: "Delete file realm secret",
+				Test: test.Eventually(func() error {
+					err := k.Client.Delete(t.Context(), &fileRealmSecret)
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					return nil
+				}),
+			},
+		}
+	}
+
+	test.Sequence(before, steps, esWithLicense).RunSequential(t)
+}
+
+// isRoleCacheInvalidationFixed reports whether the given Elasticsearch version includes the fix for
+// stale role cache entries after a roles.yml reload (https://github.com/elastic/elasticsearch/issues/152582).
+func isRoleCacheInvalidationFixed(v version.Version) bool {
+	switch {
+	case v.GTE(version.MinFor(9, 6, 0)):
+		return true
+	case v.Major == 9 && v.Minor == 5:
+		return v.GTE(version.MinFor(9, 5, 6))
+	case v.Major == 9 && v.Minor == 4:
+		return v.GTE(version.MinFor(9, 4, 9))
+	}
+	return false
+}
+
+type HasPrivilegesResponse struct {
+	Username        string                     `json:"username"`
+	HasAllRequested bool                       `json:"has_all_requested"`
+	Cluster         map[string]bool            `json:"cluster"`
+	Index           map[string]map[string]bool `json:"index"`
+}
+
+func hasPrivilegesAs(ctx context.Context, esClient client.Client, runAsUser string, body string) (HasPrivilegesResponse, error) {
+	req, err := http.NewRequest(http.MethodPost, "/_security/user/_has_privileges", strings.NewReader(body))
+	if err != nil {
+		return HasPrivilegesResponse{}, err
+	}
+	req.Header.Set("es-security-runas-user", runAsUser)
+	resp, err := esClient.Request(ctx, req)
+	if err != nil {
+		return HasPrivilegesResponse{}, err
+	}
+	defer resp.Body.Close()
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return HasPrivilegesResponse{}, err
+	}
+	var hasPrivResp HasPrivilegesResponse
+	if err := json.Unmarshal(respBytes, &hasPrivResp); err != nil {
+		return HasPrivilegesResponse{}, fmt.Errorf("failed to parse _has_privileges response: %w, body: %s", err, string(respBytes))
+	}
+	return hasPrivResp, nil
+}
+
 func checkAPIStatusCode(esClient client.Client, url string, expectedStatusCode int) error {
-	var items map[string]interface{}
+	var items map[string]any
 	_, actualStatusCode, _ := request(esClient, http.MethodGet, url, nil, &items)
 	if expectedStatusCode != actualStatusCode {
 		return fmt.Errorf("calling %s should return %d, got %d", url, expectedStatusCode, actualStatusCode)
@@ -572,7 +973,7 @@ func checkAPIStatusCode(esClient client.Client, url string, expectedStatusCode i
 }
 
 func checkAPIResponse(esClient client.Client, url string, expectedStatusCode int, expectedResponse string) error {
-	var items map[string]interface{}
+	var items map[string]any
 	response, actualStatusCode, _ := request(esClient, http.MethodGet, url, nil, &items)
 	if expectedStatusCode != actualStatusCode {
 		return fmt.Errorf("calling %s should return %d, got %d", url, expectedStatusCode, actualStatusCode)
@@ -589,6 +990,11 @@ type ClusterSettings struct {
 			Recovery struct {
 				MaxBytesPerSec string `json:"max_bytes_per_sec"`
 			} `json:"recovery"`
+			Breaker struct {
+				Fielddata struct {
+					Limit string `json:"limit"`
+				} `json:"fielddata"`
+			} `json:"breaker"`
 		} `json:"indices"`
 	} `json:"persistent"`
 }
@@ -610,7 +1016,7 @@ type SnapshotRepositorySettings struct {
 }
 
 // request is a utility function to call a specific Elasticsearch API not implemented in the Elasticsearch client.
-func request(esClient client.Client, method string, url string, body io.Reader, response interface{}) ([]byte, int, error) {
+func request(esClient client.Client, method string, url string, body io.Reader, response any) ([]byte, int, error) {
 	req, err := http.NewRequest(method, url, body) //nolint:noctx
 	statusCode := 0
 	if err != nil {

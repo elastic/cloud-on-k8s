@@ -1,0 +1,69 @@
+---
+# Elasticsearch alongside an ElasticsearchAutoscaler.
+#
+# The rule to take away: a nodeSet whose roles are targeted by an autoscaling policy must not
+# declare the fields the autoscaler owns. Those are count, the CPU/memory dimensions the policy
+# manages, and the storage size. Everything else, including the storage class, stays yours.
+#
+# This is the same arrangement Kubernetes prescribes for a Deployment managed by a
+# HorizontalPodAutoscaler, where spec.replicas is left out of the manifest so the controller can own
+# it. Declaring an owned field is not merely redundant: with Helm 4, which applies server-side, the
+# next `helm upgrade` fails with
+#
+#   conflict with "elastic-operator" ... .spec.nodeSets[name="data"].count
+#
+# Apply the ElasticsearchAutoscaler separately; it is not part of this chart. See
+# config/recipes/autoscaling/ for a complete pair, and note that autoscaling requires an
+# enterprise licence and a storage class with allowVolumeExpansion: true.
+
+nodeSets:
+# Not targeted by any policy below, so this nodeSet declares everything itself, as usual.
+- name: master
+  count: 3
+  config:
+    node.roles: ["master"]
+    node.store.allow_mmap: false
+  resources:
+    requests:
+      cpu: 1
+      memory: 2Gi
+    limits:
+      memory: 2Gi
+  volumeClaimTemplates:
+  - metadata:
+      name: elasticsearch-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: standard-rwo
+      resources:
+        requests:
+          storage: 5Gi
+
+# Targeted by a policy matching the data/ingest roles.
+- name: data
+  # No count: the autoscaler sets it, within the policy's nodeCount range.
+  config:
+    node.roles: ["data", "ingest"]
+    node.store.allow_mmap: false
+  # No resources: the policy manages cpu, memory and storage for this tier.
+  #
+  # The claim is still declared, because the storage class and access modes are yours and the
+  # autoscaler never touches them. Only the size is left out, and it arrives via
+  # spec.nodeSets[].resources.storage.
+  volumeClaimTemplates:
+  - metadata:
+      name: elasticsearch-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: standard-rwo
+  # podTemplate remains available for anything the autoscaler does not manage: affinity,
+  # nodeSelector, tolerations, init containers, environment variables. Avoid setting CPU or memory
+  # on the elasticsearch container here for an autoscaled nodeSet; the values would be shadowed by
+  # the autoscaler's, and declaring them costs you ownership of the container list.
+  podTemplate:
+    spec:
+      containers:
+      - name: elasticsearch
+        env:
+        - name: ES_JAVA_OPTS
+          value: -Xms2g -Xmx2g

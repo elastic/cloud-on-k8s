@@ -6,6 +6,7 @@ package stackconfigpolicy
 
 import (
 	"cmp"
+	"context"
 	"errors"
 	"fmt"
 	"maps"
@@ -21,6 +22,7 @@ import (
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy/substitution"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -34,11 +36,11 @@ var errMergeConflict = errors.New("merge conflict")
 type configPolicy[T any] struct {
 	// Spec is the merged config policy specification
 	Spec T
-	// extractFunc extracts the relevant spec (ES or Kibana) from a StackConfigPolicy
-	extractFunc func(p *policyv1alpha1.StackConfigPolicy) (spec T)
+	// extractFunc returns an isolated copy of the relevant spec (ES or Kibana) from a StackConfigPolicy
+	extractFunc func(p *policyv1alpha1.StackConfigPolicy) (spec *T)
 	// mergeFunc merges a source spec into the destination configPolicy, handling conflicts and aggregating
 	// secret sources and mounts. It receives the entire configPolicy to allow updating both Spec and SecretSources.
-	mergeFunc func(dst *configPolicy[T], srcSpec T, srcPolicy *policyv1alpha1.StackConfigPolicy) error
+	mergeFunc func(dst *configPolicy[T], srcSpec *T, srcPolicy *policyv1alpha1.StackConfigPolicy) error
 	// SecretSources contains aggregated secure settings secret sources, keyed by StackConfigPolicy namespace
 	SecretSources []commonv1.NamespacedSecretSource
 	// PolicyRefs contains references to all policies that targeted and were merged for this object
@@ -49,7 +51,9 @@ type configPolicy[T any] struct {
 // in order of their weight (lowest weight first). Policies with the same weight are flagged as conflicts.
 // The merge operation is customized through the configPolicy's extractFunc and mergeFunc callbacks.
 func merge[T any](
+	ctx context.Context,
 	c *configPolicy[T],
+	client k8s.Client,
 	obj metav1.Object,
 	allPolicies []policyv1alpha1.StackConfigPolicy,
 	operatorNamespace string,
@@ -86,6 +90,11 @@ func merge[T any](
 
 	for _, p := range c.PolicyRefs {
 		srcSpec := c.extractFunc(&p)
+
+		if err := substitution.Apply(ctx, client, &p, operatorNamespace, srcSpec); err != nil {
+			return fmt.Errorf("failed to apply variable substitution for %T in policy %q: %w", srcSpec, k8s.ExtractNamespacedName(&p), err)
+		}
+
 		if err := c.mergeFunc(c, srcSpec, &p); err != nil {
 			return err
 		}
@@ -99,15 +108,21 @@ func merge[T any](
 // in order of their weight (lowest to highest), with higher weight values taking precedence as they are
 // merged last. Policies with the same weight are flagged as conflicts.
 // Returns a configPolicy containing the merged configuration and any error occurred during merging.
-func getConfigPolicyForElasticsearch(es *esv1.Elasticsearch, allPolicies []policyv1alpha1.StackConfigPolicy, params operator.Parameters) (*configPolicy[policyv1alpha1.ElasticsearchConfigPolicySpec], error) {
+func getConfigPolicyForElasticsearch(
+	ctx context.Context,
+	c k8s.Client,
+	es *esv1.Elasticsearch,
+	allPolicies []policyv1alpha1.StackConfigPolicy,
+	params operator.Parameters,
+) (*configPolicy[policyv1alpha1.ElasticsearchConfigPolicySpec], error) {
 	secretMountsAggr := secretMountsAggregator{}
 	cfgPolicy := &configPolicy[policyv1alpha1.ElasticsearchConfigPolicySpec]{
-		extractFunc: func(p *policyv1alpha1.StackConfigPolicy) policyv1alpha1.ElasticsearchConfigPolicySpec {
-			return p.Spec.Elasticsearch
+		extractFunc: func(p *policyv1alpha1.StackConfigPolicy) *policyv1alpha1.ElasticsearchConfigPolicySpec {
+			return p.Spec.Elasticsearch.DeepCopy()
 		},
-		mergeFunc: func(c *configPolicy[policyv1alpha1.ElasticsearchConfigPolicySpec], src policyv1alpha1.ElasticsearchConfigPolicySpec, srcPolicy *policyv1alpha1.StackConfigPolicy) error {
+		mergeFunc: func(c *configPolicy[policyv1alpha1.ElasticsearchConfigPolicySpec], src *policyv1alpha1.ElasticsearchConfigPolicySpec, srcPolicy *policyv1alpha1.StackConfigPolicy) error {
 			var err error
-			if err = mergeElasticsearchSpecs(&c.Spec, &src); err != nil {
+			if err = mergeElasticsearchSpecs(&c.Spec, src); err != nil {
 				return err
 			}
 
@@ -115,16 +130,12 @@ func getConfigPolicyForElasticsearch(es *esv1.Elasticsearch, allPolicies []polic
 				return err
 			}
 
-			var secureSettings []commonv1.SecretSource
-			secureSettings = append(secureSettings, srcPolicy.Spec.SecureSettings...) //nolint:staticcheck // keep supporting deprecated SecureSettings until it is completely removed
-			secureSettings = append(secureSettings, srcPolicy.Spec.Elasticsearch.SecureSettings...)
-
-			c.SecretSources = mergeSecretSources(c.SecretSources, secureSettings, srcPolicy)
+			c.SecretSources = mergeSecretSources(c.SecretSources, elasticsearchSecureSettings(srcPolicy), srcPolicy)
 			return nil
 		},
 	}
 
-	if err := merge(cfgPolicy, es, allPolicies, params.OperatorNamespace); err != nil {
+	if err := merge(ctx, cfgPolicy, c, es, allPolicies, params.OperatorNamespace); err != nil {
 		return cfgPolicy, err
 	}
 	return cfgPolicy, nil
@@ -144,6 +155,7 @@ func mergeElasticsearchSpecs(dst, src *policyv1alpha1.ElasticsearchConfigPolicyS
 		{&dst.SnapshotRepositories, src.SnapshotRepositories, mergeConfig},
 		{&dst.SnapshotLifecyclePolicies, src.SnapshotLifecyclePolicies, mergeConfig},
 		{&dst.SecurityRoleMappings, src.SecurityRoleMappings, mergeConfig},
+		{&dst.SecurityRoles, src.SecurityRoles, mergeConfig},
 		{&dst.IndexLifecyclePolicies, src.IndexLifecyclePolicies, mergeConfig},
 		{&dst.IngestPipelines, src.IngestPipelines, mergeConfig},
 		{&dst.IndexTemplates.ComposableIndexTemplates, src.IndexTemplates.ComposableIndexTemplates, mergeConfig},
@@ -163,12 +175,18 @@ func mergeElasticsearchSpecs(dst, src *policyv1alpha1.ElasticsearchConfigPolicyS
 // in order of their weight (lowest to highest), with higher weight values taking precedence as they are
 // merged last. Policies with the same weight are flagged as conflicts.
 // Returns a configPolicy containing the merged configuration and any error occurred during merging.
-func getConfigPolicyForKibana(kbn *kbv1.Kibana, allPolicies []policyv1alpha1.StackConfigPolicy, params operator.Parameters) (*configPolicy[policyv1alpha1.KibanaConfigPolicySpec], error) {
+func getConfigPolicyForKibana(
+	ctx context.Context,
+	c k8s.Client,
+	kbn *kbv1.Kibana,
+	allPolicies []policyv1alpha1.StackConfigPolicy,
+	params operator.Parameters,
+) (*configPolicy[policyv1alpha1.KibanaConfigPolicySpec], error) {
 	cfgPolicy := &configPolicy[policyv1alpha1.KibanaConfigPolicySpec]{
-		extractFunc: func(p *policyv1alpha1.StackConfigPolicy) policyv1alpha1.KibanaConfigPolicySpec {
-			return p.Spec.Kibana
+		extractFunc: func(p *policyv1alpha1.StackConfigPolicy) *policyv1alpha1.KibanaConfigPolicySpec {
+			return p.Spec.Kibana.DeepCopy()
 		},
-		mergeFunc: func(c *configPolicy[policyv1alpha1.KibanaConfigPolicySpec], src policyv1alpha1.KibanaConfigPolicySpec, srcPolicy *policyv1alpha1.StackConfigPolicy) error {
+		mergeFunc: func(c *configPolicy[policyv1alpha1.KibanaConfigPolicySpec], src *policyv1alpha1.KibanaConfigPolicySpec, srcPolicy *policyv1alpha1.StackConfigPolicy) error {
 			var err error
 			if c.Spec.Config, err = deepMergeConfig(c.Spec.Config, src.Config); err != nil {
 				return err
@@ -179,7 +197,7 @@ func getConfigPolicyForKibana(kbn *kbv1.Kibana, allPolicies []policyv1alpha1.Sta
 		},
 	}
 
-	if err := merge(cfgPolicy, kbn, allPolicies, params.OperatorNamespace); err != nil {
+	if err := merge(ctx, cfgPolicy, c, kbn, allPolicies, params.OperatorNamespace); err != nil {
 		return cfgPolicy, err
 	}
 	return cfgPolicy, nil
@@ -327,6 +345,14 @@ func (s *secretMountsAggregator) mergeInto(
 		})
 	}
 	return dst, nil
+}
+
+// elasticsearchSecureSettings returns the secure settings that policy applies to Elasticsearch, including the
+// deprecated top-level Spec.SecureSettings. The SCP controller writes these sources to the secure settings
+// annotation and filterByAllowedSources validates the annotation against them, so both must use this function.
+func elasticsearchSecureSettings(policy *policyv1alpha1.StackConfigPolicy) []commonv1.SecretSource {
+	secureSettings := slices.Clone(policy.Spec.SecureSettings) //nolint:staticcheck // keep supporting deprecated SecureSettings until it is completely removed
+	return append(secureSettings, policy.Spec.Elasticsearch.SecureSettings...)
 }
 
 // mergeSecretSources merges source secure settings into the destination slice, organizing them by the source

@@ -12,7 +12,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/utils/ptr"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -42,6 +41,8 @@ const (
 
 	// VersionLabelName is a label used to track the version of a Beat Pod.
 	VersionLabelName = "beat.k8s.elastic.co/version"
+
+	baseMountPath = "/mnt/elastic-internal"
 )
 
 var (
@@ -58,7 +59,11 @@ var (
 )
 
 func certificatesDir(association commonv1.Association) string {
-	return fmt.Sprintf("/mnt/elastic-internal/%s-certs", association.AssociationType())
+	return fmt.Sprintf("%s/%s-certs", baseMountPath, association.AssociationType())
+}
+
+func clientCertificatesDir(association commonv1.Association) string {
+	return fmt.Sprintf("%s/%s-client-certs", baseMountPath, association.AssociationType())
 }
 
 // initContainerParameters generates parameters specific to Beats for an init container that will load the secure
@@ -88,6 +93,7 @@ func buildPodTemplate(
 		&params.Beat,
 		namer,
 		meta,
+		"", // operator namespace is not really needed for beats keystore resources
 		initContainerParameters(params.Beat.Spec.Type),
 	)
 	if err != nil {
@@ -111,16 +117,23 @@ func buildPodTemplate(
 		if err != nil {
 			return corev1.PodTemplateSpec{}, err
 		}
-		if !assocConf.CAIsConfigured() {
-			continue
+		if assocConf.CAIsConfigured() {
+			caSecretName := assocConf.GetCASecretName()
+			caVolume := volume.NewSecretVolumeWithMountPath(
+				caSecretName,
+				fmt.Sprintf("%s-certs", assoc.AssociationType()),
+				certificatesDir(assoc),
+			)
+			vols = append(vols, caVolume)
 		}
-		caSecretName := assocConf.GetCASecretName()
-		caVolume := volume.NewSecretVolumeWithMountPath(
-			caSecretName,
-			fmt.Sprintf("%s-certs", assoc.AssociationType()),
-			certificatesDir(assoc),
-		)
-		vols = append(vols, caVolume)
+		if assocConf.ClientCertIsConfigured() {
+			clientCertVolume := volume.NewSecretVolumeWithMountPath(
+				assocConf.GetClientCertSecretName(),
+				fmt.Sprintf("%s-client-certs", assoc.AssociationType()),
+				clientCertificatesDir(assoc),
+			)
+			vols = append(vols, clientCertVolume)
+		}
 	}
 
 	volumes := make([]corev1.Volume, 0, len(vols))
@@ -159,7 +172,7 @@ func buildPodTemplate(
 		volumes = append(volumes, sideCar.Volumes...)
 		if runningAsRoot(params.Beat) {
 			sideCar.Container.SecurityContext = &corev1.SecurityContext{
-				RunAsUser: ptr.To[int64](0),
+				RunAsUser: new(int64(0)),
 			}
 		}
 		sideCars = append(sideCars, sideCar.Container)
@@ -185,7 +198,7 @@ func buildPodTemplate(
 		volumes = append(volumes, sideCar.Volumes...)
 		if runningAsRoot(params.Beat) {
 			sideCar.Container.SecurityContext = &corev1.SecurityContext{
-				RunAsUser: ptr.To[int64](0),
+				RunAsUser: new(int64(0)),
 			}
 		}
 		sideCars = append(sideCars, sideCar.Container)
@@ -204,7 +217,7 @@ func buildPodTemplate(
 	builder := defaults.NewPodTemplateBuilder(podTemplate, spec.Type).
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
-		WithResources(defaultResources).
+		WithResourcesAndOverrides(defaultResources, spec.Resources).
 		WithDockerImage(spec.Image, container.ImageRepository(defaultImage, v)).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).

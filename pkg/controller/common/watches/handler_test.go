@@ -39,7 +39,7 @@ func (t fakeHandler[T]) EventHandler() handler.TypedEventHandler[T, reconcile.Re
 	return t.handler
 }
 
-var _ HandlerRegistration[*corev1.Secret] = &fakeHandler[*corev1.Secret]{}
+var _ HandlerRegistration[*corev1.Secret] = (*fakeHandler[*corev1.Secret])(nil)
 
 func TestDynamicEnqueueRequest_AddHandler(t *testing.T) {
 	tests := []struct {

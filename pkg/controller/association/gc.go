@@ -6,6 +6,7 @@ package association
 
 import (
 	"context"
+	"slices"
 
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -16,6 +17,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/rolemapping"
 	esuser "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -100,7 +103,21 @@ func getUserSecretsInNamespace(c k8s.Client, namespace string) ([]v1.Secret, err
 		return nil, err
 	}
 
-	return append(userSecrets.Items, serviceAccountSecrets.Items...), nil
+	pkiRoleMappingRequests := v1.SecretList{}
+	pkiRoleMappingRequestLabels := client.MatchingLabels(map[string]string{commonv1.TypeLabelName: rolemapping.PKIRoleMappingRequestType})
+	if err := c.List(context.Background(), &pkiRoleMappingRequests, client.InNamespace(namespace), pkiRoleMappingRequestLabels); err != nil {
+		return nil, err
+	}
+
+	// Trust sources published into the server namespace carry association labels too: collect them so they are
+	// removed when their associated resource is gone.
+	clientCertTrustSources := v1.SecretList{}
+	clientCertTrustSourceLabels := client.MatchingLabels(map[string]string{commonv1.TypeLabelName: certificates.ClientCertTrustSourceType})
+	if err := c.List(context.Background(), &clientCertTrustSources, client.InNamespace(namespace), clientCertTrustSourceLabels); err != nil {
+		return nil, err
+	}
+
+	return slices.Concat(userSecrets.Items, serviceAccountSecrets.Items, pkiRoleMappingRequests.Items, clientCertTrustSources.Items), nil
 }
 
 // DoGarbageCollection runs the User garbage collector.

@@ -8,21 +8,25 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
-
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
+	"io"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/apimachinery/pkg/types"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	commonassociation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
+	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -44,7 +48,7 @@ type Params struct {
 	Meta metadata.Metadata
 
 	Client        k8s.Client
-	EventRecorder record.EventRecorder
+	EventRecorder toolsevents.EventRecorder
 	Watches       watches.DynamicWatches
 
 	Agent agentv1alpha1.Agent
@@ -53,6 +57,7 @@ type Params struct {
 	Status       agentv1alpha1.AgentStatus
 
 	OperatorParams operator.Parameters
+	LicenseChecker commonlicense.Checker
 }
 
 // K8sClient returns the Kubernetes client.
@@ -61,7 +66,7 @@ func (p Params) K8sClient() k8s.Client {
 }
 
 // Recorder returns the Kubernetes event recorder.
-func (p Params) Recorder() record.EventRecorder {
+func (p Params) Recorder() toolsevents.EventRecorder {
 	return p.EventRecorder
 }
 
@@ -118,7 +123,7 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 			K8sClient:                   params.Client,
 			DynamicWatches:              params.Watches,
 			Owner:                       &params.Agent,
-			TLSOptions:                  params.Agent.Spec.HTTP.TLS,
+			TLSOptions:                  params.Agent.Spec.HTTP.TLS.TLSOptions,
 			Namer:                       Namer,
 			Metadata:                    params.Meta,
 			Services:                    []corev1.Service{*svc},
@@ -135,6 +140,36 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 		_, _ = configHash.Write(fleetCerts.Data[certificates.CertFileName])
 	}
 
+	// Reconcile operator client certificate and trust bundle for Fleet Server client authentication.
+	clientAuthRequired := false
+	if params.Agent.Spec.FleetServerEnabled {
+		var (
+			clientAuthWarning string
+			err               error
+		)
+		clientAuthRequired, clientAuthWarning, err = isFleetServerClientAuthRequired(params)
+		if err != nil {
+			return results.WithError(err), params.Status
+		}
+		if clientAuthWarning != "" {
+			k8s.EmitEvent(params.EventRecorder, &params.Agent, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, clientAuthWarning)
+		}
+
+		// Version gate: block pod reconciliation when Fleet Server cannot present client certs to ES.
+		if clientAuthRequired && params.AgentVersion.LT(agentv1alpha1.FleetServerESClientAuthMinVersion) {
+			k8s.EmitEventf(params.EventRecorder, &params.Agent, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation,
+				"Elasticsearch mTLS support requires version 8.13.0+")
+			params.Status.Health = agentv1alpha1.AgentRedHealth
+			return results, params.Status
+		}
+
+		clientCertResults := reconcileFleetServerClientAuth(params, clientAuthRequired, fleetCerts, configHash)
+		results = results.WithResults(clientCertResults)
+		if results.HasError() {
+			return results, params.Status
+		}
+	}
+
 	fleetToken := maybeReconcileFleetEnrollment(params, results)
 	if results.HasRequeue() || results.HasError() {
 		return results, params.Status
@@ -149,7 +184,28 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 		return results.WithError(err), params.Status
 	}
 
-	podTemplate, err := buildPodTemplate(params, fleetCerts, fleetToken, configHash)
+	// For fleet-managed agents, read the CA and client cert secret names from the transitive ES ref
+	// in the Fleet Server association conf. Both are reconciled by the agent-fleetserver association
+	// controller and stored in the annotation so pod changes trigger a roll.
+	transitiveRef := fleetManagedAgentTransitiveRef(params)
+	esCASecretName := transitiveRef.GetCASecretName()
+	esClientCertSecretName := transitiveRef.GetClientCertSecretName()
+
+	// Include the transitive client cert secret in the config hash so the pod rolls when it changes.
+	if esClientCertSecretName != "" {
+		var clientCertSecret corev1.Secret
+		if err := params.Client.Get(params.Context, types.NamespacedName{
+			Namespace: params.Agent.Namespace,
+			Name:      esClientCertSecretName,
+		}, &clientCertSecret); err != nil {
+			return results.WithError(err), params.Status
+		}
+		if certPem, ok := clientCertSecret.Data[certificates.CertFileName]; ok {
+			_, _ = configHash.Write(certPem)
+		}
+	}
+
+	podTemplate, err := buildPodTemplate(params, fleetCerts, fleetToken, configHash, esClientCertSecretName, esCASecretName, clientAuthRequired)
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
@@ -193,4 +249,140 @@ func newService(agent agentv1alpha1.Agent, meta metadata.Metadata) *corev1.Servi
 		},
 	}
 	return defaults.SetServiceDefaults(&svc, meta, selector, ports)
+}
+
+// isFleetServerClientAuthRequired determines whether Fleet Server client certificate authentication
+// is effectively required. Client auth is required when:
+//   - spec.http.tls.client.authentication is true (and not overridden), OR
+//   - the user has set FLEET_SERVER_CLIENT_AUTH=required in the pod template (regardless of spec)
+//
+// A warning is returned when spec.http.tls.client.authentication is true but ineffective because
+// the user has set FLEET_SERVER_CLIENT_AUTH to a non-required value or set via ValueFrom.
+func isFleetServerClientAuthRequired(params Params) (bool, string, error) {
+	specEnabled := params.Agent.Spec.HTTP.TLS.Client.Authentication
+
+	if params.LicenseChecker == nil {
+		return false, "", nil
+	}
+	enterpriseEnabled, err := params.LicenseChecker.EnterpriseFeaturesEnabled(params.Context)
+	if err != nil {
+		return false, "", err
+	}
+	if !enterpriseEnabled {
+		if specEnabled && !annotation.HasClientAuthenticationRequired(&params.Agent) {
+			return false, "spec.http.tls.client.authentication is ineffective because an Enterprise license is not enabled", nil
+		}
+		return false, "", nil
+	}
+
+	// Client auth is meaningless without TLS. Validation already rejects spec.http.tls.client.authentication=true
+	// when TLS is disabled, so we only need to handle the case where neither is set.
+	if !params.Agent.Spec.HTTP.TLS.Enabled() {
+		return false, "", nil
+	}
+
+	// Check if the user has set FLEET_SERVER_CLIENT_AUTH in the pod template.
+	podTemplate := params.GetPodTemplate()
+	for _, c := range podTemplate.Spec.Containers {
+		if c.Name != ContainerName {
+			continue
+		}
+		for _, env := range c.Env {
+			if env.Name != FleetServerClientAuth {
+				continue
+			}
+			// The env var is set via valueFrom (ConfigMap/Secret): we cannot determine the actual value
+			// at reconcile time, so we treat it as not required and emit a warning.
+			if env.ValueFrom != nil {
+				return false, "spec.http.tls.client.authentication is ineffective because FLEET_SERVER_CLIENT_AUTH is " +
+					"set via valueFrom and the operator cannot determine the actual value", nil
+			}
+			// The env var is set to required: client auth is required regardless of the spec value.
+			if env.Value == FleetServerClientAuthRequired {
+				return true, "", nil
+			}
+			// The env var is set to a non-required value: warn only if the spec says true.
+			if specEnabled {
+				return false, fmt.Sprintf(
+					"spec.http.tls.client.authentication is ineffective because FLEET_SERVER_CLIENT_AUTH is set "+
+						"to %q in the pod template",
+					env.Value,
+				), nil
+			}
+			return false, "", nil
+		}
+	}
+
+	return specEnabled, "", nil
+}
+
+// reconcileFleetServerClientAuth reconciles the operator client certificate, trust bundle, and
+// client-authentication-required annotation for Fleet Server.
+// When client authentication is being disabled (annotation present but no longer required),
+// the annotation and related secrets are cleaned up.
+// The trust bundle includes the fleet HTTP cert so that the internal agent can verify the
+// fleet-server's server certificate (FLEET_CA points to the trust bundle).
+func reconcileFleetServerClientAuth(params Params, clientAuthRequired bool, fleetCerts *certificates.CertificatesSecret, configHash io.Writer) *reconciler.Results {
+	results := reconciler.NewResult(params.Context)
+
+	// Client auth is being disabled: clean up annotation and secrets.
+	if !clientAuthRequired {
+		if !annotation.HasClientAuthenticationRequired(&params.Agent) {
+			return results
+		}
+		if err := certificates.DeleteClientCertResources(params.Context, params.Client, &params.Agent, Namer); err != nil {
+			return results.WithError(err)
+		}
+		return results
+	}
+
+	if err := annotation.SetClientAuthenticationRequiredAnnotation(params.Context, params.Client, &params.Agent); err != nil {
+		return results.WithError(err)
+	}
+
+	certReconciler := certificates.Reconciler{
+		K8sClient:    params.Client,
+		Owner:        &params.Agent,
+		Namer:        Namer,
+		Metadata:     params.Meta,
+		CertRotation: params.OperatorParams.CertRotation,
+	}
+
+	operatorClientCertSecret, err := certReconciler.ReconcileOperatorCertificate(params.Context)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	// Include the fleet HTTP cert in the trust bundle so the internal agent can verify the
+	// fleet-server's server certificate when FLEET_CA points to the trust bundle.
+	extraCerts := []*certificates.CertificatesSecret{operatorClientCertSecret}
+	if fleetCerts != nil {
+		extraCerts = append(extraCerts, fleetCerts)
+	}
+
+	bundleData, err := certReconciler.ReconcileTrustBundle(params.Context, extraCerts...)
+	if err != nil {
+		return results.WithError(err)
+	}
+	_, _ = configHash.Write(bundleData)
+	return results
+}
+
+// fleetManagedAgentTransitiveRef returns the TransitiveESRef from the Fleet Server association
+// conf for fleet-managed agents (FleetServerRef set, FleetServerEnabled false), or nil otherwise.
+// The ref holds the CA and client cert secret names reconciled in the agent's namespace by the
+// agent-fleetserver association controller.
+func fleetManagedAgentTransitiveRef(params Params) *commonv1.TransitiveESRef {
+	if params.Agent.Spec.FleetServerEnabled || !params.Agent.Spec.FleetServerRef.IsSet() {
+		return nil
+	}
+	fsAssociation, err := association.SingleAssociationOfType(params.Agent.GetAssociations(), commonv1.FleetServerAssociationType)
+	if err != nil || fsAssociation == nil {
+		return nil
+	}
+	fsConf, err := fsAssociation.AssociationConf()
+	if err != nil || fsConf == nil {
+		return nil
+	}
+	return fsConf.TransitiveESRef
 }

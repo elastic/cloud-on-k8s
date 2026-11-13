@@ -9,6 +9,7 @@ import (
 	cryptorand "crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"fmt"
 	"net"
 	"reflect"
 	"strings"
@@ -16,7 +17,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -32,14 +32,16 @@ import (
 // ReconcilePublicHTTPCerts reconciles the Secret containing the HTTP Certificate currently in use, and the CA of
 // the certificate if available.
 func (r Reconciler) ReconcilePublicHTTPCerts(ctx context.Context, internalCerts *CertificatesSecret) error {
+	additionalCAs, err := r.reconcileAdditionalCAs(ctx)
+	if err != nil {
+		return err
+	}
 	nsn := PublicCertsSecretRef(r.Namer, k8s.ExtractNamespacedName(r.Owner))
 	expected := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   nsn.Namespace,
-			Name:        nsn.Name,
-			Labels:      r.Metadata.Labels,
-			Annotations: r.Metadata.Annotations,
-		},
+		Namespace:   nsn.Namespace,
+		Name:        nsn.Name,
+		Labels:      r.Metadata.Labels,
+		Annotations: r.Metadata.Annotations,
 		Data: map[string][]byte{
 			CertFileName: internalCerts.CertPem(),
 		},
@@ -47,11 +49,47 @@ func (r Reconciler) ReconcilePublicHTTPCerts(ctx context.Context, internalCerts 
 	if caPem := internalCerts.CAPem(); caPem != nil {
 		expected.Data[CAFileName] = caPem
 	}
+	if len(additionalCAs) > 0 {
+		expected.Data[CAFileName] = appendPEMBundles(expected.Data[CAFileName], additionalCAs)
+	}
 
 	// Don't set an ownerRef for public http certs secrets, likely to be copied into different namespaces.
 	// See https://github.com/elastic/cloud-on-k8s/issues/3986.
-	_, err := reconciler.ReconcileSecretNoOwnerRef(ctx, r.K8sClient, expected, r.Owner)
+	_, err = reconciler.ReconcileSecretNoOwnerRef(ctx, r.K8sClient, expected, r.Owner)
 	return err
+}
+
+// reconcileAdditionalCAs returns the CA certificates configured in spec.http.tls.certificateAuthorities, if any,
+// and keeps a dynamic watch on the referenced ConfigMap in sync with the configuration.
+func (r Reconciler) reconcileAdditionalCAs(ctx context.Context) ([]byte, error) {
+	owner := k8s.ExtractNamespacedName(r.Owner)
+	ref := r.TLSOptions.CertificateAuthorities
+	// Elasticsearch reconciles the public certs secret even if TLS is disabled, do not fail on a stale reference then.
+	if !r.TLSOptions.Enabled() {
+		ref = commonv1.ConfigMapRef{}
+	}
+	// an empty ref releases the watch in ReconcileAdditionalCAs
+	return ReconcileAdditionalCAs(ctx, r.K8sClient, r.DynamicWatches, AdditionalCAsOptions{
+		Owner:     owner,
+		Ref:       ref,
+		WatchKey:  AdditionalCAWatchKey(r.Namer, owner),
+		FieldPath: "spec.http.tls.certificateAuthorities",
+	})
+}
+
+// appendPEMBundles concatenates PEM bundles, making sure each bundle ends with a newline so that certificates do not run together.
+func appendPEMBundles(bundles ...[]byte) []byte {
+	var result []byte
+	for _, b := range bundles {
+		if len(b) == 0 {
+			continue
+		}
+		result = append(result, b...)
+		if b[len(b)-1] != '\n' {
+			result = append(result, '\n')
+		}
+	}
+	return result
 }
 
 // ReconcileInternalHTTPCerts reconciles the internal resources for the HTTP certificate.
@@ -59,16 +97,14 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, cust
 	log := ulog.FromContext(ctx)
 	ownerNSN := k8s.ExtractNamespacedName(r.Owner)
 
-	watchKey := CertificateWatchKey(r.Namer, ownerNSN.Name)
+	watchKey := CertificateWatchKey(r.Namer, ownerNSN)
 	if err := ReconcileCustomCertWatch(r.DynamicWatches, watchKey, ownerNSN, r.TLSOptions.Certificate); err != nil {
 		return nil, err
 	}
 
 	secret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: ownerNSN.Namespace,
-			Name:      InternalCertsSecretName(r.Namer, ownerNSN.Name),
-		},
+		Namespace: ownerNSN.Namespace,
+		Name:      InternalCertsSecretName(r.Namer, ownerNSN.Name),
 	}
 
 	shouldCreateSecret := false
@@ -82,7 +118,6 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, cust
 		secret.Labels = make(map[string]string)
 	}
 
-	// TODO: reconcile annotations?
 	needsUpdate := false
 
 	// ensure our labels are set on the secret.
@@ -92,6 +127,12 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, cust
 			needsUpdate = true
 		}
 	}
+
+	if current, ok := secret.Labels[commonv1.RestrictWatchedResourcesLabelName]; !ok || current != commonv1.RestrictWatchedResourcesLabelValue {
+		secret.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
+		needsUpdate = true
+	}
+
 	// same for annotations
 	if secret.Annotations == nil {
 		secret.Annotations = make(map[string]string)
@@ -116,7 +157,9 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ctx context.Context, ca *CA, cust
 	caCertProvided := true
 
 	if customCertificates.HasLeafCertificate() {
-		caCertProvided, needsUpdate = r.populateFromCustomCertificateContents(&secret, customCertificates, ca)
+		var certNeedsUpdate bool
+		caCertProvided, certNeedsUpdate = r.populateFromCustomCertificateContents(&secret, customCertificates, ca)
+		needsUpdate = needsUpdate || certNeedsUpdate
 	} else {
 		selfSignedNeedsUpdate, err := ensureInternalSelfSignedCertificateSecretContents(
 			ctx, &secret, ownerNSN, r.Namer, r.TLSOptions, r.ExtraHTTPSANs, r.Services, ca, r.CertRotation,
@@ -281,6 +324,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 //   - certificate has the wrong format
 //   - certificate is invalid according to the CA or expired
 //   - certificate SAN and IP does not match the expected ones
+//   - leaf certificate's AKI does not match the current CA's SKI (AKI→SKI chain broken)
 func getHTTPCertificate(
 	ctx context.Context,
 	owner types.NamespacedName,
@@ -319,6 +363,16 @@ func getHTTPCertificate(
 	}
 
 	if certificate == nil {
+		return nil
+	}
+
+	if !CertIsSignedByCA(certificate, ca.Cert) {
+		log.Info("Certificate is not valid for current CA, should issue new certificate",
+			"namespace", secret.Namespace,
+			"secret_name", secret.Name,
+			"cert_aki", fmt.Sprintf("%x", certificate.AuthorityKeyId),
+			"ca_ski", fmt.Sprintf("%x", ca.Cert.SubjectKeyId),
+		)
 		return nil
 	}
 
@@ -375,7 +429,7 @@ func createValidatedHTTPCertificateTemplate(
 ) *ValidatedCertificateTemplate {
 	defaultSuffixes := strings.Join(namer.DefaultSuffixes, "-")
 	shortName := owner.Name + "-" + defaultSuffixes + "-" + string(HTTPCAType)
-	cnNameParts := []string{
+	cnNameParts := []string{ //nolint:prealloc
 		shortName,
 		owner.Namespace,
 	}

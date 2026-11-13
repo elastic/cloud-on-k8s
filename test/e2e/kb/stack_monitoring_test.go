@@ -31,7 +31,7 @@ func TestKBStackMonitoring(t *testing.T) {
 	logs := elasticsearch.NewBuilder("test-kb-mon-logs").
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 	assocEs := elasticsearch.NewBuilder("test-kb-mon-a").
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 	monitored := kibana.NewBuilder("test-kb-mon-a").
 		WithElasticsearchRef(assocEs.Ref()).
 		WithNodeCount(1).
@@ -59,7 +59,7 @@ func TestKBStackMonitoringWithBasePath(t *testing.T) {
 	monitor := elasticsearch.NewBuilder("test-kb-monitor").
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 	assocEs := elasticsearch.NewBuilder("test-kb-mon-b").
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 	monitored := kibana.NewBuilder("test-kb-mon-b").
 		WithElasticsearchRef(assocEs.Ref()).
 		WithNodeCount(1).

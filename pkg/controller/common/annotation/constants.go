@@ -5,11 +5,6 @@
 package annotation
 
 const (
-	// CurrAssocStatusAnnotation describes the currently observed association status of an object.
-	CurrAssocStatusAnnotation = "association.k8s.elastic.co/current-status"
-	// PrevAssocStatusAnnotation describes the previously observed association status of an object.
-	PrevAssocStatusAnnotation = "association.k8s.elastic.co/previous-status"
-
 	// UpdateAnnotation is the name of the annotation applied to pods to force kubelet to resync secrets
 	UpdateAnnotation = "update.k8s.elastic.co/timestamp"
 
@@ -24,5 +19,10 @@ const (
 	KibanaConfigHashAnnotation = "policy.k8s.elastic.co/kibana-config-hash"
 
 	ElasticsearchConfigAndSecretMountsHashAnnotation = "policy.k8s.elastic.co/elasticsearch-config-mounts-hash" //nolint:gosec
+	ElasticsearchRolesHashAnnotation                 = "policy.k8s.elastic.co/elasticsearch-roles-hash"         //nolint:gosec
 	SourceSecretAnnotationName                       = "policy.k8s.elastic.co/source-secret-name"               //nolint:gosec
+
+	// ClientAuthenticationRequiredAnnotation is set on a server resource (e.g. Elasticsearch) to signal that
+	// client authentication is required.
+	ClientAuthenticationRequiredAnnotation = "eck.k8s.elastic.co/client-authentication-required"
 )

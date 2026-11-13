@@ -40,6 +40,7 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedShortName:       "apm",
 		AssociatedObjTemplate:     func() commonv1.Associated { return &apmv1.ApmServer{} },
+		AssociatedObjListTemplate: func() client.ObjectList { return &apmv1.ApmServerList{} },
 		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },
 		AssociationType:           commonv1.ElasticsearchAssociationType,
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
@@ -57,10 +58,8 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
 
+		ElasticsearchRef: directElasticsearchRef,
 		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
-			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
-				return true, association.AssociationRef(), nil
-			},
 			UserSecretSuffix: "apm-user",
 			ESUserRole:       getAPMElasticsearchRoles,
 		},
@@ -69,14 +68,14 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 
 func getElasticsearchExternalURL(c k8s.Client, assoc commonv1.Association) (string, error) {
 	esRef := assoc.AssociationRef()
-	if !esRef.IsDefined() {
+	if !esRef.IsSet() {
 		return "", nil
 	}
 	es := esv1.Elasticsearch{}
 	if err := c.Get(context.Background(), esRef.NamespacedName(), &es); err != nil {
 		return "", err
 	}
-	serviceName := esRef.ServiceName
+	serviceName := esRef.GetServiceName()
 	if serviceName == "" {
 		serviceName = services.ExternalServiceName(es.Name)
 	}

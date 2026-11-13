@@ -46,11 +46,9 @@ func (hv HostVolume) VolumeMount() corev1.VolumeMount {
 func (hv HostVolume) Volume() corev1.Volume {
 	return corev1.Volume{
 		Name: hv.name,
-		VolumeSource: corev1.VolumeSource{
-			HostPath: &corev1.HostPathVolumeSource{
-				Path: hv.hostPath,
-				Type: hv.hostPathType,
-			},
+		HostPath: &corev1.HostPathVolumeSource{
+			Path: hv.hostPath,
+			Type: hv.hostPathType,
 		},
 	}
 }

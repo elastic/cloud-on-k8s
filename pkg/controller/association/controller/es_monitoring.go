@@ -15,7 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
 
@@ -41,6 +40,7 @@ func AddEsMonitoring(mgr manager.Manager, accessReviewer rbac.AccessReviewer, pa
 func esMonitoringAssociationInfo() association.AssociationInfo {
 	return association.AssociationInfo{
 		AssociatedObjTemplate:     func() commonv1.Associated { return &esv1.Elasticsearch{} },
+		AssociatedObjListTemplate: func() client.ObjectList { return &esv1.ElasticsearchList{} },
 		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
@@ -59,10 +59,8 @@ func esMonitoringAssociationInfo() association.AssociationInfo {
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
 
-		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
-			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
-				return true, association.AssociationRef(), nil
-			},
+		ElasticsearchRef: directElasticsearchRef,
+		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{ //nolint:gosec
 			UserSecretSuffix: "beat-es-mon-user",
 			ESUserRole: func(associated commonv1.Associated) (string, error) {
 				return user.StackMonitoringUserRole, nil

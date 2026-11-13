@@ -17,7 +17,6 @@ import (
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -26,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
+	emaps "github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/metrics"
 )
 
@@ -44,6 +44,7 @@ const (
 	apmKey           = "apm"
 	entSearchKey     = "enterprise_search"
 	logstashKey      = "logstash"
+	fleetServerKey   = "fleet_server"
 	totalKey         = "total_managed"
 )
 
@@ -127,6 +128,7 @@ func (li LicensingInfo) ReportAsMetrics() {
 	metrics.LicensingAPMMemoryGauge.With(labels).Set(li.appUsage[apmKey].inGiB())
 	metrics.LicensingEntSearchMemoryGauge.With(labels).Set(li.appUsage[entSearchKey].inGiB())
 	metrics.LicensingLogstashMemoryGauge.With(labels).Set(li.appUsage[logstashKey].inGiB())
+	metrics.LicensingFleetServerMemoryGauge.With(labels).Set(li.appUsage[fleetServerKey].inGiB())
 	metrics.LicensingTotalERUGauge.With(labels).Set(float64(li.EnterpriseResourceUnits))
 
 	if li.MaxEnterpriseResourceUnits > 0 {
@@ -174,12 +176,11 @@ func (r LicensingResolver) Save(ctx context.Context, info LicensingInfo) error {
 		Name:      LicensingCfgMapName,
 	}
 	expected := corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: nsn.Namespace,
-			Name:      nsn.Name,
-			Labels: map[string]string{
-				commonv1.TypeLabelName: Type,
-			},
+		Namespace: nsn.Namespace,
+		Name:      nsn.Name,
+		Labels: map[string]string{
+			commonv1.TypeLabelName:                     Type,
+			commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 		},
 		Data: info.toMap(),
 	}
@@ -197,7 +198,9 @@ func (r LicensingResolver) Save(ctx context.Context, info LicensingInfo) error {
 			maps.Copy(reconciledData, reconciled.Data)
 			delete(expectedData, "timestamp")
 			delete(reconciledData, "timestamp")
-			return !reflect.DeepEqual(expectedData, reconciledData)
+			return !reflect.DeepEqual(expectedData, reconciledData) ||
+				!emaps.IsSubset(expected.Labels, reconciled.Labels) ||
+				!emaps.IsSubset(expected.Annotations, reconciled.Annotations)
 		},
 		UpdateReconciled: func() {
 			expected.DeepCopyInto(reconciled)

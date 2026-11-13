@@ -26,6 +26,7 @@ import (
 func AddKibanaEPR(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedObjTemplate:     func() commonv1.Associated { return &kbv1.Kibana{} },
+		AssociatedObjListTemplate: func() client.ObjectList { return &kbv1.KibanaList{} },
 		ReferencedObjTemplate:     func() client.Object { return &eprv1alpha1.PackageRegistry{} },
 		ExternalServiceURL:        getEPRExternalURL,
 		ReferencedResourceVersion: referencedEPRStatusVersion,
@@ -43,20 +44,21 @@ func AddKibanaEPR(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		AssociationConfAnnotationNameBase:     commonv1.EPRConfigAnnotationNameBase,
 		AssociationResourceNameLabelName:      eprlabels.NameLabelName,
 		AssociationResourceNamespaceLabelName: eprlabels.PackageRegistryNamespaceLabelName,
+		ElasticsearchRef:                      nil, // no transitive ES association for Kibana->EPR connection
 		ElasticsearchUserCreation:             nil, // no dedicated ES user required for Kibana->EPR connection
 	})
 }
 
 func getEPRExternalURL(c k8s.Client, assoc commonv1.Association) (string, error) {
 	eprRef := assoc.AssociationRef()
-	if !eprRef.IsDefined() {
+	if !eprRef.IsSet() {
 		return "", nil
 	}
 	epr := eprv1alpha1.PackageRegistry{}
 	if err := c.Get(context.Background(), eprRef.NamespacedName(), &epr); err != nil {
 		return "", err
 	}
-	serviceName := eprRef.ServiceName
+	serviceName := eprRef.GetServiceName()
 	if serviceName == "" {
 		serviceName = eprctl.HTTPServiceName(epr.Name)
 	}

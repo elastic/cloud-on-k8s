@@ -11,7 +11,9 @@ import (
 	"crypto/ecdsa"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 	"reflect"
@@ -63,6 +65,16 @@ func EncodePEMCert(certBlocks ...[]byte) []byte {
 		_, _ = buf.Write(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: block}))
 	}
 	return buf.Bytes()
+}
+
+// EncodePEMPKCS8PrivateKey encodes a private key in PKCS#8 DER format, wrapped in a PEM block.
+// PKCS#8 is widely supported by Java-based applications and other non-Go TLS implementations.
+func EncodePEMPKCS8PrivateKey(privateKey crypto.Signer) ([]byte, error) {
+	b, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	if err != nil {
+		return nil, err
+	}
+	return pem.EncodeToMemory(&pem.Block{Type: pkcs8PrivateKeyType, Bytes: b}), nil
 }
 
 // EncodePEMPrivateKey encodes the given private key in the PEM format
@@ -197,4 +209,11 @@ func NewPrivateKey(caSigner crypto.Signer) (crypto.Signer, error) {
 	default:
 		return nil, fmt.Errorf("unsupported CA private key type: %T", caSigner)
 	}
+}
+
+// PublicKeyFingerprint returns the lowercase SHA-256 fingerprint of a parsed certificate's
+// SubjectPublicKeyInfo.
+func PublicKeyFingerprint(cert *x509.Certificate) string {
+	digest := sha256.Sum256(cert.RawSubjectPublicKeyInfo)
+	return hex.EncodeToString(digest[:])
 }

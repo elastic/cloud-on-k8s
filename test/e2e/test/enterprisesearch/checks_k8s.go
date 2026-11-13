@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/go-cmp/cmp"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -23,6 +25,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		checks.CheckServicesEndpoints(b, k),
 		CheckSecrets(b, k),
 		CheckStatus(b, k),
+		test.CheckFieldsNotOwnedByOperator(&b.EnterpriseSearch, k, nil),
 	}
 }
 
@@ -133,11 +136,12 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 					AvailableNodes: b.EnterpriseSearch.Spec.Count,
 					Version:        b.EnterpriseSearch.Spec.Version,
 					Health:         "green",
+					Conditions:     ent.Status.Conditions, // Ignore Conditions whose LastTransitionTime is unpredictable
 				},
 				ExternalService: b.EnterpriseSearch.Name + "-ent-http",
 				Association:     commonv1.AssociationEstablished,
 			}
-			if ent.Status != expected {
+			if !cmp.Equal(ent.Status, expected) {
 				return fmt.Errorf("expected status %+v but got %+v", expected, ent.Status)
 			}
 			return nil

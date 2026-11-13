@@ -3,33 +3,54 @@
   fixed:
     E2E_PROVIDER: gke
   mixed:
-    - E2E_STACK_VERSION: "8.19.11"
-    - E2E_STACK_VERSION: "9.2.5"
-    # current stack version 9.3.0 is tested in all other tests no need to test it again
-    - E2E_STACK_VERSION: "8.19.12-SNAPSHOT"
-    - E2E_STACK_VERSION: "9.4.0-SNAPSHOT"
+    - E2E_STACK_VERSION: "8.19.20"
+    # - E2E_STACK_VERSION: "8.19.21-SNAPSHOT"
+    - E2E_STACK_VERSION: "9.3.8"
+    - E2E_STACK_VERSION: "9.4.5"
+    # current stack version 9.5.1 is tested in all other tests no need to test it again
+    - E2E_STACK_VERSION: "9.6.0-SNAPSHOT"
+
+- label: stack-wolfi
+  fixed:
+    E2E_PROVIDER: gke
+    CONTAINER_SUFFIX: "-wolfi"
+  mixed:
+    - E2E_STACK_VERSION: "8.19.20"
+    - E2E_STACK_VERSION: "9.5.1"
+    - E2E_STACK_VERSION: "9.6.0-SNAPSHOT"
 
 - label: ocp
   fixed:
     E2E_PROVIDER: ocp
   mixed:
     ## Test the current stack version.
-    - E2E_STACK_VERSION: "9.3.0"
+    - E2E_STACK_VERSION: "9.5.1"
     ## Also test the next stack version to detect any change in the images that might not be compatible with the CRI-O runtime.
-    - E2E_STACK_VERSION: "9.4.0-SNAPSHOT"
+    - E2E_STACK_VERSION: "9.6.0-SNAPSHOT"
+
+- label: ocp-wolfi
+  fixed:
+    E2E_PROVIDER: ocp
+    CONTAINER_SUFFIX: "-wolfi"
+  mixed:
+    ## Test the current stack version.
+    - E2E_STACK_VERSION: "9.5.1"
+    ## Also test the next stack version to detect any change in the images that might not be compatible with the CRI-O runtime.
+    - E2E_STACK_VERSION: "9.6.0-SNAPSHOT"
 
 - label: kind
   fixed:
     E2E_PROVIDER: kind
   mixed:
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.31.12@sha256:0f5cc49c5e73c0c2bb6e2df56e7df189240d83cf94edfa30946482eb08ec57d2
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.32.8@sha256:abd489f042d2b644e2d033f5c2d900bc707798d075e8186cb65e3f1367a9d5a1
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.33.4@sha256:25a6018e48dfcaee478f4a59af81157a437f15e6e140bf103f85a2e7cd0cbbf2
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.34.0@sha256:7416a61b42b1662ca6ca89f02028ac133a309a2a30ba309614e8ec94d976dc5a
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.32.11@sha256:5fc52d52a7b9574015299724bd68f183702956aa4a2116ae75a63cb574b35af8
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.33.12@sha256:3f5c8443c620245e4d355cfe09e96a91ead32ceaa569d3f1ca9edf0cb2fe2ff4
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.34.8@sha256:02722c2dedddcfc00febf5d27fbeb9b7b2c14294c82109ff4a85d89ac9ba3256
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.35.5@sha256:ce977ae6d65918d0b58a5f8b5e940429c2ce42fa3a5619ec2bbc60b949c0ac95
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.36.1@sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
     # The latest version of kind/k8s needs to be listed twice at the end of this list
     # as it's tested in both ipv4 and ipv6 mode.
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
-    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
+    - DEPLOYER_KIND_NODE_IMAGE: kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
       DEPLOYER_KIND_IP_FAMILY: ipv6
 
 - label: gke
@@ -60,3 +81,4 @@
 - label: aks
   fixed:
     E2E_PROVIDER: aks
+

@@ -25,24 +25,26 @@ import (
 )
 
 const (
-	EnvVarProvider             = "E2E_PROVIDER"
-	EnvVarK8sVersion           = "DEPLOYER_K8S_VERSION"
-	EnvVarStackVersion         = "E2E_STACK_VERSION"
-	EnvVarBuildkiteBuildNumber = "BUILDKITE_BUILD_NUMBER"
-	EnvVarBuildNumber          = "BUILD_NUMBER"
-	EnvVarPipeline             = "PIPELINE"
-	EnvVarClusterName          = "CLUSTER_NAME"
-	EnvVarTestOpts             = "TEST_OPTS"
-	EnvVarTestsMatch           = "TESTS_MATCH"
-	EnvVarTestLicensePKeyPath  = "TEST_LICENSE_PKEY_PATH"
-	EnvVarBuildLicensePubkey   = "BUILD_LICENSE_PUBKEY"
-	EnvVarLicensePubKey        = "export LICENSE_PUBKEY"
-	EnvVarTestLicense          = "TEST_LICENSE"
-	EnvVarMonitoringSecrets    = "MONITORING_SECRETS"
-	EnvVarE2EJson              = "E2E_JSON"
-	EnvVarGoTags               = "GO_TAGS"
-	EnvVarOperatorImage        = "OPERATOR_IMAGE"
-	EnvVarE2EImage             = "E2E_IMG"
+	EnvVarProvider                 = "E2E_PROVIDER"
+	EnvVarK8sVersion               = "DEPLOYER_K8S_VERSION"
+	EnvVarStackVersion             = "E2E_STACK_VERSION"
+	EnvVarBuildkiteBuildNumber     = "BUILDKITE_BUILD_NUMBER"
+	EnvVarBuildNumber              = "BUILD_NUMBER"
+	EnvVarPipeline                 = "PIPELINE"
+	EnvVarClusterName              = "CLUSTER_NAME"
+	EnvVarTestOpts                 = "TEST_OPTS"
+	EnvVarTestsMatch               = "TESTS_MATCH"
+	EnvVarTestLicensePKeyPath      = "TEST_LICENSE_PKEY_PATH"
+	EnvVarBuildLicensePubkey       = "BUILD_LICENSE_PUBKEY"
+	EnvVarLicensePubKey            = "export LICENSE_PUBKEY"
+	EnvVarTestLicense              = "TEST_LICENSE"
+	EnvVarMonitoringSecrets        = "MONITORING_SECRETS"
+	EnvVarE2EJson                  = "E2E_JSON"
+	EnvVarGoTags                   = "GO_TAGS"
+	EnvVarOperatorImage            = "OPERATOR_IMAGE"
+	EnvVarE2EImage                 = "E2E_IMG"
+	EnvVarRestrictWatchedResources = "RESTRICT_WATCHED_RESOURCES"
+	EnvVarContainerSuffix          = "CONTAINER_SUFFIX"
 
 	K8sInDockerMachineType = "n1-standard-16"
 )
@@ -62,10 +64,12 @@ var (
 	chars    = []rune("abcdefghijklmnopqrstuvwxyz")
 
 	shortcuts = map[string]string{
-		"p": EnvVarProvider,
-		"k": EnvVarK8sVersion,
-		"s": EnvVarStackVersion,
-		"t": EnvVarTestsMatch,
+		"p":   EnvVarProvider,
+		"k":   EnvVarK8sVersion,
+		"s":   EnvVarStackVersion,
+		"t":   EnvVarTestsMatch,
+		"rwr": EnvVarRestrictWatchedResources,
+		"cs":  EnvVarContainerSuffix,
 	}
 
 	fixed   string
@@ -129,7 +133,6 @@ func main() {
 
 	// build a flat list of the tests to run
 	tests := make([]TestsSuiteRun, 0)
-	cleanup := false
 	for i := range groups {
 		if groups[i].Mixed == nil {
 			groups[i].Mixed = []Env{{}}
@@ -139,7 +142,6 @@ func main() {
 			handleErr("Failed to create tests suite", err)
 
 			tests = append(tests, ts)
-			cleanup = cleanup || ts.Cleanup
 		}
 	}
 
@@ -158,7 +160,6 @@ func main() {
 	handleErr("Failed to parse template", err)
 
 	err = tpl.Execute(os.Stdout, map[string]any{
-		"Cleanup":                cleanup,
 		"Tests":                  tests,
 		"K8sInDockerMachineType": K8sInDockerMachineType,
 	})

@@ -15,8 +15,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/structured-merge-diff/v7/fieldpath"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -58,6 +58,16 @@ type Builder struct {
 	GlobalCA bool
 
 	mutationToleratedChecksFailureCount int
+
+	skipSpecOwnership bool
+
+	// allowedOwnedFields is the fieldpath.Set of spec paths the operator is permitted to own.
+	// Set via CheckFieldOwnershipWithAllowed; used by CheckK8sTestSteps when non-nil.
+	allowedOwnedFields *fieldpath.Set
+}
+
+func (b Builder) ResourceName() string {
+	return b.Elasticsearch.Name
 }
 
 func (b Builder) DeepCopy() *Builder {
@@ -72,7 +82,52 @@ func (b Builder) DeepCopy() *Builder {
 		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
 	}
 	builderCopy.GlobalCA = b.GlobalCA
+	builderCopy.mutationToleratedChecksFailureCount = b.mutationToleratedChecksFailureCount
+	builderCopy.skipSpecOwnership = b.skipSpecOwnership
+	if b.allowedOwnedFields != nil {
+		builderCopy.allowedOwnedFields = b.allowedOwnedFields.Copy()
+	}
 	return &builderCopy
+}
+
+// WithAutoscalerManagedNodeset declares which resource dimensions the autoscaler is permitted to
+// own for the given nodeSet. count is always included. cpu, memory, and storage each correspond to
+// the resource ranges in the autoscaling policy. The resulting fields are merged into any previously
+// registered allowed fields (prior calls are not cleared), and the accumulated set is used by
+// CheckK8sTestSteps to assert that the operator does not claim ownership of any field outside it.
+func (b Builder) WithAutoscalerManagedNodeset(nodeSetName string, cpu, memory, storage bool) Builder {
+	b.skipSpecOwnership = false
+	var set *fieldpath.Set
+	if b.allowedOwnedFields != nil {
+		set = b.allowedOwnedFields.Copy()
+	} else {
+		set = fieldpath.NewSet()
+	}
+	nsKey := fieldpath.KeyElementByFields("name", nodeSetName)
+	set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "count"))
+	if cpu {
+		set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "resources", "limits", "cpu"))
+		set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "resources", "requests", "cpu"))
+	}
+	if memory {
+		set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "resources", "limits", "memory"))
+		set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "resources", "requests", "memory"))
+	}
+	if storage {
+		set.Insert(fieldpath.MakePathOrDie("spec", "nodeSets", nsKey, "resources", "storage"))
+	}
+	return b.WithOwnershipCheckAndAllowedFields(set)
+}
+
+// WithOwnershipCheckAndAllowedFields sets the fieldpath.Set of spec paths the operator is
+// permitted to own. When set, CheckK8sTestSteps permits those paths in its ownership assertion.
+func (b Builder) WithOwnershipCheckAndAllowedFields(allowed *fieldpath.Set) Builder {
+	if allowed == nil {
+		b.allowedOwnedFields = nil
+	} else {
+		b.allowedOwnedFields = allowed.Copy()
+	}
+	return b
 }
 
 func (b Builder) GetExpectedElasticsearch() esv1.Elasticsearch {
@@ -151,23 +206,21 @@ func (b Builder) WithRestrictedSecurityContext() Builder {
 }
 
 func (b Builder) WithRemoteCluster(remoteEs Builder) Builder {
-	b.Elasticsearch.Spec.RemoteClusters =
-		append(b.Elasticsearch.Spec.RemoteClusters,
-			esv1.RemoteCluster{
-				Name:             remoteEs.Ref().Name,
-				ElasticsearchRef: remoteEs.LocalRef(),
-			})
+	b.Elasticsearch.Spec.RemoteClusters = append(b.Elasticsearch.Spec.RemoteClusters,
+		esv1.RemoteCluster{
+			Name:             remoteEs.Ref().Name,
+			ElasticsearchRef: remoteEs.LocalRef(),
+		})
 	return b
 }
 
 func (b Builder) WithRemoteClusterAPIKey(remoteEs Builder, apiKey *esv1.RemoteClusterAPIKey) Builder {
-	b.Elasticsearch.Spec.RemoteClusters =
-		append(b.Elasticsearch.Spec.RemoteClusters,
-			esv1.RemoteCluster{
-				Name:             remoteEs.Ref().Name,
-				ElasticsearchRef: remoteEs.LocalRef(),
-				APIKey:           apiKey,
-			})
+	b.Elasticsearch.Spec.RemoteClusters = append(b.Elasticsearch.Spec.RemoteClusters,
+		esv1.RemoteCluster{
+			Name:             remoteEs.Ref().Name,
+			ElasticsearchRef: remoteEs.LocalRef(),
+			APIKey:           apiKey,
+		})
 	return b
 }
 
@@ -184,7 +237,12 @@ func (b Builder) WithNamespace(namespace string) Builder {
 func (b Builder) WithVersion(version string) Builder {
 	b.Elasticsearch.Spec.Version = version
 	if strings.HasSuffix(version, "-SNAPSHOT") {
-		b.Elasticsearch.Spec.Image = test.WithDigestOrDie(container.ElasticsearchImage, version)
+		// Pinning a digest ensures all ES nodes in the test cluster pull the exact same SNAPSHOT image, even if the tag is overwritten between node rollouts.
+		image := container.ElasticsearchImage
+		if suffix := test.Ctx().ContainerSuffix; suffix != "" {
+			image = container.Image(string(image) + suffix)
+		}
+		b.Elasticsearch.Spec.Image = test.WithDigestOrDie(image, version)
 	} else {
 		// reset the image in case the builder was set to a SNAPSHOT version at some point
 		b.Elasticsearch.Spec.Image = ""
@@ -224,6 +282,16 @@ func (b Builder) WithCustomHTTPCerts(name string) Builder {
 	return b
 }
 
+func (b Builder) WithClientAuthenticationRequired() Builder {
+	b.Elasticsearch.Spec.HTTP.TLS.Client.Authentication = true
+	return b
+}
+
+func (b Builder) WithSkipSpecOwnership() Builder {
+	b.skipSpecOwnership = true
+	return b
+}
+
 func (b Builder) WithGlobalCA(v bool) Builder {
 	b.GlobalCA = v
 	return b
@@ -239,7 +307,7 @@ func (b Builder) WithNoESTopology() Builder {
 func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequirements) Builder {
 	return b.WithNodeSet(esv1.NodeSet{
 		Name:  "master",
-		Count: int32(count),
+		Count: int32(count), //nolint:gosec // G115: node count cannot realistically overflow int32
 		Config: &commonv1.Config{
 			Data: MasterRoleCfg(b.Elasticsearch.Spec.Version),
 		},
@@ -250,7 +318,7 @@ func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequireme
 func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirements) Builder {
 	return b.WithNodeSet(esv1.NodeSet{
 		Name:  "data",
-		Count: int32(count),
+		Count: int32(count), //nolint:gosec // G115: node count cannot realistically overflow int32
 		Config: &commonv1.Config{
 			Data: DataRoleCfg(b.Elasticsearch.Spec.Version),
 		},
@@ -261,7 +329,7 @@ func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirement
 func (b Builder) WithNamedESDataNodes(count int, name string, resources corev1.ResourceRequirements) Builder {
 	return b.WithNodeSet(esv1.NodeSet{
 		Name:  name,
-		Count: int32(count),
+		Count: int32(count), //nolint:gosec // G115: node count cannot realistically overflow int32
 		Config: &commonv1.Config{
 			Data: DataRoleCfg(b.Elasticsearch.Spec.Version),
 		},
@@ -272,7 +340,7 @@ func (b Builder) WithNamedESDataNodes(count int, name string, resources corev1.R
 func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequirements) Builder {
 	return b.WithNodeSet(esv1.NodeSet{
 		Name:        "masterdata",
-		Count:       int32(count),
+		Count:       int32(count), //nolint:gosec // G115: node count cannot realistically overflow int32
 		PodTemplate: ESPodTemplate(resources),
 	})
 }
@@ -301,7 +369,7 @@ func (b Builder) WithESCoordinatingNodes(count int, resources corev1.ResourceReq
 
 	return b.WithNodeSet(esv1.NodeSet{
 		Name:  "coordinating",
-		Count: int32(count),
+		Count: int32(count), //nolint:gosec // G115: node count cannot realistically overflow int32
 		Config: &commonv1.Config{
 			Data: cfg,
 		},
@@ -380,11 +448,38 @@ func (b Builder) WithEmptyDirVolumes() Builder {
 		// setup an EmptyDir for the data volume
 		b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Volumes = []corev1.Volume{
 			{
-				Name: volume.ElasticsearchDataVolumeName,
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
+				Name:     volume.ElasticsearchDataVolumeName,
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
+		}
+	}
+	return b
+}
+
+// WithSecretVolumeMountForElasticsearch appends a Secret-backed volume and mounts it read-only on the Elasticsearch
+// container for every node set. Call after WithEmptyDirVolumes (or any setup that defines pod volumes) so the secret
+// volume is merged with existing volumes. The Secret must exist in the namespace before pods are scheduled.
+func (b Builder) WithSecretVolumeMountForElasticsearch(volumeName, secretName, mountPath string) Builder {
+	// 0440 is required as any mode with world readable bits are rejected.
+	defaultMode := int32(0o440)
+	for i := range b.Elasticsearch.Spec.NodeSets {
+		ns := &b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec
+		ns.Volumes = append(ns.Volumes, corev1.Volume{
+			Name: volumeName,
+			Secret: &corev1.SecretVolumeSource{
+				SecretName:  secretName,
+				DefaultMode: &defaultMode,
+			},
+		})
+		for j := range ns.Containers {
+			if ns.Containers[j].Name != esv1.ElasticsearchContainerName {
+				continue
+			}
+			ns.Containers[j].VolumeMounts = append(ns.Containers[j].VolumeMounts, corev1.VolumeMount{
+				Name:      volumeName,
+				ReadOnly:  true,
+				MountPath: mountPath,
+			})
 		}
 	}
 	return b
@@ -403,16 +498,19 @@ func (b Builder) WithDefaultPersistentVolumes() Builder {
 		// setup default claim with the custom storage class
 		b.Elasticsearch.Spec.NodeSets[i].VolumeClaimTemplates = append(b.Elasticsearch.Spec.NodeSets[i].VolumeClaimTemplates,
 			corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: volume.ElasticsearchDataVolumeName,
-				},
+				Name: volume.ElasticsearchDataVolumeName,
 				Spec: corev1.PersistentVolumeClaimSpec{
 					AccessModes: []corev1.PersistentVolumeAccessMode{
 						corev1.ReadWriteOnce,
 					},
 					Resources: corev1.VolumeResourceRequirements{
 						Requests: corev1.ResourceList{
-							corev1.ResourceStorage: resource.MustParse("1Gi"),
+							// 2Gi fits a copy of the ELSER model (~660MB) on each node with room to spare.
+							// With an enterprise license, Kibana deploys ELSER at startup for the Security AI Assistant
+							// product documentation (elastic/kibana#199694), and ES stores it in the
+							// .ml-inference-native-* index. With 1Gi volumes its replica cannot be allocated: the cluster
+							// stays yellow and rolling restarts stop before restarting the node holding the primary.
+							corev1.ResourceStorage: resource.MustParse("2Gi"),
 						},
 					},
 					StorageClassName: &storageClass,
@@ -451,8 +549,8 @@ func (b Builder) WithAdditionalConfig(nodeSetCfg map[string]map[string]any) Buil
 
 func (b Builder) WithChangeBudget(maxSurge, maxUnavailable int32) Builder {
 	b.Elasticsearch.Spec.UpdateStrategy.ChangeBudget = esv1.ChangeBudget{
-		MaxSurge:       ptr.To[int32](maxSurge),
-		MaxUnavailable: ptr.To[int32](maxUnavailable),
+		MaxSurge:       new(maxSurge),
+		MaxUnavailable: new(maxUnavailable),
 	}
 	return b
 }
@@ -558,6 +656,10 @@ func (b Builder) GetMetricsCluster() *types.NamespacedName {
 	return &metricsCluster
 }
 
+func (b Builder) ListOptions() []client.ListOption {
+	return test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)
+}
+
 // TolerateMutationChecksFailures relaxes the continuous health check performed during a mutation by accepting a given number of failures.
 // When a new index is created at the same time as the mutation, the shutdown node API currently does not prevent shutting down a node
 // which has a new uninitialized replica, resulting in a cluster with red health status for a few seconds while the node comes back.
@@ -582,16 +684,29 @@ func (b Builder) TriggersRollingUpgrade() bool {
 	// are tricky to capture and ignored here.
 	isVersionUpgrade := b.MutatedFrom.Elasticsearch.Spec.Version != b.Elasticsearch.Spec.Version
 	httpOptionsChange := !reflect.DeepEqual(b.MutatedFrom.Elasticsearch.Spec.HTTP, b.Elasticsearch.Spec.HTTP)
+	// the PKI realm is a static setting, enabling or disabling it restarts all the nodes
+	pkiChange := !reflect.DeepEqual(b.MutatedFrom.Elasticsearch.Spec.Auth.PKI, b.Elasticsearch.Spec.Auth.PKI)
 	for _, initialNs := range b.MutatedFrom.Elasticsearch.Spec.NodeSets {
 		for _, mutatedNs := range b.Elasticsearch.Spec.NodeSets {
 			if initialNs.Name == mutatedNs.Name &&
-				(isVersionUpgrade || httpOptionsChange || !reflect.DeepEqual(initialNs, mutatedNs)) {
+				(isVersionUpgrade || httpOptionsChange || pkiChange || !reflect.DeepEqual(initialNs, mutatedNs)) {
 				// a rolling upgrade is scheduled for that NodeSpec
 				return true
 			}
 		}
 	}
 	return false
+}
+
+func (b Builder) TriggersRollingRestart() bool {
+	if b.MutatedFrom == nil {
+		return false
+	}
+
+	oldV := b.MutatedFrom.Elasticsearch.Annotations[esv1.RestartTriggerAnnotation]
+	v, ok := b.Elasticsearch.Annotations[esv1.RestartTriggerAnnotation]
+
+	return ok && v != "" && v != oldV
 }
 
 func MixedRolesCfg(ver string) map[string]any {

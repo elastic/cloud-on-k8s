@@ -6,6 +6,7 @@ package apmserver
 
 import (
 	"context"
+	"maps"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -17,9 +18,13 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	var apmServerGenerationBeforeMutation, apmServerObservedGenerationBeforeMutation int64
 	isMutated := b.MutatedFrom != nil
 
-	return test.StepList{
-		generation.RetrieveGenerationsStep(&b.ApmServer, k, &apmServerGenerationBeforeMutation, &apmServerObservedGenerationBeforeMutation),
-	}.WithSteps(b.UpgradeTestSteps(k)).
+	steps := test.StepList{}
+	if isMutated {
+		steps = test.AnnotatePodsWithBuilderHash(b, b.MutatedFrom, k)
+	}
+	return steps.
+		WithStep(generation.RetrieveGenerationsStep(&b.ApmServer, k, &apmServerGenerationBeforeMutation, &apmServerObservedGenerationBeforeMutation)).
+		WithSteps(b.UpgradeTestSteps(k)).
 		WithSteps(b.CheckK8sTestSteps(k)).
 		WithSteps(b.CheckStackTestSteps(k)).
 		WithStep(generation.CompareObjectGenerationsStep(&b.ApmServer, k, isMutated, apmServerGenerationBeforeMutation, apmServerObservedGenerationBeforeMutation))
@@ -34,6 +39,12 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.ApmServer), &as); err != nil {
 					return err
 				}
+				// merge annotations
+				if as.Annotations == nil {
+					as.Annotations = make(map[string]string)
+				}
+				maps.Copy(as.Annotations, b.ApmServer.Annotations)
+
 				as.Spec = b.ApmServer.Spec
 				return k.Client.Update(context.Background(), &as)
 			}),

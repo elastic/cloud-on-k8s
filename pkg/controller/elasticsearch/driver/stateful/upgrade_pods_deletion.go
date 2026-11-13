@@ -57,9 +57,12 @@ func (ctx *upgradeCtx) Delete() ([]corev1.Pod, error) {
 		"maxUnavailableReached", maxUnavailableReached,
 		"allowedDeletions", allowedDeletions,
 	)
-	podsToDelete, err := applyPredicates(predicateContext, candidates, maxUnavailableReached, allowedDeletions, ctx.reconcileState)
+	podsToDelete, failed, err := applyPredicates(predicateContext, candidates, maxUnavailableReached, allowedDeletions, ctx.reconcileState)
 	if err != nil {
 		return podsToDelete, err
+	}
+	if err := ctx.clearHeldRestartShutdowns(failed); err != nil {
+		return nil, err
 	}
 
 	if len(podsToDelete) == 0 {
@@ -75,7 +78,7 @@ func (ctx *upgradeCtx) Delete() ([]corev1.Pod, error) {
 		return nil, err
 	}
 	// TODO: If master is changed into a data node (or the opposite) it must be excluded or we should update m_m_n
-	var deletedPods []corev1.Pod //nolint:prealloc
+	var deletedPods []corev1.Pod
 	for _, podToDelete := range podsToDelete {
 		if err := ctx.handleMasterScaleChange(podToDelete); err != nil {
 			return deletedPods, err
@@ -84,7 +87,7 @@ func (ctx *upgradeCtx) Delete() ([]corev1.Pod, error) {
 			return deletedPods, err
 		}
 
-		if err := deletePod(ctx.parentCtx, ctx.client, ctx.ES, podToDelete, ctx.expectations, ctx.reconcileState, "Deleting pod for rolling upgrade"); err != nil {
+		if err := deletePod(ctx.parentCtx, ctx.client, ctx.ES, podToDelete, ctx.expectations, ctx.reconcileState, ctx.deletePodMessage()); err != nil {
 			return deletedPods, err
 		}
 		deletedPods = append(deletedPods, podToDelete)
@@ -95,6 +98,9 @@ func (ctx *upgradeCtx) Delete() ([]corev1.Pod, error) {
 // DeleteAll unconditionally deletes all upgradeable Pods after calling the node shutdown API and accounting for quorum
 // changes on older versions of Elasticsearch as applicable.
 func (ctx *upgradeCtx) DeleteAll() ([]corev1.Pod, error) {
+	// Update the status with the list of Pods to be upgraded here, which also clears the Pods that no longer are, for
+	// example the ones that started to leave the cluster.
+	ctx.reconcileState.RecordNodesToBeUpgraded(k8s.PodNames(ctx.podsToUpgrade))
 	if len(ctx.podsToUpgrade) == 0 {
 		return nil, nil
 	}
@@ -119,14 +125,14 @@ func (ctx *upgradeCtx) DeleteAll() ([]corev1.Pod, error) {
 	}
 
 	if len(nonReadyPods) > 0 {
-		ulog.FromContext(ctx.parentCtx).Info("Not all Pods are ready for a full cluster upgrade", "pods", nonReadyPods, "namespace", ctx.ES.Namespace, "es_name", ctx.ES.Name)
-		ctx.reconcileState.RecordNodesToBeUpgradedWithMessage(k8s.PodNames(ctx.podsToUpgrade), "Not all Pods are ready for a full cluster upgrade")
+		ulog.FromContext(ctx.parentCtx).Info(ctx.pendingPodsMessage(), "pods", nonReadyPods, "namespace", ctx.ES.Namespace, "es_name", ctx.ES.Name)
+		ctx.reconcileState.RecordNodesToBeUpgradedWithMessage(k8s.PodNames(ctx.podsToUpgrade), ctx.pendingPodsMessage())
 		return nil, nil
 	}
 
-	var deletedPods []corev1.Pod //nolint:prealloc
+	var deletedPods []corev1.Pod
 	for _, podToDelete := range ctx.podsToUpgrade {
-		if err := deletePod(ctx.parentCtx, ctx.client, ctx.ES, podToDelete, ctx.expectations, ctx.reconcileState, "Deleting Pod for full cluster upgrade"); err != nil {
+		if err := deletePod(ctx.parentCtx, ctx.client, ctx.ES, podToDelete, ctx.expectations, ctx.reconcileState, ctx.deleteAllMessage()); err != nil {
 			// an error during deletion violates the "delete all or nothing" invariant but there is no way around it
 			return deletedPods, err
 		}
@@ -193,18 +199,36 @@ func sortCandidates(allPods []corev1.Pod) {
 // * Because of the design of Zen2 there's nothing else to do for it.
 func (ctx *upgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
 	masterScaleDown := label.IsMasterNode(pod) && !stringsutil.StringInSlice(pod.Name, ctx.expectedMasters)
-	if masterScaleDown {
-		// Update zen2 settings to exclude leaving master nodes from voting.
-		if err := zen2.AddToVotingConfigExclusions(
-			ctx.parentCtx,
-			ctx.esClient,
-			ctx.ES,
-			[]string{pod.Name},
-		); err != nil {
-			return err
-		}
+	if !masterScaleDown {
+		return nil
 	}
-	return nil
+	// A leaving master that is not a member of the cluster, for example a Pod that never joined it, cannot be excluded
+	// from the voting now: its node ID is unknown. It is restarted so that it can recover, and the downscale excludes it
+	// from the voting before its eventual removal. A master that stays and loses its role is excluded even if it is not
+	// a member right now, as a master that joined earlier and is offline may still be in the voting configuration.
+	nonMember, err := ctx.isLeavingNonMember(pod.Name)
+	if err != nil || nonMember {
+		return err
+	}
+	// Update zen2 settings to exclude leaving master nodes from voting.
+	return zen2.AddToVotingConfigExclusions(
+		ctx.parentCtx,
+		ctx.esClient,
+		ctx.ES,
+		[]string{pod.Name},
+	)
+}
+
+// isLeavingNonMember returns true if the given Pod is leaving and is not a member of the cluster.
+func (ctx *upgradeCtx) isLeavingNonMember(podName string) (bool, error) {
+	if !ctx.leavingPods.Has(podName) {
+		return false, nil
+	}
+	members, err := membersAmong(ctx.esState, []string{podName})
+	if err != nil {
+		return false, err
+	}
+	return !members.Has(podName), nil
 }
 
 func deletePod(
@@ -267,4 +291,28 @@ func runPredicates(
 	}
 	// All predicates passed!
 	return nil, nil
+}
+
+func (ctx *upgradeCtx) pendingPodsMessage() string {
+	if ctx.isAnnotationTriggeredRestart {
+		return "Not all pods are ready for a cluster rolling restart"
+	}
+
+	return "Not all pods are ready for a full cluster upgrade"
+}
+
+func (ctx *upgradeCtx) deleteAllMessage() string {
+	if ctx.isAnnotationTriggeredRestart {
+		return "Deleting pod for full cluster restart"
+	}
+
+	return "Deleting pod for full cluster upgrade"
+}
+
+func (ctx *upgradeCtx) deletePodMessage() string {
+	if ctx.isAnnotationTriggeredRestart {
+		return "Deleting pod for rolling restart"
+	}
+
+	return "Deleting pod for rolling upgrade"
 }

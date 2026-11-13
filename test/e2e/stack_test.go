@@ -33,11 +33,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/logstash"
 )
 
-var (
-	updatedVersion = test.LatestReleasedVersion8x
-)
+var updatedVersion = test.LatestReleasedVersion8x
 
 func initialBuildersToUpgrade(t *testing.T, initialVersion string) ([]test.Builder, []test.Builder, StackResourceVersions) {
+	test.SkipInvalidUpgrade(t, initialVersion, updatedVersion)
+
 	// Single-node ES clusters cannot be green with APM indices (see https://github.com/elastic/apm-server/issues/414).
 	es := elasticsearch.NewBuilder("es").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
@@ -78,11 +78,11 @@ func initialBuildersToUpgrade(t *testing.T, initialVersion string) ([]test.Build
 	}
 	fb = beat.ApplyYamls(t, fb, beatsConfig, beattests.E2EFilebeatPodTemplate)
 
-	esUpdated := es.WithVersion(test.LatestReleasedVersion8x)
-	kbUpdated := kb.WithVersion(test.LatestReleasedVersion8x)
-	apmUpdated := apm.WithVersion(test.LatestReleasedVersion8x)
-	entUpdated := ent.WithVersion(test.LatestReleasedVersion8x)
-	fbUpdated := fb.WithVersion(test.LatestReleasedVersion8x)
+	esUpdated := es.WithVersion(updatedVersion)
+	kbUpdated := kb.WithVersion(updatedVersion)
+	apmUpdated := apm.WithVersion(updatedVersion)
+	entUpdated := ent.WithVersion(updatedVersion)
+	fbUpdated := fb.WithVersion(updatedVersion)
 
 	initialBuilders := []test.Builder{es, kb, apm, ent, fb}
 	updatedBuilders := []test.Builder{esUpdated, kbUpdated, apmUpdated, entUpdated, fbUpdated}
@@ -112,14 +112,16 @@ func TestVersionUpgradeOrderingWithLogstash(t *testing.T) {
 		WithElasticsearchRefs(
 			// associate logstash to the es ref stored in the stackVersions
 			logstashv1alpha1.ElasticsearchCluster{
-				ObjectSelector: commonv1.ObjectSelector{
-					Namespace: stackVersions.Elasticsearch.ref.Namespace,
-					Name:      stackVersions.Elasticsearch.ref.Name,
+				ElasticsearchSelector: commonv1.ElasticsearchSelector{
+					ObjectSelector: commonv1.ObjectSelector{
+						Namespace: stackVersions.Elasticsearch.ref.Namespace,
+						Name:      stackVersions.Elasticsearch.ref.Name,
+					},
 				},
 				ClusterName: "es",
 			},
 		)
-	lsUpdated := ls.WithVersion(test.LatestReleasedVersion8x)
+	lsUpdated := ls.WithVersion(updatedVersion)
 	lsRef := ref(k8s.ExtractNamespacedName(&ls.Logstash))
 
 	initialBuilders = append(initialBuilders, ls)
@@ -132,7 +134,6 @@ func TestVersionUpgradeOrderingWithLogstash(t *testing.T) {
 // runVersionUpgradeOrdering deploys the entire stack, with resources associated together.
 // Then, it updates their version, and ensures a strict ordering is respected during the version upgrade.
 func runVersionUpgradeOrdering(t *testing.T, initialBuilders []test.Builder, updatedBuilders []test.Builder, stackVersions StackResourceVersions) {
-
 	// upgrading the entire stack can take some time, since we need to account for (in order):
 	// - Elasticsearch rolling upgrade
 	// - Kibana + Enterprise Search deployments upgrade
@@ -146,7 +147,7 @@ func runVersionUpgradeOrdering(t *testing.T, initialBuilders []test.Builder, upd
 			steps = steps.WithSteps(b.UpgradeTestSteps(k))
 		}
 		// wait until they're all upgraded, while ensuring the upgrade order is respected
-		return steps.WithStep(test.Step{
+		steps = steps.WithStep(test.Step{
 			Name: "Check all resources are eventually upgraded in the right order",
 			Test: test.UntilSuccess(func() error {
 				// retrieve the version from the status of all resources
@@ -165,6 +166,17 @@ func runVersionUpgradeOrdering(t *testing.T, initialBuilders []test.Builder, upd
 				return nil
 			}, timeout),
 		})
+
+		// Wait for all ES pods to be Running and Ready before deletion begins. Without this, a pod
+		// that is still Pending (e.g. after a transient disk-pressure taint during the upgrade) can
+		// cause the StatefulSet controller to recreate a PVC after ECK has stopped reconciling owner
+		// refs, leaving an orphaned PVC that causes "PVCs should eventually be removed" to time out.
+		for _, b := range updatedBuilders {
+			if esBuilder, ok := b.(elasticsearch.Builder); ok {
+				steps = steps.WithStep(elasticsearch.CheckExpectedPodsEventuallyReady(esBuilder, k))
+			}
+		}
+		return steps
 	}
 
 	test.Sequence(nil, versionUpgrade, initialBuilders...).RunSequential(t)
@@ -201,7 +213,6 @@ func (s StackResourceVersions) IsValid() bool {
 		// ES >= EnterpriseSearch
 		s.Elasticsearch.GTE(s.EnterpriseSearch) &&
 		isLogstashValid
-
 }
 
 func (s StackResourceVersions) AllSetTo(version string) bool {

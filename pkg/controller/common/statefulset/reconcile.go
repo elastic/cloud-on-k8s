@@ -7,6 +7,8 @@ package statefulset
 import (
 	"context"
 
+	"k8s.io/utils/ptr"
+
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -37,12 +39,10 @@ type Params struct {
 // New creates a StatefulSet from the given params.
 func New(params Params) appsv1.StatefulSet {
 	return appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        params.Name,
-			Namespace:   params.Namespace,
-			Labels:      params.Metadata.Labels,
-			Annotations: params.Metadata.Annotations,
-		},
+		Name:        params.Name,
+		Namespace:   params.Namespace,
+		Labels:      params.Metadata.Labels,
+		Annotations: params.Metadata.Annotations,
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: &params.Replicas,
 			Selector: &metav1.LabelSelector{
@@ -104,10 +104,20 @@ func Reconcile(
 	return *reconciled, err
 }
 
+// IsSteady reports whether the StatefulSet has converged: observed generation matches the metadata
+// generation, current and update revisions are identical, and all expected replicas are ready.
+// The default for nil Spec.Replicas is 1, matching the Kubernetes StatefulSet default, so a
+// StatefulSet with no explicit replica count is only steady once its one pod is ready.
+func IsSteady(s appsv1.StatefulSet) bool {
+	return s.Status.ObservedGeneration == s.Generation &&
+		s.Status.CurrentRevision == s.Status.UpdateRevision &&
+		s.Status.ReadyReplicas == ptr.Deref(s.Spec.Replicas, 1)
+}
+
 // WithTemplateHash returns a new StatefulSet with a hash of its template to ease comparisons.
 func WithTemplateHash(d appsv1.StatefulSet) appsv1.StatefulSet {
 	dCopy := *d.DeepCopy()
-	dCopy.Labels = hash.SetTemplateHashLabel(dCopy.Labels, dCopy)
+	dCopy.Labels = hash.SetTemplateHashLabel(dCopy.Labels, dCopy.Spec)
 	return dCopy
 }
 

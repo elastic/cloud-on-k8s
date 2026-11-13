@@ -27,22 +27,14 @@ func TestAutoscalingPolicySpecs_findByRoles(t *testing.T) {
 			fields: fields{
 				AutoscalingPolicySpecs: AutoscalingPolicySpecs{
 					AutoscalingPolicySpec{
-						NamedAutoscalingPolicy: NamedAutoscalingPolicy{
-							Name: "ml_only",
-							AutoscalingPolicy: AutoscalingPolicy{
-								Roles: []string{"ml"},
-							},
-						},
+						Name:  "ml_only",
+						Roles: []string{"ml"},
 					}},
 			},
 			args: args{roles: []string{"ml"}},
 			want: &AutoscalingPolicySpec{
-				NamedAutoscalingPolicy: NamedAutoscalingPolicy{
-					Name: "ml_only",
-					AutoscalingPolicy: AutoscalingPolicy{
-						Roles: []string{"ml"},
-					},
-				},
+				Name:  "ml_only",
+				Roles: []string{"ml"},
 			},
 		},
 		{
@@ -50,12 +42,8 @@ func TestAutoscalingPolicySpecs_findByRoles(t *testing.T) {
 			fields: fields{
 				AutoscalingPolicySpecs: AutoscalingPolicySpecs{
 					AutoscalingPolicySpec{
-						NamedAutoscalingPolicy: NamedAutoscalingPolicy{
-							Name: "ml_only",
-							AutoscalingPolicy: AutoscalingPolicy{
-								Roles: []string{"ml"},
-							},
-						},
+						Name:  "ml_only",
+						Roles: []string{"ml"},
 					}},
 			},
 			args: args{roles: []string{"master"}},
@@ -66,12 +54,8 @@ func TestAutoscalingPolicySpecs_findByRoles(t *testing.T) {
 			fields: fields{
 				AutoscalingPolicySpecs: AutoscalingPolicySpecs{
 					AutoscalingPolicySpec{
-						NamedAutoscalingPolicy: NamedAutoscalingPolicy{
-							Name: "ml_only",
-							AutoscalingPolicy: AutoscalingPolicy{
-								Roles: []string{"ml"},
-							},
-						},
+						Name:  "ml_only",
+						Roles: []string{"ml"},
 					}},
 			},
 			args: args{roles: []string{"ml", "data"}},

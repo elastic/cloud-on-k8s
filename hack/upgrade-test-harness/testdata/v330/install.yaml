@@ -16,7 +16,7 @@ metadata:
   namespace: elastic-system
   labels:
     control-plane: elastic-operator
-    app.kubernetes.io/version: "3.3.0-SNAPSHOT"
+    app.kubernetes.io/version: "3.3.0"
 ---
 # Source: eck-operator/templates/webhook.yaml
 apiVersion: v1
@@ -26,7 +26,7 @@ metadata:
   namespace: elastic-system
   labels:
     control-plane: elastic-operator
-    app.kubernetes.io/version: "3.3.0-SNAPSHOT"
+    app.kubernetes.io/version: "3.3.0"
 ---
 # Source: eck-operator/templates/configmap.yaml
 apiVersion: v1
@@ -36,7 +36,7 @@ metadata:
   namespace: elastic-system
   labels:
     control-plane: elastic-operator
-    app.kubernetes.io/version: "3.3.0-SNAPSHOT"
+    app.kubernetes.io/version: "3.3.0"
 data:
   eck.yaml: |-
     log-verbosity: 0
@@ -71,7 +71,7 @@ metadata:
   name: elastic-operator
   labels:
     control-plane: elastic-operator
-    app.kubernetes.io/version: "3.3.0-SNAPSHOT"
+    app.kubernetes.io/version: "3.3.0"
 rules:
 - apiGroups:
   - "authorization.k8s.io"
@@ -277,6 +277,19 @@ rules:
   - update
   - patch
 - apiGroups:
+  - autoops.k8s.elastic.co
+  resources:
+  - autoopsagentpolicies
+  - autoopsagentpolicies/status
+  - autoopsagentpolicies/finalizers # needed for ownerReferences with blockOwnerDeletion on OCP
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+- apiGroups:
   - packageregistry.k8s.elastic.co
   resources:
   - packageregistries
@@ -330,7 +343,7 @@ metadata:
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
     rbac.authorization.k8s.io/aggregate-to-admin: "true"
     control-plane: elastic-operator
-    app.kubernetes.io/version: "3.3.0-SNAPSHOT"
+    app.kubernetes.io/version: "3.3.0"
 rules:
 - apiGroups: ["elasticsearch.k8s.elastic.co"]
   resources: ["elasticsearches"]
@@ -361,6 +374,9 @@ rules:
   verbs: ["get", "list", "watch"]
 - apiGroups: ["logstash.k8s.elastic.co"]
   resources: ["logstashes"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["autoops.k8s.elastic.co"]
+  resources: ["autoopsagentpolicies"]
   verbs: ["get", "list", "watch"]
 - apiGroups: ["packageregistry.k8s.elastic.co"]
   resources: ["packageregistries"]
@@ -375,7 +391,7 @@ metadata:
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
     rbac.authorization.k8s.io/aggregate-to-admin: "true"
     control-plane: elastic-operator
-    app.kubernetes.io/version: "3.3.0-SNAPSHOT"
+    app.kubernetes.io/version: "3.3.0"
 rules:
 - apiGroups: ["elasticsearch.k8s.elastic.co"]
   resources: ["elasticsearches"]
@@ -407,6 +423,9 @@ rules:
 - apiGroups: ["logstash.k8s.elastic.co"]
   resources: ["logstashes"]
   verbs: ["create", "delete", "deletecollection", "patch", "update"]
+- apiGroups: ["autoops.k8s.elastic.co"]
+  resources: ["autoopsagentpolicies"]
+  verbs: ["create", "delete", "deletecollection", "patch", "update"]
 - apiGroups: ["packageregistry.k8s.elastic.co"]
   resources: ["packageregistries"]
   verbs: ["create", "delete", "deletecollection", "patch", "update"]
@@ -418,7 +437,7 @@ metadata:
   name: elastic-operator
   labels:
     control-plane: elastic-operator
-    app.kubernetes.io/version: "3.3.0-SNAPSHOT"
+    app.kubernetes.io/version: "3.3.0"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -436,7 +455,7 @@ metadata:
   namespace: elastic-system
   labels:
     control-plane: elastic-operator
-    app.kubernetes.io/version: "3.3.0-SNAPSHOT"
+    app.kubernetes.io/version: "3.3.0"
 spec:
   ports:
   - name: https
@@ -453,7 +472,7 @@ metadata:
   namespace: elastic-system
   labels:
     control-plane: elastic-operator
-    app.kubernetes.io/version: "3.3.0-SNAPSHOT"
+    app.kubernetes.io/version: "3.3.0"
 spec:
   selector:
     matchLabels:
@@ -466,7 +485,7 @@ spec:
         # Rename the fields "error" to "error.message" and "source" to "event.source"
         # This is to avoid a conflict with the ECS "error" and "source" documents.
         "co.elastic.logs/raw": "[{\"type\":\"filestream\",\"enabled\":true,\"id\":\"eck-container-logs-${data.kubernetes.container.id}\",\"paths\":[\"/var/log/containers/*${data.kubernetes.container.id}.log\"],\"parsers\":[{\"container\":{}},{\"ndjson\":{\"keys_under_root\":true}}],\"prospector.scanner.symlinks\":true,\"processors\":[{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"error\",\"to\":\"_error\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"_error\",\"to\":\"error.message\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"source\",\"to\":\"_source\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"_source\",\"to\":\"event.source\"}]}}]}]"
-        "checksum/config": 065fb3bc3d1ee912636bbab214c103a8e8e07479497087906415cdca559e38e0
+        "checksum/config": 3ce2114e7c940d8ad3a1805eca31272e25f065419c46349bd7fa3f1f2f9e2619
       labels:
         control-plane: elastic-operator
     spec:
@@ -476,7 +495,7 @@ spec:
       securityContext:
         runAsNonRoot: true
       containers:
-      - image: "docker.elastic.co/eck-dev/eck-operator-mmontgomery:3.3.0-SNAPSHOT-906c863a"
+      - image: "docker.elastic.co/eck/eck-operator:3.3.0"
         imagePullPolicy: IfNotPresent
         name: manager
         args:
@@ -534,7 +553,7 @@ metadata:
   name: elastic-webhook.k8s.elastic.co
   labels:
     control-plane: elastic-operator
-    app.kubernetes.io/version: "3.3.0-SNAPSHOT"
+    app.kubernetes.io/version: "3.3.0"
 webhooks:
 - clientConfig:
     service:
@@ -816,6 +835,26 @@ webhooks:
     - UPDATE
     resources:
     - logstashes
+- clientConfig:
+    service:
+      name: elastic-webhook-server
+      namespace: elastic-system
+      path: /validate-autoops-k8s-elastic-co-v1alpha1-autoopsagentpolicies
+  failurePolicy: Ignore
+  name: elastic-autoops-validation-v1alpha1.k8s.elastic.co
+  matchPolicy: Exact
+  admissionReviewVersions: [v1]
+  sideEffects: None
+  rules:
+  - apiGroups:
+    - autoops.k8s.elastic.co
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - autoopsagentpolicies
 - clientConfig:
     service:
       name: elastic-webhook-server

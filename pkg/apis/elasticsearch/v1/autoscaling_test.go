@@ -31,18 +31,14 @@ func TestGetMLNodesSettings(t *testing.T) {
 			fields: fields{
 				AutoscalingPolicySpecs: v1alpha1.AutoscalingPolicySpecs{
 					{
-						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "data-policy", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"data"}}},
-						AutoscalingResources: v1alpha1.AutoscalingResources{
-							MemoryRange:    &v1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("16Gi")},
-							NodeCountRange: v1alpha1.CountRange{Min: 3, Max: 5},
-						},
+						Name: "data-policy", Roles: []string{"data"},
+						MemoryRange:    &v1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("16Gi")},
+						NodeCountRange: v1alpha1.CountRange{Min: 3, Max: 5},
 					},
 					{
-						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "ml-policy", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"ml"}}},
-						AutoscalingResources: v1alpha1.AutoscalingResources{
-							MemoryRange:    &v1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("8Gi")},
-							NodeCountRange: v1alpha1.CountRange{Min: 0, Max: 7},
-						},
+						Name: "ml-policy", Roles: []string{"ml"},
+						MemoryRange:    &v1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("8Gi")},
+						NodeCountRange: v1alpha1.CountRange{Min: 0, Max: 7},
 					},
 				},
 			},
@@ -54,25 +50,19 @@ func TestGetMLNodesSettings(t *testing.T) {
 			fields: fields{
 				AutoscalingPolicySpecs: v1alpha1.AutoscalingPolicySpecs{
 					{
-						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "data-policy", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"data"}}},
-						AutoscalingResources: v1alpha1.AutoscalingResources{
-							MemoryRange:    &v1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("16Gi")},
-							NodeCountRange: v1alpha1.CountRange{Min: 3, Max: 5},
-						},
+						Name: "data-policy", Roles: []string{"data"},
+						MemoryRange:    &v1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("16Gi")},
+						NodeCountRange: v1alpha1.CountRange{Min: 3, Max: 5},
 					},
 					{
-						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "ml-data-policy", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"data", "ml"}}},
-						AutoscalingResources: v1alpha1.AutoscalingResources{
-							MemoryRange:    &v1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("8Gi")},
-							NodeCountRange: v1alpha1.CountRange{Min: 0, Max: 7},
-						},
+						Name: "ml-data-policy", Roles: []string{"data", "ml"},
+						MemoryRange:    &v1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("8Gi")},
+						NodeCountRange: v1alpha1.CountRange{Min: 0, Max: 7},
 					},
 					{
-						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "ml-policy2", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"ml"}}},
-						AutoscalingResources: v1alpha1.AutoscalingResources{
-							MemoryRange:    &v1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("16Gi")},
-							NodeCountRange: v1alpha1.CountRange{Min: 0, Max: 4},
-						},
+						Name: "ml-policy2", Roles: []string{"ml"},
+						MemoryRange:    &v1alpha1.QuantityRange{Min: resource.MustParse("1Gi"), Max: resource.MustParse("16Gi")},
+						NodeCountRange: v1alpha1.CountRange{Min: 0, Max: 4},
 					},
 				},
 			},
@@ -111,13 +101,13 @@ func TestElasticsearch_GetAutoscaledNodeSets(t *testing.T) {
 			fields: fields{
 				AutoscalingPolicySpecs: []v1alpha1.AutoscalingPolicySpec{
 					{
-						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "data_hot_content", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"data_hot", "data_content"}}},
+						Name: "data_hot_content", Roles: []string{"data_hot", "data_content"},
 					},
 					{
-						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "data_warm_content", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"data_content", "data_warm"}}},
+						Name: "data_warm_content", Roles: []string{"data_content", "data_warm"},
 					},
 					{
-						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "ml", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"ml"}}},
+						Name: "ml", Roles: []string{"ml"},
 					},
 				},
 				Elasticsearch: Elasticsearch{

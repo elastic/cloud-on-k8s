@@ -5,27 +5,26 @@
 package elasticsearch
 
 import (
-	"fmt"
-
 	"github.com/go-logr/logr"
-	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/autoscaling"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 )
 
-// reconcileElasticsearch updates the resources in the NodeSets of an Elasticsearch spec according to the NodeSetsResources
-// computed by the autoscaling algorithm. It also updates the autoscaling status annotation.
+// reconcileElasticsearch updates Elasticsearch NodeSets according to autoscaling recommendations.
+// It updates NodeSet count and the CPU/memory/storage shorthand resources.
+//
+// Every field written here is a granular leaf under spec.nodeSets[name=...], which keeps the
+// operator's Server-Side Apply field ownership scoped to those leaves. In particular the storage
+// size goes to Resources.Storage rather than into VolumeClaimTemplates: that list is atomic under
+// SSA, since a PersistentVolumeClaim has no top-level scalar to key it by, so writing into it would
+// claim the storage class and access modes along with the size.
 func reconcileElasticsearch(
 	log logr.Logger,
 	es *esv1.Elasticsearch,
 	nextClusterResources v1alpha1.ClusterResources,
-) error {
+) {
 	nextResourcesByNodeSet := nextClusterResources.ByNodeSet()
 	for i := range es.Spec.NodeSets {
 		name := es.Spec.NodeSets[i].Name
@@ -36,75 +35,23 @@ func reconcileElasticsearch(
 			continue
 		}
 
-		container, containers := removeContainer(esv1.ElasticsearchContainerName, es.Spec.NodeSets[i].PodTemplate.Spec.Containers)
-		// Create a copy to compare if some changes have been made.
-		currentContainer := container.DeepCopy()
-		if container == nil {
-			container = &corev1.Container{
-				Name: esv1.ElasticsearchContainerName,
-			}
+		// Compute the next shorthand resources. During operator upgrades from versions that wrote
+		// autoscaled CPU/memory only in the PodTemplate container resources, this progressively
+		// converges NodeSet.Resources to the autoscaler recommendation.
+		currentResources := es.Spec.NodeSets[i].Resources
+		nextResources := esv1.NodeSetResources{
+			Resources: nodeSetResources.NodeResources.ToNodeSetResourcesWith(currentResources.ContainerResources()),
+			Storage:   nodeSetResources.NodeResources.StorageRequestOr(currentResources.Storage),
 		}
 
-		// Update desired count
-		es.Spec.NodeSets[i].Count = nodeSetResources.NodeCount
-
-		// Update CPU and Memory requirements
-		container.Resources = nodeSetResources.ToContainerResourcesWith(container.Resources)
-
-		// Update storage
-		if nodeSetResources.HasRequest(corev1.ResourceStorage) {
-			nextStorage, err := newVolumeClaimTemplate(nodeSetResources.GetRequest(corev1.ResourceStorage), es.Spec.NodeSets[i])
-			if err != nil {
-				return err
-			}
-			es.Spec.NodeSets[i].VolumeClaimTemplates = nextStorage
-		}
-
-		// Add the container to other containers
-		containers = append(containers, *container)
-		// Update the NodeSet
-		es.Spec.NodeSets[i].PodTemplate.Spec.Containers = containers
-
-		if !apiequality.Semantic.DeepEqual(currentContainer, container) {
+		// Only write to the NodeSet when something changed so the upstream write (in the
+		// controller) is a no-op and does not dirty the Elasticsearch custom resource
+		// unnecessarily on every reconcile.
+		if es.Spec.NodeSets[i].Count != nodeSetResources.NodeCount ||
+			!apiequality.Semantic.DeepEqual(currentResources, nextResources) {
+			es.Spec.NodeSets[i].Count = nodeSetResources.NodeCount
+			es.Spec.NodeSets[i].Resources = nextResources
 			log.V(1).Info("Updating nodeset with resources", "nodeset", name, "resources", nextClusterResources)
 		}
 	}
-	return nil
-}
-
-func newVolumeClaimTemplate(storageQuantity resource.Quantity, nodeSet esv1.NodeSet) ([]corev1.PersistentVolumeClaim, error) {
-	onlyOneVolumeClaimTemplate, volumeClaimTemplate := autoscaling.HasAtMostOnePersistentVolumeClaim(nodeSet)
-	if !onlyOneVolumeClaimTemplate {
-		return nil, fmt.Errorf(autoscaling.UnexpectedVolumeClaimError)
-	}
-	if volumeClaimTemplate == nil {
-		// Init a new volume claim template
-		volumeClaimTemplate = &corev1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: volume.ElasticsearchDataVolumeName,
-			},
-			Spec: corev1.PersistentVolumeClaimSpec{
-				AccessModes: []corev1.PersistentVolumeAccessMode{
-					corev1.ReadWriteOnce,
-				},
-			},
-		}
-	}
-	// Adjust the size
-	if volumeClaimTemplate.Spec.Resources.Requests == nil {
-		volumeClaimTemplate.Spec.Resources.Requests = make(corev1.ResourceList)
-	}
-	volumeClaimTemplate.Spec.Resources.Requests[corev1.ResourceStorage] = storageQuantity
-	return []corev1.PersistentVolumeClaim{*volumeClaimTemplate}, nil
-}
-
-// removeContainer remove a container from a slice and return the removed container if found.
-func removeContainer(name string, containers []corev1.Container) (*corev1.Container, []corev1.Container) {
-	for i, container := range containers {
-		if container.Name == name {
-			// Remove the container
-			return &container, append(containers[:i], containers[i+1:]...)
-		}
-	}
-	return nil, containers
 }

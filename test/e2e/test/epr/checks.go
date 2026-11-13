@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/go-cmp/cmp"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -92,9 +94,10 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 					AvailableNodes: b.EPR.Spec.Count,
 					Version:        b.EPR.Spec.Version,
 					Health:         "green",
+					Conditions:     epr.Status.Conditions, // Ignore Conditions whose LastTransitionTime is unpredictable
 				},
 			}
-			if epr.Status.DeploymentStatus != expected.DeploymentStatus {
+			if !cmp.Equal(epr.Status.DeploymentStatus, expected.DeploymentStatus) {
 				return fmt.Errorf("expected status %+v but got %+v", expected.DeploymentStatus, epr.Status.DeploymentStatus)
 			}
 			return nil

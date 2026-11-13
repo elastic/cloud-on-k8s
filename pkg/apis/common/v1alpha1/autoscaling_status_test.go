@@ -8,9 +8,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
 func TestAutoscalingStatusBuilder_Build(t *testing.T) {
@@ -27,30 +30,28 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 					SetNodeSetsResources(NodeSetsResources{
 						Name:             "policy0",
 						NodeSetNodeCount: NodeSetNodeCountList{{Name: "nodeset0-0", NodeCount: 1}, {Name: "nodeset0-1", NodeCount: 1}},
-						NodeResources: NodeResources{
-							Limits:   corev1.ResourceList{"cpu": resource.MustParse("2000m")},
-							Requests: corev1.ResourceList{"cpu": resource.MustParse("3")},
-						},
+						Limits:           corev1.ResourceList{"cpu": resource.MustParse("2000m")},
+						Requests:         corev1.ResourceList{"cpu": resource.MustParse("3")},
 					})
 				return asb
 			},
 			want: ElasticsearchAutoscalerStatus{
-				Conditions: Conditions{
-					Condition{
+				Conditions: commonv1.Conditions{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerActive,
 						Status:  corev1.ConditionTrue,
 						Message: "",
 					},
-					Condition{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerHealthy,
 						Status:  corev1.ConditionFalse,
 						Message: "An error prevented resource calculation from the Elasticsearch autoscaling API.",
 					},
-					Condition{
+					commonv1.Condition{
 						Type:   ElasticsearchAutoscalerLimited,
 						Status: corev1.ConditionFalse,
 					},
-					Condition{
+					commonv1.Condition{
 						Type:   ElasticsearchAutoscalerOnline,
 						Status: corev1.ConditionUnknown,
 					},
@@ -76,30 +77,28 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 					SetNodeSetsResources(NodeSetsResources{
 						Name:             "policy0",
 						NodeSetNodeCount: NodeSetNodeCountList{{Name: "nodeset0-0", NodeCount: 1}, {Name: "nodeset0-1", NodeCount: 1}},
-						NodeResources: NodeResources{
-							Limits:   corev1.ResourceList{"cpu": resource.MustParse("2000m")},
-							Requests: corev1.ResourceList{"cpu": resource.MustParse("3")},
-						},
+						Limits:           corev1.ResourceList{"cpu": resource.MustParse("2000m")},
+						Requests:         corev1.ResourceList{"cpu": resource.MustParse("3")},
 					})
 				return asb
 			},
 			want: ElasticsearchAutoscalerStatus{
-				Conditions: Conditions{
-					Condition{
+				Conditions: commonv1.Conditions{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerActive,
 						Status:  corev1.ConditionTrue,
 						Message: "",
 					},
-					Condition{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerHealthy,
 						Status:  corev1.ConditionFalse,
 						Message: "An error prevented resource calculation from the Elasticsearch autoscaling API.",
 					},
-					Condition{
+					commonv1.Condition{
 						Type:   ElasticsearchAutoscalerLimited,
 						Status: corev1.ConditionFalse,
 					},
-					Condition{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerOnline,
 						Status:  corev1.ConditionFalse,
 						Message: "Reason for not being online",
@@ -126,10 +125,8 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 					SetNodeSetsResources(NodeSetsResources{
 						Name:             "policy0",
 						NodeSetNodeCount: NodeSetNodeCountList{{Name: "nodeset0-0", NodeCount: 1}, {Name: "nodeset0-1", NodeCount: 1}},
-						NodeResources: NodeResources{
-							Limits:   corev1.ResourceList{"cpu": resource.MustParse("2000m")},
-							Requests: corev1.ResourceList{"cpu": resource.MustParse("3")},
-						},
+						Limits:           corev1.ResourceList{"cpu": resource.MustParse("2000m")},
+						Requests:         corev1.ResourceList{"cpu": resource.MustParse("3")},
 					})
 				asb.ForPolicy("policy1").
 					RecordEvent(
@@ -138,10 +135,8 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 					).SetNodeSetsResources(NodeSetsResources{
 					Name:             "policy1",
 					NodeSetNodeCount: NodeSetNodeCountList{{Name: "nodeset1-0", NodeCount: 3}, {Name: "nodeset1-1", NodeCount: 2}},
-					NodeResources: NodeResources{
-						Limits:   corev1.ResourceList{"cpu": resource.MustParse("2500m")},
-						Requests: corev1.ResourceList{"cpu": resource.MustParse("5")},
-					},
+					Limits:           corev1.ResourceList{"cpu": resource.MustParse("2500m")},
+					Requests:         corev1.ResourceList{"cpu": resource.MustParse("5")},
 				},
 				)
 				asb.ForPolicy("policy2").
@@ -151,32 +146,30 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 					).SetNodeSetsResources(NodeSetsResources{
 					Name:             "policy1",
 					NodeSetNodeCount: NodeSetNodeCountList{{Name: "nodeset2-0", NodeCount: 2}, {Name: "nodeset2-1", NodeCount: 2}},
-					NodeResources: NodeResources{
-						Limits:   corev1.ResourceList{"cpu": resource.MustParse("2500m")},
-						Requests: corev1.ResourceList{"cpu": resource.MustParse("5")},
-					},
+					Limits:           corev1.ResourceList{"cpu": resource.MustParse("2500m")},
+					Requests:         corev1.ResourceList{"cpu": resource.MustParse("5")},
 				},
 				)
 				return asb
 			},
 			want: ElasticsearchAutoscalerStatus{
-				Conditions: Conditions{
-					Condition{
+				Conditions: commonv1.Conditions{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerActive,
 						Status:  corev1.ConditionTrue,
 						Message: "",
 					},
-					Condition{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerHealthy,
 						Status:  corev1.ConditionTrue,
 						Message: "",
 					},
-					Condition{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerLimited,
 						Status:  corev1.ConditionTrue,
 						Message: "Limit reached for policies policy1,policy2",
 					},
-					Condition{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerOnline,
 						Status:  corev1.ConditionTrue,
 						Message: "Elasticsearch is available",
@@ -234,10 +227,8 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 					).SetNodeSetsResources(NodeSetsResources{
 					Name:             "policy0",
 					NodeSetNodeCount: NodeSetNodeCountList{{Name: "nodeset0-0", NodeCount: 1}, {Name: "nodeset0-1", NodeCount: 1}},
-					NodeResources: NodeResources{
-						Limits:   corev1.ResourceList{"cpu": resource.MustParse("2000m")},
-						Requests: corev1.ResourceList{"cpu": resource.MustParse("3")},
-					},
+					Limits:           corev1.ResourceList{"cpu": resource.MustParse("2000m")},
+					Requests:         corev1.ResourceList{"cpu": resource.MustParse("3")},
 				},
 				)
 				asb.ForPolicy("policy1").
@@ -247,10 +238,8 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 					).SetNodeSetsResources(NodeSetsResources{
 					Name:             "policy1",
 					NodeSetNodeCount: NodeSetNodeCountList{{Name: "nodeset1-0", NodeCount: 3}, {Name: "nodeset1-1", NodeCount: 2}},
-					NodeResources: NodeResources{
-						Limits:   corev1.ResourceList{"cpu": resource.MustParse("2500m")},
-						Requests: corev1.ResourceList{"cpu": resource.MustParse("5")},
-					},
+					Limits:           corev1.ResourceList{"cpu": resource.MustParse("2500m")},
+					Requests:         corev1.ResourceList{"cpu": resource.MustParse("5")},
 				},
 				)
 				asb.ForPolicy("policy2").
@@ -260,32 +249,30 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 					).SetNodeSetsResources(NodeSetsResources{
 					Name:             "policy1",
 					NodeSetNodeCount: NodeSetNodeCountList{{Name: "nodeset2-0", NodeCount: 2}, {Name: "nodeset2-1", NodeCount: 2}},
-					NodeResources: NodeResources{
-						Limits:   corev1.ResourceList{"cpu": resource.MustParse("2500m")},
-						Requests: corev1.ResourceList{"cpu": resource.MustParse("5")},
-					},
+					Limits:           corev1.ResourceList{"cpu": resource.MustParse("2500m")},
+					Requests:         corev1.ResourceList{"cpu": resource.MustParse("5")},
 				},
 				)
 				return asb
 			},
 			want: ElasticsearchAutoscalerStatus{
-				Conditions: Conditions{
-					Condition{
+				Conditions: commonv1.Conditions{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerActive,
 						Status:  corev1.ConditionTrue,
 						Message: "",
 					},
-					Condition{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerHealthy,
 						Status:  corev1.ConditionFalse,
 						Message: "An error prevented resource calculation from the Elasticsearch autoscaling API. Issues reported for the following policies: [policy0,policy1]. Check operator logs, Kubernetes events, and policies status for more details",
 					},
-					Condition{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerLimited,
 						Status:  corev1.ConditionTrue,
 						Message: "Limit reached for policies policy2",
 					},
-					Condition{
+					commonv1.Condition{
 						Type:    ElasticsearchAutoscalerOnline,
 						Status:  corev1.ConditionFalse,
 						Message: "Elasticsearch is not available",
@@ -347,7 +334,7 @@ func TestAutoscalingStatusBuilder_Build(t *testing.T) {
 	}
 }
 
-func cmpConditions(t *testing.T, expectedConditions, gotConditions Conditions) {
+func cmpConditions(t *testing.T, expectedConditions, gotConditions commonv1.Conditions) {
 	t.Helper()
 	for _, expected := range expectedConditions {
 		idx := gotConditions.Index(expected.Type)
@@ -384,4 +371,64 @@ func getPolicyStatus(policyName string, policies []AutoscalingPolicyStatus) *Aut
 		}
 	}
 	return nil
+}
+
+func TestAutoscalingStatusBuilder_Build_Order(t *testing.T) {
+	type policyEvents struct {
+		name   string
+		events []AutoscalingEventType
+	}
+	tests := []struct {
+		name           string
+		policies       []policyEvents
+		wantPolicies   []string
+		wantStateTypes map[string][]AutoscalingEventType
+	}{
+		{
+			name: "Policies are sorted by name",
+			policies: []policyEvents{
+				{name: "ml"}, {name: "frozen"}, {name: "data-ingest"}, {name: "data-hot"},
+			},
+			wantPolicies: []string{"data-hot", "data-ingest", "frozen", "ml"},
+		},
+		{
+			name: "Policy states are sorted by type",
+			policies: []policyEvents{
+				{name: "ml", events: []AutoscalingEventType{VerticalScalingLimitReached, EmptyResponse, OverlappingPolicies}},
+				{name: "di", events: []AutoscalingEventType{StorageRequired, HorizontalScalingLimitReached, CPURequired, MemoryRequired}},
+			},
+			wantPolicies: []string{"di", "ml"},
+			wantStateTypes: map[string][]AutoscalingEventType{
+				"di": {CPURequired, HorizontalScalingLimitReached, MemoryRequired, StorageRequired},
+				"ml": {EmptyResponse, OverlappingPolicies, VerticalScalingLimitReached},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			asb := NewAutoscalingStatusBuilder()
+			for _, policy := range tt.policies {
+				policyBuilder := asb.ForPolicy(policy.name)
+				for _, event := range policy.events {
+					policyBuilder.RecordEvent(event, "message")
+				}
+			}
+			// The builder is backed by maps, build the status several times to catch a random iteration order.
+			for range 100 {
+				status := asb.Build()
+				gotPolicies := make([]string, 0, len(status.AutoscalingPolicyStatuses))
+				for _, policyStatus := range status.AutoscalingPolicyStatuses {
+					gotPolicies = append(gotPolicies, policyStatus.Name)
+					if wantStateTypes, ok := tt.wantStateTypes[policyStatus.Name]; ok {
+						gotStateTypes := make([]AutoscalingEventType, 0, len(policyStatus.PolicyStates))
+						for _, state := range policyStatus.PolicyStates {
+							gotStateTypes = append(gotStateTypes, state.Type)
+						}
+						require.Equal(t, wantStateTypes, gotStateTypes, "policy %s", policyStatus.Name)
+					}
+				}
+				require.Equal(t, tt.wantPolicies, gotPolicies)
+			}
+		})
+	}
 }

@@ -34,6 +34,10 @@ var (
 		checkReferenceSetForMode,
 		checkSingleESRefInFleetMode,
 		checkAssociations,
+		checkConsistentESRefAuthentication,
+		checkClientAuthentication,
+		checkNoPKIAuthentication,
+		commonv1.PauseOrchestrationAnnotationCheck[*Agent](),
 	}
 
 	updateChecks = []func(old, curr *Agent) field.ErrorList{
@@ -230,7 +234,7 @@ func checkFleetServerOnlyInFleetMode(a *Agent) field.ErrorList {
 }
 
 func checkFleetServerOrFleetServerRef(a *Agent) field.ErrorList {
-	if a.Spec.FleetServerEnabled && a.Spec.FleetServerRef.IsDefined() {
+	if a.Spec.FleetServerEnabled && a.Spec.FleetServerRef.IsSet() {
 		return field.ErrorList{
 			field.Invalid(
 				field.NewPath("spec"),
@@ -243,7 +247,7 @@ func checkFleetServerOrFleetServerRef(a *Agent) field.ErrorList {
 }
 
 func checkHTTPConfigOnlyForFleetServer(a *Agent) field.ErrorList {
-	if !a.Spec.FleetServerEnabled && !reflect.DeepEqual(a.Spec.HTTP, commonv1.HTTPConfig{}) {
+	if !a.Spec.FleetServerEnabled && !reflect.DeepEqual(a.Spec.HTTP, commonv1.HTTPConfigWithClientOptions{}) {
 		return field.ErrorList{
 			field.Invalid(
 				field.NewPath("spec").Child("http"),
@@ -258,7 +262,7 @@ func checkHTTPConfigOnlyForFleetServer(a *Agent) field.ErrorList {
 func checkReferenceSetForMode(a *Agent) field.ErrorList {
 	var errors field.ErrorList
 	if a.Spec.StandaloneModeEnabled() {
-		if a.Spec.FleetServerRef.IsDefined() {
+		if a.Spec.FleetServerRef.IsSet() {
 			errors = append(errors, field.Invalid(
 				field.NewPath("spec").Child("fleetServerRef"),
 				a.Spec.FleetServerRef,
@@ -266,7 +270,7 @@ func checkReferenceSetForMode(a *Agent) field.ErrorList {
 			))
 		}
 
-		if a.Spec.KibanaRef.IsDefined() {
+		if a.Spec.KibanaRef.IsSet() {
 			errors = append(errors, field.Invalid(
 				field.NewPath("spec").Child("kibanaRef"),
 				a.Spec.KibanaRef,
@@ -302,6 +306,89 @@ func checkSingleESRefInFleetMode(a *Agent) field.ErrorList {
 func checkAssociations(a *Agent) field.ErrorList {
 	err1 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRefs"), a.ElasticsearchRefs()...)
 	err2 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("kibanaRef"), a.Spec.KibanaRef)
-	err3 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("fleetServerRef"), a.Spec.FleetServerRef)
-	return append(append(err1, err2...), err3...)
+	err3 := commonv1.CheckFleetServerSelectorRefs(field.NewPath("spec").Child("fleetServerRef"), a.Spec.FleetServerRef)
+	return append(append(append(err1, err2...), err3...), checkPKIESRefsNamed(a)...)
+}
+
+// checkPKIESRefsNamed rejects Elasticsearch refs in PKI mode without name. Agent does not run the full
+// ElasticsearchSelector validation, so existing Agents with clientCertificateSecretName and secretName stay valid
+// (backwards compatible).
+func checkPKIESRefsNamed(a *Agent) field.ErrorList {
+	var errs field.ErrorList
+	for i, ref := range esSelectors(a) {
+		if ref.Name == "" && ref.AuthenticationMode == commonv1.AuthenticationModePKI {
+			errs = append(errs, field.Forbidden(
+				field.NewPath("spec").Child("elasticsearchRefs").Index(i).Child("authenticationMode"),
+				"authenticationMode PKI can only be used in combination with name",
+			))
+		}
+	}
+	return errs
+}
+
+func checkConsistentESRefAuthentication(a *Agent) field.ErrorList {
+	return commonv1.CheckConsistentESRefAuthentication(field.NewPath("spec").Child("elasticsearchRefs"), a.Namespace, esSelectors(a)...)
+}
+
+// esSelectors returns the Elasticsearch selectors of the outputs of a.
+func esSelectors(a *Agent) []commonv1.ElasticsearchSelector {
+	refs := make([]commonv1.ElasticsearchSelector, len(a.Spec.ElasticsearchRefs))
+	for i, ref := range a.Spec.ElasticsearchRefs {
+		refs[i] = ref.ElasticsearchSelector
+	}
+	return refs
+}
+
+func checkNoPKIAuthentication(a *Agent) field.ErrorList {
+	if !a.Spec.FleetModeEnabled() {
+		return nil
+	}
+	resourceType := "fleet-managed Elastic Agent"
+	if a.Spec.FleetServerEnabled {
+		resourceType = "Fleet server"
+	}
+	var errs field.ErrorList
+	for i, ref := range a.Spec.ElasticsearchRefs {
+		errs = append(errs, commonv1.CheckNoPKIAuthenticationMode(
+			field.NewPath("spec").Child("elasticsearchRefs").Index(i), ref.ElasticsearchSelector, resourceType)...)
+	}
+	return errs
+}
+
+func checkClientAuthentication(a *Agent) field.ErrorList {
+	if !a.Spec.HTTP.TLS.Client.Authentication {
+		return nil
+	}
+	if !a.Spec.FleetServerEnabled {
+		return field.ErrorList{
+			field.Invalid(
+				field.NewPath("spec").Child("http", "tls", "client", "authentication"),
+				true,
+				"client certificate authentication is only supported when Fleet Server is enabled",
+			),
+		}
+	}
+	if !a.Spec.HTTP.TLS.Enabled() {
+		return field.ErrorList{
+			field.Invalid(
+				field.NewPath("spec").Child("http", "tls", "client", "authentication"),
+				true,
+				"client certificate authentication requires TLS to be enabled",
+			),
+		}
+	}
+	v, err := semver.Parse(a.Spec.Version)
+	if err != nil {
+		return nil // version parse errors are reported by checkSupportedVersion
+	}
+	if !FleetServerClientAuthSupported(v) {
+		return field.ErrorList{
+			field.Invalid(
+				field.NewPath("spec").Child("http", "tls", "client", "authentication"),
+				true,
+				"client certificate authentication requires Elastic Agent 8.19.19+, 9.3.8+, 9.4.4+, or 9.5.0+",
+			),
+		}
+	}
+	return nil
 }

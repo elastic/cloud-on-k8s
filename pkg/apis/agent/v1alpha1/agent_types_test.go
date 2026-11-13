@@ -16,24 +16,30 @@ import (
 func TestAgentESAssociation_AssociationConfAnnotationName(t *testing.T) {
 	for _, tt := range []struct {
 		name string
-		ref  commonv1.ObjectSelector
+		ref  commonv1.ElasticsearchSelector
 		want string
 	}{
 		{
 			name: "average length names",
-			ref:  commonv1.ObjectSelector{Namespace: "namespace1", Name: "elasticsearch1"},
+			ref: commonv1.ElasticsearchSelector{
+				ObjectSelector: commonv1.ObjectSelector{Namespace: "namespace1", Name: "elasticsearch1"},
+			},
 			want: "association.k8s.elastic.co/es-conf-2150608354",
 		},
 		{
 			name: "max length namespace and name (63 and 36 respectively)",
-			ref: commonv1.ObjectSelector{
-				Namespace: "longnamespacelongnamespacelongnamespacelongnamespacelongnamespa",
-				Name:      "elasticsearch1elasticsearch1elastics"},
+			ref: commonv1.ElasticsearchSelector{
+				ObjectSelector: commonv1.ObjectSelector{
+					Namespace: "longnamespacelongnamespacelongnamespacelongnamespacelongnamespa",
+					Name:      "elasticsearch1elasticsearch1elastics"},
+			},
 			want: "association.k8s.elastic.co/es-conf-3419573237",
 		},
 		{
 			name: "secret name gives a different hash",
-			ref:  commonv1.ObjectSelector{Namespace: "namespace1", SecretName: "elasticsearch1"},
+			ref: commonv1.ElasticsearchSelector{
+				ObjectSelector: commonv1.ObjectSelector{Namespace: "namespace1", SecretName: "elasticsearch1"},
+			},
 			want: "association.k8s.elastic.co/es-conf-851285294",
 		},
 	} {

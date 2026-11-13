@@ -27,14 +27,14 @@ type KibanaSpec struct {
 	// ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
 	ElasticsearchRef commonv1beta1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
-	// Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
+	// Config holds the Kibana configuration. See: https://www.elastic.co/docs/reference/kibana/configuration-reference
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Config *commonv1beta1.Config `json:"config,omitempty"`
 
 	// HTTP holds the HTTP layer configuration for Kibana.
 	HTTP commonv1beta1.HTTPConfig `json:"http,omitempty"`
 
-	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
+	// PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
@@ -116,8 +116,4 @@ type KibanaList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Kibana `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&Kibana{}, &KibanaList{})
 }

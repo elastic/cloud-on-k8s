@@ -23,12 +23,10 @@ import (
 
 func buildSsetWithClaims(name string, replicas int32, claims ...string) appsv1.StatefulSet {
 	s := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      name,
-			Labels: map[string]string{
-				label.ClusterNameLabelName: "es",
-			},
+		Namespace: "ns",
+		Name:      name,
+		Labels: map[string]string{
+			label.ClusterNameLabelName: "es",
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: &replicas,
@@ -36,9 +34,7 @@ func buildSsetWithClaims(name string, replicas int32, claims ...string) appsv1.S
 	}
 	for _, claim := range claims {
 		s.Spec.VolumeClaimTemplates = append(s.Spec.VolumeClaimTemplates, corev1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: claim,
-			},
+			Name: claim,
 		})
 	}
 	return s
@@ -46,12 +42,10 @@ func buildSsetWithClaims(name string, replicas int32, claims ...string) appsv1.S
 
 func buildPVC(name string, ownerRefs ...string) corev1.PersistentVolumeClaim {
 	pvc := corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      name,
-			Labels: map[string]string{
-				label.ClusterNameLabelName: "es",
-			},
+		Namespace: "ns",
+		Name:      name,
+		Labels: map[string]string{
+			label.ClusterNameLabelName: "es",
 		},
 	}
 	for _, ref := range ownerRefs {

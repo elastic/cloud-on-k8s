@@ -13,9 +13,25 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 )
 
-// CertificateWatchKey returns the key used by the dynamic watch registration for custom http certificates
-func CertificateWatchKey(namer name.Namer, ownerName string) string {
-	return namer.Suffix(ownerName, "http-certificate")
+// CertificateWatchKey returns the key used by the dynamic watch registration for custom http certificates.
+// The key includes the namespace as the watches are registered per controller, across all namespaces.
+// Namespace and name are joined with "/" as it cannot appear in either, unlike "-".
+func CertificateWatchKey(namer name.Namer, owner types.NamespacedName) string {
+	return owner.Namespace + "/" + namer.Suffix(owner.Name, "http-certificate")
+}
+
+// AdditionalCAWatchKey returns the key used by the dynamic watch registration for additional HTTP certificate authorities.
+// The key includes the namespace as the watches are registered per controller, across all namespaces.
+// Namespace and name are joined with "/" as it cannot appear in either, unlike "-".
+func AdditionalCAWatchKey(namer name.Namer, owner types.NamespacedName) string {
+	return owner.Namespace + "/" + namer.Suffix(owner.Name, "http-additional-cas")
+}
+
+// RemoveHTTPCertWatches removes the dynamic watches registered for the custom HTTP certificate and the additional
+// certificate authorities of the given owner.
+func RemoveHTTPCertWatches(dw watches.DynamicWatches, namer name.Namer, owner types.NamespacedName) {
+	dw.Secrets.RemoveHandlerForKey(CertificateWatchKey(namer, owner))
+	dw.ConfigMaps.RemoveHandlerForKey(AdditionalCAWatchKey(namer, owner))
 }
 
 // ReconcileCustomCertWatch takes a SecretRef and either creates or removes a dynamic watch for watchKey depending on

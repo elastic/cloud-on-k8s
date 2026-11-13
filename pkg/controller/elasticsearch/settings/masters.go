@@ -17,9 +17,9 @@ import (
 
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -77,13 +77,14 @@ func UpdateSeedHostsConfigMap(
 		sort.Strings(seedHosts)
 		hosts = strings.Join(seedHosts, "\n")
 	}
+
+	cmMeta := meta.CloneWithLabel(commonv1.RestrictWatchedResourcesLabelName, commonv1.RestrictWatchedResourcesLabelValue)
+
 	expected := corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        esv1.UnicastHostsConfigMap(es.Name),
-			Namespace:   es.Namespace,
-			Labels:      meta.Labels,
-			Annotations: meta.Annotations,
-		},
+		Name:        esv1.UnicastHostsConfigMap(es.Name),
+		Namespace:   es.Namespace,
+		Labels:      cmMeta.Labels,
+		Annotations: cmMeta.Annotations,
 		Data: map[string]string{
 			volume.UnicastHostsFile: hosts,
 		},
@@ -119,5 +120,6 @@ func UpdateSeedHostsConfigMap(
 					client.InNamespace(es.Namespace),
 					label.NewLabelSelectorForElasticsearch(es))
 			},
-		})
+		},
+	)
 }

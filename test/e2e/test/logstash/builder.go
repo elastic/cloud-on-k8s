@@ -9,7 +9,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -60,6 +59,10 @@ func newBuilder(name, randSuffix string) Builder {
 		WithTestStorageClass()
 }
 
+func (b Builder) ResourceName() string {
+	return b.Logstash.Name
+}
+
 func (b Builder) WithSuffix(suffix string) Builder {
 	if suffix != "" {
 		b.Logstash.ObjectMeta.Name = b.Logstash.ObjectMeta.Name + "-" + suffix
@@ -100,8 +103,8 @@ func (b Builder) WithVersion(version string) Builder {
 	return b
 }
 
-func (b Builder) WithNodeCount(count int) Builder {
-	b.Logstash.Spec.Count = int32(count)
+func (b Builder) WithNodeCount(count int32) Builder {
+	b.Logstash.Spec.Count = count
 	return b
 }
 
@@ -132,7 +135,7 @@ func (b Builder) WithPipelines(pipelines []commonv1.Config) Builder {
 	return b
 }
 
-func (b Builder) WithPipelinesConfigRef(ref commonv1.ConfigSource) Builder {
+func (b Builder) WithPipelinesConfigRef(ref commonv1.ConfigMapOrSecretSource) Builder {
 	b.Logstash.Spec.PipelinesRef = &ref
 	return b
 }
@@ -165,7 +168,7 @@ func (b Builder) WithTestStorageClass() Builder {
 	hasDefaultVolumeClaim := false
 	for i, vc := range b.Logstash.Spec.VolumeClaimTemplates {
 		// a custom volume claim template is set patch it to use the test storage class
-		b.Logstash.Spec.VolumeClaimTemplates[i].Spec.StorageClassName = ptr.To(test.DefaultStorageClass)
+		b.Logstash.Spec.VolumeClaimTemplates[i].Spec.StorageClassName = new(test.DefaultStorageClass)
 		if vc.Name == volume.LogstashDataVolumeName {
 			hasDefaultVolumeClaim = true
 		}
@@ -174,14 +177,34 @@ func (b Builder) WithTestStorageClass() Builder {
 	// define the default volume claim with the e2e storage class in case it is missing
 	if !hasDefaultVolumeClaim {
 		vc := volume.DefaultDataVolumeClaim.DeepCopy()
-		vc.Spec.StorageClassName = ptr.To[string](test.DefaultStorageClass)
+		vc.Spec.StorageClassName = new(test.DefaultStorageClass)
 		b.Logstash.Spec.VolumeClaimTemplates = append(b.Logstash.Spec.VolumeClaimTemplates, *vc)
 	}
 	return b
 }
 
 func (b Builder) WithElasticsearchRefs(refs ...logstashv1alpha1.ElasticsearchCluster) Builder {
+	// Preserve any ClientCertificateSecretName previously set via WithClientCertificateSecret,
+	// matching by ClusterName to be order-independent.
+	existing := b.Logstash.Spec.ElasticsearchRefs
+	for i := range refs {
+		if refs[i].ClientCertificateSecretName == "" {
+			for _, e := range existing {
+				if e.ClusterName == refs[i].ClusterName && e.ClientCertificateSecretName != "" {
+					refs[i].ClientCertificateSecretName = e.ClientCertificateSecretName
+					break
+				}
+			}
+		}
+	}
 	b.Logstash.Spec.ElasticsearchRefs = refs
+	return b
+}
+
+func (b Builder) WithClientCertificateSecret(index int, secretName string) Builder {
+	if index < len(b.Logstash.Spec.ElasticsearchRefs) {
+		b.Logstash.Spec.ElasticsearchRefs[index].ClientCertificateSecretName = secretName
+	}
 	return b
 }
 

@@ -10,14 +10,16 @@ import (
 	"testing"
 
 	admissionv1 "k8s.io/api/admission/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/go-test/deep"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
-	eckadmission "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook/admission"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 )
@@ -30,10 +32,12 @@ func asJSON(obj any) []byte {
 	return data
 }
 
-func Test_validatingWebhook_Handle(t *testing.T) {
+func Test_ResourceValidator_Handle(t *testing.T) {
+	scheme := k8s.Scheme()
+
 	type fields struct {
 		managedNamespaces set.StringSet
-		validator         eckadmission.Validator
+		validate          ValidateFunc[*agentv1alpha1.Agent]
 	}
 	tests := []struct {
 		name   string
@@ -44,20 +48,17 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 		{
 			name: "create properly validates valid agent, and returns allowed.",
 			fields: fields{
-				set.Make("elastic"),
-				&agentv1alpha1.Agent{},
+				managedNamespaces: set.Make("elastic"),
 			},
 			req: admission.Request{
 				AdmissionRequest: admissionv1.AdmissionRequest{
 					Operation: admissionv1.Create,
 					Object: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "elastic",
-								Labels: map[string]string{
-									"test": "label1",
-								},
+							Name:      "testAgent",
+							Namespace: "elastic",
+							Labels: map[string]string{
+								"test": "label1",
 							},
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "8.10.0",
@@ -73,20 +74,17 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 		{
 			name: "no policy id when agent running in standalone mode should not return a warning",
 			fields: fields{
-				set.Make("elastic"),
-				&agentv1alpha1.Agent{},
+				managedNamespaces: set.Make("elastic"),
 			},
 			req: admission.Request{
 				AdmissionRequest: admissionv1.AdmissionRequest{
 					Operation: admissionv1.Create,
 					Object: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "elastic",
-								Labels: map[string]string{
-									"test": "label1",
-								},
+							Name:      "testAgent",
+							Namespace: "elastic",
+							Labels: map[string]string{
+								"test": "label1",
 							},
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "8.10.0",
@@ -101,20 +99,17 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 		{
 			name: "no policy id is allowed when agent running in fleet mode but it should return a warning",
 			fields: fields{
-				set.Make("elastic"),
-				&agentv1alpha1.Agent{},
+				managedNamespaces: set.Make("elastic"),
 			},
 			req: admission.Request{
 				AdmissionRequest: admissionv1.AdmissionRequest{
 					Operation: admissionv1.Create,
 					Object: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "elastic",
-								Labels: map[string]string{
-									"test": "label1",
-								},
+							Name:      "testAgent",
+							Namespace: "elastic",
+							Labels: map[string]string{
+								"test": "label1",
 							},
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "8.14.0",
@@ -130,20 +125,17 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 		{
 			name: "create agent is denied because of invalid version, and returns denied.",
 			fields: fields{
-				set.Make("elastic"),
-				&agentv1alpha1.Agent{},
+				managedNamespaces: set.Make("elastic"),
 			},
 			req: admission.Request{
 				AdmissionRequest: admissionv1.AdmissionRequest{
 					Operation: admissionv1.Create,
 					Object: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "elastic",
-								Labels: map[string]string{
-									"test": "label1",
-								},
+							Name:      "testAgent",
+							Namespace: "elastic",
+							Labels: map[string]string{
+								"test": "label1",
 							},
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "0.10.0",
@@ -180,22 +172,146 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 			},
 		},
 		{
+			name: "create agent is denied but still returns warnings from the inner validator",
+			fields: fields{
+				managedNamespaces: set.Make("elastic"),
+				validate: func(obj *agentv1alpha1.Agent, _ *agentv1alpha1.Agent) (admission.Warnings, error) {
+					errs := field.ErrorList{
+						field.Forbidden(field.NewPath("spec").Child("someField"), "denied"),
+					}
+					return admission.Warnings{"some warning"}, apierrors.NewInvalid(
+						schema.GroupKind{Group: "agent.k8s.elastic.co", Kind: "Agent"},
+						obj.Name,
+						errs,
+					)
+				},
+			},
+			req: admission.Request{
+				AdmissionRequest: admissionv1.AdmissionRequest{
+					Operation: admissionv1.Create,
+					Object: runtime.RawExtension{
+						Raw: asJSON(&agentv1alpha1.Agent{
+							Name:      "testAgent",
+							Namespace: "elastic",
+							Spec: agentv1alpha1.AgentSpec{
+								Version:    "8.10.0",
+								Deployment: &agentv1alpha1.DeploymentSpec{},
+							},
+						}),
+					},
+				},
+			},
+			want: admission.Response{
+				AdmissionResponse: admissionv1.AdmissionResponse{
+					Allowed:  false,
+					Warnings: []string{"some warning"},
+					Result: &metav1.Status{
+						Status:  metav1.StatusFailure,
+						Message: `Agent.agent.k8s.elastic.co "testAgent" is invalid: spec.someField: Forbidden: denied`,
+						Reason:  "Invalid",
+						Details: &metav1.StatusDetails{
+							Name:  "testAgent",
+							Group: "agent.k8s.elastic.co",
+							Kind:  "Agent",
+							Causes: []metav1.StatusCause{
+								{
+									Type:    "FieldValueForbidden",
+									Message: `Forbidden: denied`,
+									Field:   "spec.someField",
+								},
+							},
+							RetryAfterSeconds: 0,
+						},
+						Code: 422,
+					},
+				},
+			},
+		},
+		{
+			name: "update agent is denied but still returns warnings from the inner validator (funcValidator.ValidateUpdate)",
+			fields: fields{
+				managedNamespaces: set.Make("elastic"),
+				validate: func(newObj *agentv1alpha1.Agent, oldObj *agentv1alpha1.Agent) (admission.Warnings, error) {
+					if oldObj == nil || oldObj.Name == "" {
+						return nil, apierrors.NewBadRequest("expected non-nil old object on update")
+					}
+					errs := field.ErrorList{
+						field.Forbidden(field.NewPath("spec").Child("someField"), "denied on update"),
+					}
+					return admission.Warnings{"some warning on update"}, apierrors.NewInvalid(
+						schema.GroupKind{Group: "agent.k8s.elastic.co", Kind: "Agent"},
+						newObj.Name,
+						errs,
+					)
+				},
+			},
+			req: admission.Request{
+				AdmissionRequest: admissionv1.AdmissionRequest{
+					Operation: admissionv1.Update,
+					OldObject: runtime.RawExtension{
+						Raw: asJSON(&agentv1alpha1.Agent{
+							Name:      "testAgent",
+							Namespace: "elastic",
+							Spec: agentv1alpha1.AgentSpec{
+								Version:    "8.10.0",
+								Deployment: &agentv1alpha1.DeploymentSpec{},
+								PolicyID:   "a-policy",
+							},
+						}),
+					},
+					Object: runtime.RawExtension{
+						Raw: asJSON(&agentv1alpha1.Agent{
+							Name:      "testAgent",
+							Namespace: "elastic",
+							Spec: agentv1alpha1.AgentSpec{
+								Version:    "8.10.0",
+								Deployment: &agentv1alpha1.DeploymentSpec{},
+								PolicyID:   "a-policy",
+							},
+						}),
+					},
+				},
+			},
+			want: admission.Response{
+				AdmissionResponse: admissionv1.AdmissionResponse{
+					Allowed:  false,
+					Warnings: []string{"some warning on update"},
+					Result: &metav1.Status{
+						Status:  metav1.StatusFailure,
+						Message: `Agent.agent.k8s.elastic.co "testAgent" is invalid: spec.someField: Forbidden: denied on update`,
+						Reason:  "Invalid",
+						Details: &metav1.StatusDetails{
+							Name:  "testAgent",
+							Group: "agent.k8s.elastic.co",
+							Kind:  "Agent",
+							Causes: []metav1.StatusCause{
+								{
+									Type:    "FieldValueForbidden",
+									Message: `Forbidden: denied on update`,
+									Field:   "spec.someField",
+								},
+							},
+							RetryAfterSeconds: 0,
+						},
+						Code: 422,
+					},
+				},
+			},
+		},
+		{
 			name: "delete agent is always allowed",
 			fields: fields{
-				set.Make("elastic"),
-				&agentv1alpha1.Agent{},
+				managedNamespaces: set.Make("elastic"),
 			},
 			req: admission.Request{
 				AdmissionRequest: admissionv1.AdmissionRequest{
 					Operation: admissionv1.Delete,
-					Object: runtime.RawExtension{
+					OldObject: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "elastic",
-								Labels: map[string]string{
-									"test": "label1",
-								},
+							Name:      "testAgent",
+							Namespace: "elastic",
+							Labels: map[string]string{
+								"test": "label1",
 							},
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "8.10.0",
@@ -211,20 +327,17 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 		{
 			name: "request from un-managed namespace is ignored, and just accepted",
 			fields: fields{
-				set.Make("elastic"),
-				&agentv1alpha1.Agent{},
+				managedNamespaces: set.Make("elastic"),
 			},
 			req: admission.Request{
 				AdmissionRequest: admissionv1.AdmissionRequest{
 					Operation: admissionv1.Delete,
-					Object: runtime.RawExtension{
+					OldObject: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "unmanaged",
-								Labels: map[string]string{
-									"test": "label1",
-								},
+							Name:      "testAgent",
+							Namespace: "unmanaged",
+							Labels: map[string]string{
+								"test": "label1",
 							},
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "8.10.0",
@@ -239,20 +352,17 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 		{
 			name: "update agent is allowed when label is updated",
 			fields: fields{
-				set.Make("elastic"),
-				&agentv1alpha1.Agent{},
+				managedNamespaces: set.Make("elastic"),
 			},
 			req: admission.Request{
 				AdmissionRequest: admissionv1.AdmissionRequest{
 					Operation: admissionv1.Update,
 					OldObject: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "elastic",
-								Labels: map[string]string{
-									"test": "label1",
-								},
+							Name:      "testAgent",
+							Namespace: "elastic",
+							Labels: map[string]string{
+								"test": "label1",
 							},
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "8.10.0",
@@ -263,12 +373,10 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 					},
 					Object: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "elastic",
-								Labels: map[string]string{
-									"test": "label2",
-								},
+							Name:      "testAgent",
+							Namespace: "elastic",
+							Labels: map[string]string{
+								"test": "label2",
 							},
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "8.10.0",
@@ -284,20 +392,17 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 		{
 			name: "update agent is denied when version downgrade is attempted",
 			fields: fields{
-				set.Make("elastic"),
-				&agentv1alpha1.Agent{},
+				managedNamespaces: set.Make("elastic"),
 			},
 			req: admission.Request{
 				AdmissionRequest: admissionv1.AdmissionRequest{
 					Operation: admissionv1.Update,
 					OldObject: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "elastic",
-								Labels: map[string]string{
-									"test": "label1",
-								},
+							Name:      "testAgent",
+							Namespace: "elastic",
+							Labels: map[string]string{
+								"test": "label1",
 							},
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "8.10.1",
@@ -308,12 +413,10 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 					},
 					Object: runtime.RawExtension{
 						Raw: asJSON(&agentv1alpha1.Agent{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "testAgent",
-								Namespace: "elastic",
-								Labels: map[string]string{
-									"test": "label1",
-								},
+							Name:      "testAgent",
+							Namespace: "elastic",
+							Labels: map[string]string{
+								"test": "label1",
 							},
 							Spec: agentv1alpha1.AgentSpec{
 								Version:    "8.10.0",
@@ -352,14 +455,13 @@ func Test_validatingWebhook_Handle(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			decoder := admission.NewDecoder(k8s.Scheme())
-			v := &validatingWebhook{
-				decoder:           decoder,
-				managedNamespaces: tt.fields.managedNamespaces,
-				validator:         tt.fields.validator,
+			validate := tt.fields.validate
+			if validate == nil {
+				validate = agentv1alpha1.Validate
 			}
-			got := v.Handle(ctx, tt.req)
+			validator := NewResourceFuncValidator[*agentv1alpha1.Agent](nil, tt.fields.managedNamespaces.AsSlice(), validate)
+			wh := admission.WithValidator[*agentv1alpha1.Agent](scheme, validator)
+			got := wh.Handler.Handle(context.Background(), tt.req)
 			if diff := deep.Equal(got, tt.want); diff != nil {
 				t.Error(diff)
 			}

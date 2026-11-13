@@ -11,6 +11,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
 const (
@@ -86,34 +88,37 @@ func newNodeSetNodeCountList(nodeSetNames []string) NodeSetNodeCountList {
 	return nodeSetNodeCount
 }
 
-// ToContainerResourcesWith builds new ResourceRequirements for Memory and CPU, overriding existing values from the provided
-// ResourceRequirements with the values from the NodeResources.
-// If there is no recommendations for a given resource, then its current value remains unchanged.
-// Values for extended resources (e.g. GPU), are left untouched.
-// This function has no side effect and does not modify the original ResourceRequirements.
-func (nr *NodeResources) ToContainerResourcesWith(sourceRequirements corev1.ResourceRequirements) corev1.ResourceRequirements {
-	mergedResources := sourceRequirements.DeepCopy()
+// ToNodeSetResourcesWith builds NodeSet shorthand resources by overriding existing CPU/memory values
+// with the values present in this NodeResources recommendation.
+// If a recommendation for a given resource is missing, the existing value is preserved.
+func (nr NodeResources) ToNodeSetResourcesWith(existing commonv1.Resources) commonv1.Resources {
+	merged := *existing.DeepCopy()
 
-	// Update requests
-	if nr.Requests != nil && mergedResources.Requests == nil {
-		mergedResources.Requests = corev1.ResourceList{}
+	if nr.HasRequest(corev1.ResourceCPU) {
+		merged.Requests.CPU = new(nr.GetRequest(corev1.ResourceCPU))
 	}
-	for _, resourceName := range []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory} {
-		if nr.HasRequest(resourceName) {
-			mergedResources.Requests[resourceName] = nr.GetRequest(resourceName)
-		}
+	if nr.HasRequest(corev1.ResourceMemory) {
+		merged.Requests.Memory = new(nr.GetRequest(corev1.ResourceMemory))
+	}
+	if nr.HasLimit(corev1.ResourceCPU) {
+		merged.Limits.CPU = new(nr.GetLimit(corev1.ResourceCPU))
+	}
+	if nr.HasLimit(corev1.ResourceMemory) {
+		merged.Limits.Memory = new(nr.GetLimit(corev1.ResourceMemory))
 	}
 
-	// Update Limits
-	if nr.Limits != nil && mergedResources.Limits == nil {
-		mergedResources.Limits = corev1.ResourceList{}
+	return merged
+}
+
+// StorageRequestOr returns the storage request held by this recommendation, or existing when the
+// recommendation does not manage storage. Storage lives in the same request list as CPU and memory
+// on the autoscaling side, but targets a volume claim rather than the main container, so it is
+// resolved separately from ToNodeSetResourcesWith.
+func (nr NodeResources) StorageRequestOr(existing *resource.Quantity) *resource.Quantity {
+	if !nr.HasRequest(corev1.ResourceStorage) {
+		return existing
 	}
-	for _, resourceName := range []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory} {
-		if nr.HasLimit(resourceName) {
-			mergedResources.Limits[resourceName] = nr.GetLimit(resourceName)
-		}
-	}
-	return *mergedResources
+	return new(nr.GetRequest(corev1.ResourceStorage))
 }
 
 // MaxMerge merges the specified resource into the NodeResources only if its quantity is greater than the existing one.

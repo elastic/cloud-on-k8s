@@ -19,7 +19,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
@@ -47,7 +47,7 @@ const (
 // VersionUpgrade toggles read-only mode on Enterprise Search during version upgrades.
 type VersionUpgrade struct {
 	k8sClient  k8s.Client
-	recorder   record.EventRecorder
+	recorder   toolsevents.EventRecorder
 	ent        entv1.EnterpriseSearch
 	dialer     net.Dialer   // optional custom dialer for the http client
 	httpClient *http.Client // custom http client, will be created if nil
@@ -75,10 +75,10 @@ func (r *VersionUpgrade) Handle(ctx context.Context) error {
 		// A version upgrade is scheduled, but we don't know how to reach the Enterprise Search API
 		// since we don't have any Elasticsearch user available.
 		// Move on with the upgrade: this will cause the Pod in the new version to crash at startup with explicit logs.
-		msg := "Detected version upgrade with no association to Elasticsearch, " +
+		const msg = "Detected version upgrade with no association to Elasticsearch, " +
 			"please toggle read-only mode manually, otherwise the new version will crash at startup."
 		log.Info(msg, "namespace", r.ent.Namespace, "ent_name", r.ent.Name)
-		r.recorder.Event(&r.ent, corev1.EventTypeWarning, events.EventReasonUpgraded, msg)
+		k8s.EmitEvent(r.recorder, &r.ent, corev1.EventTypeWarning, events.EventReasonUpgraded, events.EventActionVersionUpgrade, msg)
 		return nil
 	}
 
@@ -89,10 +89,10 @@ func (r *VersionUpgrade) Handle(ctx context.Context) error {
 
 	if upgradeRequested {
 		if len(actualPods) == 0 {
-			msg := "a version upgrade is scheduled, but no Pod in the prior version is running:" +
+			const msg = "a version upgrade is scheduled, but no Pod in the prior version is running:" +
 				"waiting for at least one Pod in the prior version to be running in order to enable read-only mode"
 			log.Info(msg, "namespace", r.ent.Namespace, "ent_name", r.ent.Name)
-			r.recorder.Event(&r.ent, corev1.EventTypeWarning, events.EventReasonDelayed, msg)
+			k8s.EmitEvent(r.recorder, &r.ent, corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionVersionUpgrade, msg)
 			// surface this as an error, since rather unexpected, and abort reconciliation
 			return errors.New(msg)
 		}
@@ -127,11 +127,7 @@ func (r *VersionUpgrade) enableReadOnlyMode(ctx context.Context) error {
 
 	// annotate the resource to avoid doing the same API call over and over again
 	// (in practice, it may happen again if the next reconciliation does not have an up-to-date cache)
-	if r.ent.Annotations == nil {
-		r.ent.Annotations = map[string]string{}
-	}
-	r.ent.Annotations[ReadOnlyModeAnnotationName] = "true"
-	return r.k8sClient.Update(ctx, &r.ent)
+	return k8s.PatchAnnotations(ctx, r.k8sClient, &r.ent, map[string]string{ReadOnlyModeAnnotationName: "true"})
 }
 
 // disableReadOnlyMode disables read-only mode through an API call, if enabled previously,
@@ -152,8 +148,7 @@ func (r *VersionUpgrade) disableReadOnlyMode(ctx context.Context) error {
 
 	// remove the annotation to avoid doing the same API call over and over again
 	// (in practice, it may happen again if the next reconciliation does not have an up-to-date cache)
-	delete(r.ent.Annotations, ReadOnlyModeAnnotationName)
-	return r.k8sClient.Update(ctx, &r.ent)
+	return k8s.PatchAnnotations(ctx, r.k8sClient, &r.ent, nil, ReadOnlyModeAnnotationName)
 }
 
 // hasReadOnlyAnnotationTrue returns true if the read-only mode annotation is set to true,

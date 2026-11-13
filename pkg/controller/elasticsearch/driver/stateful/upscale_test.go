@@ -20,7 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -28,6 +28,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/bootstrap"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/nodespec"
@@ -57,11 +58,11 @@ func Test_podsToCreate(t *testing.T) {
 			name: "StatefulSet does not exist yet",
 			args: args{
 				actualStatefulSets: []appsv1.StatefulSet{
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: ptr.To[int32](5)}},
+					{Name: "sts1", Spec: appsv1.StatefulSetSpec{Replicas: new(int32(5))}},
 				},
 				expectedStatefulSets: []appsv1.StatefulSet{
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: ptr.To[int32](8)}},
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts2"}, Spec: appsv1.StatefulSetSpec{Replicas: ptr.To[int32](2)}},
+					{Name: "sts1", Spec: appsv1.StatefulSetSpec{Replicas: new(int32(8))}},
+					{Name: "sts2", Spec: appsv1.StatefulSetSpec{Replicas: new(int32(2))}},
 				},
 			},
 			want: []string{"sts1-5", "sts1-6", "sts1-7", "sts2-0", "sts2-1"},
@@ -70,11 +71,11 @@ func Test_podsToCreate(t *testing.T) {
 			name: "StatefulSet with no replica",
 			args: args{
 				actualStatefulSets: []appsv1.StatefulSet{
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: ptr.To[int32](5)}},
+					{Name: "sts1", Spec: appsv1.StatefulSetSpec{Replicas: new(int32(5))}},
 				},
 				expectedStatefulSets: []appsv1.StatefulSet{
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: ptr.To[int32](0)}},
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts2"}, Spec: appsv1.StatefulSetSpec{Replicas: ptr.To[int32](2)}},
+					{Name: "sts1", Spec: appsv1.StatefulSetSpec{Replicas: new(int32(0))}},
+					{Name: "sts2", Spec: appsv1.StatefulSetSpec{Replicas: new(int32(2))}},
 				},
 			},
 			want: []string{"sts2-0", "sts2-1"},
@@ -83,10 +84,10 @@ func Test_podsToCreate(t *testing.T) {
 			name: "StatefulSet removed",
 			args: args{
 				actualStatefulSets: []appsv1.StatefulSet{
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts1"}, Spec: appsv1.StatefulSetSpec{Replicas: ptr.To[int32](5)}},
+					{Name: "sts1", Spec: appsv1.StatefulSetSpec{Replicas: new(int32(5))}},
 				},
 				expectedStatefulSets: []appsv1.StatefulSet{
-					{ObjectMeta: metav1.ObjectMeta{Name: "sts2"}, Spec: appsv1.StatefulSetSpec{Replicas: ptr.To[int32](2)}},
+					{Name: "sts2", Spec: appsv1.StatefulSetSpec{Replicas: new(int32(2))}},
 				},
 			},
 			want: []string{"sts2-0", "sts2-1"},
@@ -105,8 +106,8 @@ func Test_podsToCreate(t *testing.T) {
 
 func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
-		Spec:       esv1.ElasticsearchSpec{Version: "7.5.0"},
+		Namespace: "ns", Name: "es",
+		Spec: esv1.ElasticsearchSpec{Version: "7.5.0"},
 	}
 	k8sClient := k8s.NewFakeClient(&es)
 	ctx := upscaleCtx{
@@ -123,7 +124,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 					Name:      "sset1",
 				},
 				Spec: appsv1.StatefulSetSpec{
-					Replicas: ptr.To[int32](3),
+					Replicas: new(int32(3)),
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
@@ -148,7 +149,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 					Name:      "sset2",
 				},
 				Spec: appsv1.StatefulSetSpec{
-					Replicas: ptr.To[int32](4),
+					Replicas: new(int32(4)),
 				},
 			},
 			HeadlessService: corev1.Service{
@@ -171,11 +172,11 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	// StatefulSets should be created with their expected replicas
 	var sset1 appsv1.StatefulSet
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "sset1"}, &sset1))
-	require.Equal(t, ptr.To[int32](3), sset1.Spec.Replicas)
+	require.Equal(t, new(int32(3)), sset1.Spec.Replicas)
 	comparison.RequireEqual(t, &res.ActualStatefulSets[0], &sset1)
 	var sset2 appsv1.StatefulSet
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
-	require.Equal(t, ptr.To[int32](4), sset2.Spec.Replicas)
+	require.Equal(t, new(int32(4)), sset2.Spec.Replicas)
 	comparison.RequireEqual(t, &res.ActualStatefulSets[1], &sset2)
 	// headless services should be created for both
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: nodespec.HeadlessServiceName("sset1")}, &corev1.Service{}))
@@ -186,7 +187,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 
 	// upscale data nodes
 	actualStatefulSets = es_sset.StatefulSetList{sset1, sset2}
-	expectedResources[1].StatefulSet.Spec.Replicas = ptr.To[int32](10)
+	expectedResources[1].StatefulSet.Spec.Replicas = new(int32(10))
 	// re-fetch es to simulate actual reconciliation behaviour
 	require.NoError(t, k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&es.ObjectMeta), &es))
 	// update context with current version of Elasticsearch resource
@@ -194,7 +195,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	res, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
-	require.Equal(t, ptr.To[int32](10), sset2.Spec.Replicas)
+	require.Equal(t, new(int32(10)), sset2.Spec.Replicas)
 	comparison.RequireEqual(t, &res.ActualStatefulSets[1], &sset2)
 	// expectations should have been set
 	require.NotEmpty(t, ctx.expectations.GetGenerations())
@@ -209,7 +210,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 
 	// apply a spec change and a downscale from 10 to 2
 	actualStatefulSets = es_sset.StatefulSetList{sset1, sset2}
-	expectedResources[1].StatefulSet.Spec.Replicas = ptr.To[int32](2)
+	expectedResources[1].StatefulSet.Spec.Replicas = new(int32(2))
 	expectedResources[1].StatefulSet.Spec.Template.Labels = map[string]string{"a": "c"}
 	res, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
@@ -219,36 +220,34 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	// spec should be updated
 	require.Equal(t, "c", sset2.Spec.Template.Labels["a"])
 	// but StatefulSet should not be downscaled
-	require.Equal(t, ptr.To[int32](10), sset2.Spec.Replicas)
+	require.Equal(t, new(int32(10)), sset2.Spec.Replicas)
 	comparison.RequireEqual(t, &res.ActualStatefulSets[1], &sset2)
 }
 
 func TestHandleUpscaleAndSpecChanges_PVCResize(t *testing.T) {
 	// focus on the special case of handling PVC resize
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es", Annotations: map[string]string{
+		Namespace: "ns", Name: "es", Annotations: map[string]string{
 			// simulate annotation already set otherwise we get a conflict when es is updated twice
 			// (first for initial master nodes, then for sset recreation)
 			"elasticsearch.k8s.elastic.co/initial-master-nodes": "sset1-0,sset1-1,sset1-2",
-		}},
+		},
 		Spec: esv1.ElasticsearchSpec{Version: "7.5.0"},
 	}
 
 	truePtr := true
 	storageClass := storagev1.StorageClass{
-		ObjectMeta:           metav1.ObjectMeta{Name: "resizeable"},
+		Name:                 "resizeable",
 		AllowVolumeExpansion: &truePtr,
 	}
 
 	// 3 masters, 4 data x 1Gi storage
 	actualStatefulSets := []appsv1.StatefulSet{
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns",
-				Name:      "sset1",
-			},
+			Namespace: "ns",
+			Name:      "sset1",
 			Spec: appsv1.StatefulSetSpec{
-				Replicas: ptr.To[int32](3),
+				Replicas: new(int32(3)),
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Labels: map[string]string{
@@ -259,15 +258,13 @@ func TestHandleUpscaleAndSpecChanges_PVCResize(t *testing.T) {
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns",
-				Name:      "sset2",
-			},
+			Namespace: "ns",
+			Name:      "sset2",
 			Spec: appsv1.StatefulSetSpec{
-				Replicas: ptr.To[int32](4),
+				Replicas: new(int32(4)),
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 					{
-						ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"},
+						Name: "elasticsearch-data",
 						Spec: corev1.PersistentVolumeClaimSpec{
 							Resources: corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
@@ -342,62 +339,62 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "new StatefulSet to create",
 			args: args{
-				state:              &upscaleState{createsAllowed: ptr.To[int32](3)},
+				state:              &upscaleState{createsAllowed: new(int32(3))},
 				actualStatefulSets: es_sset.StatefulSetList{},
 				expected:           sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
 			},
 			want:             sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 3, createsAllowed: ptr.To[int32](3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 3, createsAllowed: new(int32(3))},
 		},
 		{
 			name: "same StatefulSet already exists",
 			args: args{
-				state:              &upscaleState{createsAllowed: ptr.To[int32](3)},
+				state:              &upscaleState{createsAllowed: new(int32(3))},
 				actualStatefulSets: es_sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 3}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset", Replicas: 3}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 0, createsAllowed: ptr.To[int32](3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 0, createsAllowed: new(int32(3))},
 		},
 		{
 			name: "downscale case",
 			args: args{
-				state:              &upscaleState{createsAllowed: ptr.To[int32](3)},
+				state:              &upscaleState{createsAllowed: new(int32(3))},
 				actualStatefulSets: es_sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 1}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset", Replicas: 3}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 0, createsAllowed: ptr.To[int32](3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 0, createsAllowed: new(int32(3))},
 		},
 		{
 			name: "upscale case: data nodes",
 			args: args{
-				state:              &upscaleState{createsAllowed: ptr.To[int32](3)},
+				state:              &upscaleState{createsAllowed: new(int32(3))},
 				actualStatefulSets: es_sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: false, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 2, createsAllowed: ptr.To[int32](3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 2, createsAllowed: new(int32(3))},
 		},
 		{
 			name: "upscale case: master nodes (one allowed by maxSurge)",
 			args: args{
-				state:              &upscaleState{createsAllowed: ptr.To[int32](1)},
+				state:              &upscaleState{createsAllowed: new(int32(1))},
 				actualStatefulSets: es_sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: true, Data: true}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset", Replicas: 4, Master: true, Data: true}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 1, createsAllowed: ptr.To[int32](1)},
+			wantUpscaleState: &upscaleState{recordedCreates: 1, createsAllowed: new(int32(1))},
 		},
 		{
 			name: "upscale case: new additional master sset",
 			args: args{
-				state:              &upscaleState{createsAllowed: ptr.To[int32](3)},
+				state:              &upscaleState{createsAllowed: new(int32(3))},
 				actualStatefulSets: es_sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset-2", Replicas: 3, Master: true, Data: true}.Build(),
 			},
 			want:             sset.TestSset{Name: "sset-2", Replicas: 3, Master: true, Data: true}.Build(),
-			wantUpscaleState: &upscaleState{recordedCreates: 3, createsAllowed: ptr.To[int32](3)},
+			wantUpscaleState: &upscaleState{recordedCreates: 3, createsAllowed: new(int32(3))},
 		},
 	}
 	for _, tt := range tests {
@@ -412,19 +409,15 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 
 func Test_adjustZenConfig(t *testing.T) {
 	bootstrappedES := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        TestEsName,
-			Namespace:   TestEsNamespace,
-			Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"},
-		},
-		Spec: esv1.ElasticsearchSpec{Version: "7.5.0"},
+		Name:        TestEsName,
+		Namespace:   TestEsNamespace,
+		Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"},
+		Spec:        esv1.ElasticsearchSpec{Version: "7.5.0"},
 	}
 	notBootstrappedES := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      TestEsName,
-			Namespace: TestEsNamespace,
-		},
-		Spec: esv1.ElasticsearchSpec{Version: "7.5.0"},
+		Name:      TestEsName,
+		Namespace: TestEsNamespace,
+		Spec:      esv1.ElasticsearchSpec{Version: "7.5.0"},
 	}
 
 	tests := []struct {
@@ -556,13 +549,11 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 	// Test the complete upgrade flow: data nodes upgrade first, then master nodes
 	// starting at 8.16.2 and upgrading to 8.17.1
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "es",
-			Annotations: map[string]string{
-				"elasticsearch.k8s.elastic.co/initial-master-nodes": "node-1,node-2,node-3",
-				bootstrap.ClusterUUIDAnnotationName:                 "uuid",
-			},
+		Namespace: "ns",
+		Name:      "es",
+		Annotations: map[string]string{
+			"elasticsearch.k8s.elastic.co/initial-master-nodes": "node-1,node-2,node-3",
+			bootstrap.ClusterUUIDAnnotationName:                 "uuid",
 		},
 		Spec:   esv1.ElasticsearchSpec{Version: "8.16.2"},
 		Status: esv1.ElasticsearchStatus{Version: "8.16.2"},
@@ -588,7 +579,7 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 					},
 				},
 				Spec: appsv1.StatefulSetSpec{
-					Replicas: ptr.To[int32](3),
+					Replicas: new(int32(3)),
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
@@ -626,7 +617,7 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 					},
 				},
 				Spec: appsv1.StatefulSetSpec{
-					Replicas: ptr.To[int32](2),
+					Replicas: new(int32(2)),
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
@@ -674,7 +665,7 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 
 	// Set master StatefulSet status to show it's fully deployed at 8.16.2
 	// Also update the replicas to 3 to simulate full rollout at 8.16.2
-	masterSset.Spec.Replicas = ptr.To[int32](3)
+	masterSset.Spec.Replicas = new(int32(3))
 	masterSset.Status.Replicas = 3
 	masterSset.Status.UpdatedReplicas = 3
 	masterSset.Status.CurrentRevision = "master-sset-old"
@@ -698,39 +689,33 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 	// Create pods for both StatefulSets with the old revision
 	masterPods := []corev1.Pod{
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "master-sset-0",
-				Namespace: "ns",
-				Labels: map[string]string{
-					"elasticsearch.k8s.elastic.co/node-master": "true",
-					"controller-revision-hash":                 "master-sset-old",
-				},
+			Name:      "master-sset-0",
+			Namespace: "ns",
+			Labels: map[string]string{
+				"elasticsearch.k8s.elastic.co/node-master": "true",
+				"controller-revision-hash":                 "master-sset-old",
 			},
 			Status: corev1.PodStatus{
 				Phase: corev1.PodRunning,
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "master-sset-1",
-				Namespace: "ns",
-				Labels: map[string]string{
-					"elasticsearch.k8s.elastic.co/node-master": "true",
-					"controller-revision-hash":                 "master-sset-old",
-				},
+			Name:      "master-sset-1",
+			Namespace: "ns",
+			Labels: map[string]string{
+				"elasticsearch.k8s.elastic.co/node-master": "true",
+				"controller-revision-hash":                 "master-sset-old",
 			},
 			Status: corev1.PodStatus{
 				Phase: corev1.PodRunning,
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "master-sset-2",
-				Namespace: "ns",
-				Labels: map[string]string{
-					"elasticsearch.k8s.elastic.co/node-master": "true",
-					"controller-revision-hash":                 "master-sset-old",
-				},
+			Name:      "master-sset-2",
+			Namespace: "ns",
+			Labels: map[string]string{
+				"elasticsearch.k8s.elastic.co/node-master": "true",
+				"controller-revision-hash":                 "master-sset-old",
 			},
 			Status: corev1.PodStatus{
 				Phase: corev1.PodRunning,
@@ -743,26 +728,22 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 
 	dataPods := []corev1.Pod{
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "data-sset-0",
-				Namespace: "ns",
-				Labels: map[string]string{
-					"elasticsearch.k8s.elastic.co/node-data": "true",
-					"controller-revision-hash":               "data-sset-old",
-				},
+			Name:      "data-sset-0",
+			Namespace: "ns",
+			Labels: map[string]string{
+				"elasticsearch.k8s.elastic.co/node-data": "true",
+				"controller-revision-hash":               "data-sset-old",
 			},
 			Status: corev1.PodStatus{
 				Phase: corev1.PodRunning,
 			},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "data-sset-1",
-				Namespace: "ns",
-				Labels: map[string]string{
-					"elasticsearch.k8s.elastic.co/node-data": "true",
-					"controller-revision-hash":               "data-sset-old",
-				},
+			Name:      "data-sset-1",
+			Namespace: "ns",
+			Labels: map[string]string{
+				"elasticsearch.k8s.elastic.co/node-data": "true",
+				"controller-revision-hash":               "data-sset-old",
 			},
 			Status: corev1.PodStatus{
 				Phase: corev1.PodRunning,
@@ -796,7 +777,7 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 					},
 				},
 				Spec: appsv1.StatefulSetSpec{
-					Replicas: ptr.To[int32](4), // also upscale the master replicas to ensure that an upscale during an upgrade can happen in parallel with non-masters.
+					Replicas: new(int32(4)), // also upscale the master replicas to ensure that an upscale during an upgrade can happen in parallel with non-masters.
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
@@ -834,7 +815,7 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 					},
 				},
 				Spec: appsv1.StatefulSetSpec{
-					Replicas: ptr.To[int32](2),
+					Replicas: new(int32(2)),
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
@@ -911,4 +892,89 @@ func TestHandleUpscaleAndSpecChanges_VersionUpgradeDataFirstFlow(t *testing.T) {
 	// Verify master StatefulSet is now updated to 8.17.1
 	require.NoError(t, k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "master-sset"}, &masterSset))
 	require.Equal(t, "docker.elastic.co/elasticsearch/elasticsearch:8.17.1", masterSset.Spec.Template.Spec.Containers[0].Image)
+}
+
+func Test_findPendingNonMasterStatefulSetUpgrades_leavingPods(t *testing.T) {
+	target := version.MustParse("8.2.0")
+	statefulSet := func(name, esVersion string, replicas, updated int32) appsv1.StatefulSet {
+		return sset.TestSset{
+			Name: name, Namespace: TestEsNamespace, ClusterName: TestEsName, Version: esVersion, Replicas: replicas, Data: true,
+			Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", Replicas: replicas, UpdatedReplicas: updated},
+		}.Build()
+	}
+	pod := func(ssetName string, ordinal int, esVersion, revision string) client.Object {
+		p := sset.TestPod{
+			Name: fmt.Sprintf("%s-%d", ssetName, ordinal), Namespace: TestEsNamespace, ClusterName: TestEsName, StatefulSetName: ssetName,
+			Version: esVersion, Revision: revision, Data: true,
+		}.Build()
+		return &p
+	}
+	tests := []struct {
+		name     string
+		actual   es_sset.StatefulSetList
+		expected es_sset.StatefulSetList
+		pods     []client.Object
+		leaving  sets.Set[string]
+		want     []string // names of the StatefulSets with a pending upgrade
+	}{
+		{
+			name:     "outdated Pod, nothing leaving",
+			actual:   es_sset.StatefulSetList{statefulSet("data", "8.2.0", 2, 1)},
+			expected: es_sset.StatefulSetList{statefulSet("data", "8.2.0", 2, 1)},
+			pods:     []client.Object{pod("data", 0, "8.2.0", "rev-b"), pod("data", 1, "8.2.0", "rev-a")},
+			want:     []string{"data"},
+		},
+		{
+			name:     "only the leaving Pod is outdated, at the target version",
+			actual:   es_sset.StatefulSetList{statefulSet("data", "8.2.0", 2, 1)},
+			expected: es_sset.StatefulSetList{statefulSet("data", "8.2.0", 1, 1)},
+			pods:     []client.Object{pod("data", 0, "8.2.0", "rev-b"), pod("data", 1, "8.2.0", "rev-a")},
+			leaving:  sets.New("data-1"),
+			want:     nil,
+		},
+		{
+			name:     "only the leaving Pod is outdated, at an older version",
+			actual:   es_sset.StatefulSetList{statefulSet("data", "8.2.0", 2, 1)},
+			expected: es_sset.StatefulSetList{statefulSet("data", "8.2.0", 1, 1)},
+			pods:     []client.Object{pod("data", 0, "8.2.0", "rev-b"), pod("data", 1, "8.1.0", "rev-a")},
+			leaving:  sets.New("data-1"),
+			want:     []string{"data"},
+		},
+		{
+			name:     "the Pod that stays is outdated",
+			actual:   es_sset.StatefulSetList{statefulSet("data", "8.2.0", 2, 1)},
+			expected: es_sset.StatefulSetList{statefulSet("data", "8.2.0", 1, 0)},
+			pods:     []client.Object{pod("data", 0, "8.2.0", "rev-a"), pod("data", 1, "8.2.0", "rev-b")},
+			leaving:  sets.New("data-1"),
+			want:     []string{"data"},
+		},
+		{
+			name:     "the StatefulSet only has leaving Pods at an older version",
+			actual:   es_sset.StatefulSetList{statefulSet("data", "8.1.0", 2, 0), statefulSet("data-new", "8.2.0", 1, 1)},
+			expected: es_sset.StatefulSetList{statefulSet("data-new", "8.2.0", 1, 1)},
+			pods:     []client.Object{pod("data", 0, "8.1.0", "rev-a"), pod("data", 1, "8.1.0", "rev-a"), pod("data-new", 0, "8.2.0", "rev-b")},
+			leaving:  sets.New("data-0", "data-1"),
+			want:     []string{"data"},
+		},
+		{
+			name:     "the StatefulSet only has outdated leaving Pods at the target version",
+			actual:   es_sset.StatefulSetList{statefulSet("data", "8.2.0", 2, 0), statefulSet("data-new", "8.2.0", 1, 1)},
+			expected: es_sset.StatefulSetList{statefulSet("data-new", "8.2.0", 1, 1)},
+			pods:     []client.Object{pod("data", 0, "8.2.0", "rev-a"), pod("data", 1, "8.2.0", "rev-a"), pod("data-new", 0, "8.2.0", "rev-b")},
+			leaving:  sets.New("data-0", "data-1"),
+			want:     nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			k8sClient := k8s.NewFakeClient(tt.pods...)
+			got, err := findPendingNonMasterStatefulSetUpgrades(k8sClient, tt.actual, tt.expected, target, expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{}), tt.leaving)
+			require.NoError(t, err)
+			var names []string
+			for _, s := range got {
+				names = append(names, s.Name)
+			}
+			require.Equal(t, tt.want, names)
+		})
+	}
 }

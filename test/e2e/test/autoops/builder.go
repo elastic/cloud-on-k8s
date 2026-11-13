@@ -11,6 +11,7 @@ import (
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	controllerautoops "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoops"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
@@ -19,6 +20,7 @@ import (
 type Builder struct {
 	AutoOpsAgentPolicy autoopsv1alpha1.AutoOpsAgentPolicy
 	ConfigSecret       corev1.Secret
+	MutatedFrom        *Builder
 
 	Suffix string
 }
@@ -41,15 +43,12 @@ func NewBuilder(name string) Builder {
 
 	// Configuration secret that will be referenced in policy spec
 	configSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      configSecretName,
-			Namespace: test.Ctx().ManagedNamespace(0),
-		},
+		Name:      configSecretName,
+		Namespace: test.Ctx().ManagedNamespace(0),
 		StringData: map[string]string{
 			"cloud-connected-mode-api-key": "test-api-key",
 			// This is being set to localhost to not attempt to send data upstream.
 			"autoops-otel-url": "http://localhost:4318",
-			"autoops-token":    "test-token",
 		},
 	}
 
@@ -75,6 +74,24 @@ func NewBuilder(name string) Builder {
 		WithLabel(run.TestNameLabel, name)
 }
 
+func (b Builder) DeepCopy() *Builder {
+	policy := b.AutoOpsAgentPolicy.DeepCopy()
+	configSecret := b.ConfigSecret.DeepCopy()
+	builderCopy := Builder{
+		AutoOpsAgentPolicy: *policy,
+		ConfigSecret:       *configSecret,
+		Suffix:             b.Suffix,
+	}
+	if b.MutatedFrom != nil {
+		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
+	}
+	return &builderCopy
+}
+
+func (b Builder) ResourceName() string {
+	return b.AutoOpsAgentPolicy.Name
+}
+
 func (b Builder) WithSuffix(suffix string) Builder {
 	if suffix != "" {
 		b.AutoOpsAgentPolicy.ObjectMeta.Name = b.AutoOpsAgentPolicy.ObjectMeta.Name + "-" + suffix
@@ -96,6 +113,14 @@ func (b Builder) WithLabel(key, value string) Builder {
 	return b
 }
 
+func (b Builder) WithAnnotation(key, value string) Builder {
+	if b.AutoOpsAgentPolicy.Annotations == nil {
+		b.AutoOpsAgentPolicy.Annotations = make(map[string]string)
+	}
+	b.AutoOpsAgentPolicy.Annotations[key] = value
+	return b
+}
+
 func (b Builder) WithResourceSelector(selector metav1.LabelSelector) Builder {
 	b.AutoOpsAgentPolicy.Spec.ResourceSelector = selector
 	return b
@@ -104,6 +129,27 @@ func (b Builder) WithResourceSelector(selector metav1.LabelSelector) Builder {
 func (b Builder) WithNamespaceSelector(selector metav1.LabelSelector) Builder {
 	b.AutoOpsAgentPolicy.Spec.NamespaceSelector = selector
 	return b
+}
+
+// WithResources sets the AutoOps Agent container's CPU/memory shorthand. The corev1.ResourceRequirements
+// argument keeps the call site consistent with the Beat/Agent builders; only CPU and Memory keys are read.
+func (b Builder) WithResources(resources corev1.ResourceRequirements) Builder {
+	b.AutoOpsAgentPolicy.Spec.Resources = commonv1.Resources{
+		Limits:   resourceAllocationsFromList(resources.Limits),
+		Requests: resourceAllocationsFromList(resources.Requests),
+	}
+	return b
+}
+
+func resourceAllocationsFromList(list corev1.ResourceList) commonv1.ResourceAllocations {
+	var allocations commonv1.ResourceAllocations
+	if cpu, ok := list[corev1.ResourceCPU]; ok {
+		allocations.CPU = new(cpu.DeepCopy())
+	}
+	if mem, ok := list[corev1.ResourceMemory]; ok {
+		allocations.Memory = new(mem.DeepCopy())
+	}
+	return allocations
 }
 
 // WithCloudConnectedAPIURL sets the cloud-connected-mode-api-url in the config secret.
@@ -123,6 +169,11 @@ func (b Builder) WithAutoOpsOTelURL(url string) Builder {
 		b.ConfigSecret.StringData = make(map[string]string)
 	}
 	b.ConfigSecret.StringData["autoops-otel-url"] = url
+	return b
+}
+
+func (b Builder) WithMutatedFrom(mutatedFrom *Builder) Builder {
+	b.MutatedFrom = mutatedFrom
 	return b
 }
 

@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
@@ -40,11 +39,9 @@ func TestCheckNameLength(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ls := lsv1alpha1.Logstash{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      tc.logstashName,
-					Namespace: "test",
-				},
-				Spec: lsv1alpha1.LogstashSpec{},
+				Name:      tc.logstashName,
+				Namespace: "test",
+				Spec:      lsv1alpha1.LogstashSpec{},
 			}
 
 			errList := checkNameLength(&ls)
@@ -83,9 +80,9 @@ func TestCheckNoUnknownFields(t *testing.T) {
 			name: "Downgrade with override OK",
 			args: args{
 				prev: &lsv1alpha1.Logstash{Spec: lsv1alpha1.LogstashSpec{Version: "8.6.1"}},
-				curr: &lsv1alpha1.Logstash{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+				curr: &lsv1alpha1.Logstash{Annotations: map[string]string{
 					commonv1.DisableDowngradeValidationAnnotation: "true",
-				}}, Spec: lsv1alpha1.LogstashSpec{Version: "8.5.0"}},
+				}, Spec: lsv1alpha1.LogstashSpec{Version: "8.5.0"}},
 			},
 			want: nil,
 		},
@@ -167,7 +164,7 @@ func Test_checkSinglePipelineSource(t *testing.T) {
 			name: "pipelines absent, pipelinesRef present",
 			logstash: lsv1alpha1.Logstash{
 				Spec: lsv1alpha1.LogstashSpec{
-					PipelinesRef: &commonv1.ConfigSource{},
+					PipelinesRef: &commonv1.ConfigMapOrSecretSource{},
 				},
 			},
 			wantErr: false,
@@ -184,7 +181,7 @@ func Test_checkSinglePipelineSource(t *testing.T) {
 			logstash: lsv1alpha1.Logstash{
 				Spec: lsv1alpha1.LogstashSpec{
 					Pipelines:    []commonv1.Config{},
-					PipelinesRef: &commonv1.ConfigSource{},
+					PipelinesRef: &commonv1.ConfigMapOrSecretSource{},
 				},
 			},
 			wantErr: true,
@@ -194,6 +191,59 @@ func Test_checkSinglePipelineSource(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got := checkSinglePipelineSource(&tc.logstash)
+			assert.Equal(t, tc.wantErr, len(got) > 0)
+		})
+	}
+}
+
+func Test_checkPipelinesRefSource(t *testing.T) {
+	tests := []struct {
+		name     string
+		logstash lsv1alpha1.Logstash
+		wantErr  bool
+	}{
+		{
+			name:    "nil pipelinesRef",
+			wantErr: false,
+		},
+		{
+			name: "secretName only",
+			logstash: lsv1alpha1.Logstash{
+				Spec: lsv1alpha1.LogstashSpec{
+					PipelinesRef: &commonv1.ConfigMapOrSecretSource{
+						SecretName: "my-secret",
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "configMapName only",
+			logstash: lsv1alpha1.Logstash{
+				Spec: lsv1alpha1.LogstashSpec{
+					PipelinesRef: &commonv1.ConfigMapOrSecretSource{
+						ConfigMapName: "my-cm",
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "both secretName and configMapName",
+			logstash: lsv1alpha1.Logstash{
+				Spec: lsv1alpha1.LogstashSpec{
+					PipelinesRef: &commonv1.ConfigMapOrSecretSource{
+						SecretName:    "my-secret",
+						ConfigMapName: "my-cm",
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := checkPipelinesRefSource(&tc.logstash)
 			assert.Equal(t, tc.wantErr, len(got) > 0)
 		})
 	}
@@ -256,12 +306,12 @@ func Test_checkEsRefsAssociations(t *testing.T) {
 					Spec: lsv1alpha1.LogstashSpec{
 						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
-								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla"},
-								ClusterName:    "test",
+								SecretName:  "bla",
+								ClusterName: "test",
 							},
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								ClusterName:    "test2",
+								Name: "bla", Namespace: "blub",
+								ClusterName: "test2",
 							},
 						},
 					},
@@ -276,8 +326,8 @@ func Test_checkEsRefsAssociations(t *testing.T) {
 					Spec: lsv1alpha1.LogstashSpec{
 						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
-								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Name: "bla"},
-								ClusterName:    "test",
+								SecretName: "bla", Name: "bla",
+								ClusterName: "test",
 							},
 						},
 					},
@@ -292,8 +342,8 @@ func Test_checkEsRefsAssociations(t *testing.T) {
 					Spec: lsv1alpha1.LogstashSpec{
 						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Namespace: "blub"},
-								ClusterName:    "test",
+								Namespace:   "blub",
+								ClusterName: "test",
 							},
 						},
 					},
@@ -308,8 +358,8 @@ func Test_checkEsRefsAssociations(t *testing.T) {
 					Spec: lsv1alpha1.LogstashSpec{
 						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
-								ObjectSelector: commonv1.ObjectSelector{ServiceName: "ble"},
-								ClusterName:    "test",
+								ServiceName: "ble",
+								ClusterName: "test",
 							},
 						},
 					},
@@ -349,7 +399,7 @@ func Test_checkESRefsNamed(t *testing.T) {
 					Spec: lsv1alpha1.LogstashSpec{
 						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								Name: "bla", Namespace: "blub",
 							},
 						},
 					},
@@ -364,12 +414,12 @@ func Test_checkESRefsNamed(t *testing.T) {
 					Spec: lsv1alpha1.LogstashSpec{
 						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								ClusterName:    "bla",
+								Name: "bla", Namespace: "blub",
+								ClusterName: "bla",
 							},
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								ClusterName:    "blub",
+								Name: "bla", Namespace: "blub",
+								ClusterName: "blub",
 							},
 						},
 					},
@@ -384,12 +434,12 @@ func Test_checkESRefsNamed(t *testing.T) {
 					Spec: lsv1alpha1.LogstashSpec{
 						ElasticsearchRefs: []lsv1alpha1.ElasticsearchCluster{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								ClusterName:    "",
+								Name: "bla", Namespace: "blub",
+								ClusterName: "",
 							},
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								ClusterName:    "default",
+								Name: "bla", Namespace: "blub",
+								ClusterName: "default",
 							},
 						},
 					},
@@ -402,6 +452,43 @@ func Test_checkESRefsNamed(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := checkESRefsNamed(tt.args.b)
 			assert.Equal(t, tt.wantErr, len(got) > 0)
+		})
+	}
+}
+
+func Test_checkPauseOrchestrationAnnotation(t *testing.T) {
+	testCases := []struct {
+		name    string
+		ls      *lsv1alpha1.Logstash
+		wantErr bool
+	}{
+		{
+			name: "pause-orchestration false",
+			ls: &lsv1alpha1.Logstash{
+				Annotations: map[string]string{commonv1.PauseOrchestrationAnnotation: "false"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "pause-orchestration true",
+			ls: &lsv1alpha1.Logstash{
+				Annotations: map[string]string{commonv1.PauseOrchestrationAnnotation: "true"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "pause-orchestration invalid",
+			ls: &lsv1alpha1.Logstash{
+				Annotations: map[string]string{commonv1.PauseOrchestrationAnnotation: "True"},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			errList := commonv1.CheckPauseOrchestrationAnnotation(tc.ls)
+			assert.Equal(t, tc.wantErr, len(errList) > 0)
 		})
 	}
 }

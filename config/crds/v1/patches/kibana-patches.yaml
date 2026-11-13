@@ -1,0 +1,6 @@
+# Remove expanded PodTemplateSpec schema for backgroundTasks.podTemplate.
+# Like spec.podTemplate, this field accepts an arbitrary partial pod template, so a full
+# structural schema would make Kubernetes reject partial overlays (e.g. no containers).
+# Only v1 carries spec.backgroundTasks; v1beta1 does not have this path.
+- op: remove
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/backgroundTasks/properties/podTemplate/properties

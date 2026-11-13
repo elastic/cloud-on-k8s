@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/http"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
@@ -42,10 +43,8 @@ func NewReadinessProbe(v version.Version) *corev1.Probe {
 		PeriodSeconds:       5,
 		SuccessThreshold:    1,
 		TimeoutSeconds:      5,
-		ProbeHandler: corev1.ProbeHandler{
-			Exec: &corev1.ExecAction{
-				Command: []string{"bash", "-c", path.Join(volume.ScriptsVolumeMountPath, scriptKey)},
-			},
+		Exec: &corev1.ExecAction{
+			Command: []string{"bash", "-c", path.Join(volume.ScriptsVolumeMountPath, scriptKey)},
 		},
 	}
 }
@@ -87,6 +86,15 @@ else
   BASIC_AUTH=''
 fi
 
+# setup client certificate authentication if certificates are available
+CLIENT_CERT_PATH="` + volume.InternalClientCertMountPath + `/` + certificates.CertFileName + `"
+CLIENT_KEY_PATH="` + volume.InternalClientCertMountPath + `/` + certificates.KeyFileName + `"
+if [ -f "${CLIENT_CERT_PATH}" ]; then
+  CLIENT_CERT="--cert ${CLIENT_CERT_PATH} --key ${CLIENT_KEY_PATH}"
+else
+  CLIENT_CERT=''
+fi
+
 # Check if we are using IPv6
 if [[ $POD_IP =~ .*:.* ]]; then
   LOOPBACK="[::1]"
@@ -98,7 +106,7 @@ fi
 # we are turning globbing off to allow for unescaped [] in case of IPv6
 ENDPOINT="${READINESS_PROBE_PROTOCOL:-https}://${LOOPBACK}:9200/"
 ORIGIN_HEADER="` + http.InternalProductRequestHeaderString + `"
-status=$(curl -o /dev/null -w "%{http_code}" --max-time ${READINESS_PROBE_TIMEOUT} -H "${ORIGIN_HEADER}" -XGET -g -s -k ${BASIC_AUTH} $ENDPOINT)
+status=$(curl -o /dev/null -w "%{http_code}" --max-time ${READINESS_PROBE_TIMEOUT} -H "${ORIGIN_HEADER}" -XGET -g -s -k ${BASIC_AUTH} ${CLIENT_CERT} $ENDPOINT)
 curl_rc=$?
 
 if [[ ${curl_rc} -ne 0 ]]; then

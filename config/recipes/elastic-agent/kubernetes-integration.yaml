@@ -3,7 +3,7 @@ kind: Agent
 metadata:
   name: elastic-agent
 spec:
-  version: 9.3.0
+  version: 9.5.1
   elasticsearchRefs:
   - name: elasticsearch
   daemonSet:
@@ -128,52 +128,64 @@ kind: ClusterRole
 metadata:
   name: elastic-agent
 rules:
-- apiGroups: [""] # "" indicates the core API group
+- apiGroups: [""]
   resources:
-  - namespaces
-  - pods
   - nodes
   - nodes/metrics
   - nodes/proxy
   - nodes/stats
+  - namespaces
+  - pods
+  - services
+  - configmaps
   - events
   - persistentvolumes
   - persistentvolumeclaims
+  - persistentvolumeclaims/status
   verbs:
   - get
   - watch
   - list
+- apiGroups: ["events.k8s.io"]
+  resources:
+    - events
+  verbs:
+    - get
+    - watch
+    - list
+- apiGroups: ["coordination.k8s.io"]
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
 - nonResourceURLs:
   - /metrics
   verbs:
   - get
   - watch
   - list
-- apiGroups: ["coordination.k8s.io"]
-  resources:
-    - leases
+- nonResourceURLs:
+  - /healthz
+  - /healthz/*
+  - /livez
+  - /livez/*
+  - /metrics/slis
+  - /readyz
+  - /readyz/*
   verbs:
-    - get
-    - create
-    - update
+  - get
 - apiGroups: ["apps"]
   resources:
   - replicasets
+  - deployments
+  - daemonsets
+  - statefulsets
   verbs:
   - get
   - list
   - watch
-- apiGroups:
-  - "apps"
-  resources:
-  - statefulsets
-  - deployments
-  - replicasets
-  - daemonsets
-  verbs:
-  - "get"
-  - "list"
-  - "watch"
 - apiGroups: ["batch"]
   resources:
   - jobs
@@ -182,14 +194,13 @@ rules:
   - get
   - list
   - watch
-- apiGroups:
-  - "storage.k8s.io"
+- apiGroups: ["storage.k8s.io"]
   resources:
   - storageclasses
   verbs:
-  - "get"
-  - "list"
-  - "watch"
+  - get
+  - list
+  - watch
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -215,7 +226,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 9.3.0
+  version: 9.5.1
   nodeSets:
   - name: default
     count: 3
@@ -227,7 +238,7 @@ kind: Kibana
 metadata:
   name: kibana
 spec:
-  version: 9.3.0
+  version: 9.5.1
   count: 1
   elasticsearchRef:
     name: elasticsearch

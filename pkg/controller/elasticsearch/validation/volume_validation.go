@@ -6,9 +6,8 @@ package validation
 
 import (
 	"context"
-
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/autoscaling"
-	volumevalidations "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume/validations"
+	"errors"
+	"slices"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -18,7 +17,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
+	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/autoscaling"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
+	volumevalidations "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume/validations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -36,7 +39,7 @@ func validPVCNaming(proposed esv1.Elasticsearch) field.ErrorList {
 			errs = append(errs, field.Invalid(
 				field.NewPath("spec").Child("nodeSets").Index(i).Child("volumeClaimTemplates"),
 				m.Name,
-				pvcNotMountedErrMsg,
+				pvcNotMountedStatefulErrMsg,
 			))
 		}
 	}
@@ -47,8 +50,8 @@ func unmountedClaims(ns esv1.NodeSet) []corev1.PersistentVolumeClaim {
 	templates := ns.VolumeClaimTemplates
 	for _, c := range ns.PodTemplate.Spec.Containers {
 		for _, vm := range c.VolumeMounts {
-			for i := len(templates) - 1; i >= 0; i-- {
-				if templates[i].Name == vm.Name {
+			for i, template := range slices.Backward(templates) {
+				if template.Name == vm.Name {
 					templates = append(templates[:i], templates[i+1:]...)
 				}
 			}
@@ -73,32 +76,37 @@ func validPVCModification(ctx context.Context, current esv1.Elasticsearch, propo
 	log := ulog.FromContext(ctx)
 	var errs field.ErrorList
 
+	autoscalingLookupErr := false
 	autoscalingResource, err := autoscaling.GetAssociatedAutoscalingResource(ctx, k8sClient, proposed)
 	if err != nil {
 		log.Error(
 			err,
-			"Error while trying to check if this cluster is managed by the autoscaling controller, skip volume validation",
+			"Could not determine whether an autoscaler manages this cluster, skipping volume size validation",
 			"namespace", proposed.Namespace,
 			"es_name", proposed.Name,
 		)
-		return errs
+		autoscalingLookupErr = true
 	}
 
+	var autoscalingResourceSpecs v1alpha1.AutoscalingPolicySpecs
 	if autoscalingResource != nil {
-		// If a resource manifest is applied without a volume claim or with an old volume claim template, the NodeSet specification
-		// will not be processed immediately by the Elasticsearch controller. When autoscaling is enabled it is fine to accept the
-		// manifest, and wait for the autoscaling controller to adjust the volume claim template size.
-		log.V(1).Info(
-			"Autoscaling is enabled in proposed, ignoring PVC modification validation",
-			"namespace", proposed.Namespace,
-			"es_name", proposed.Name,
-		)
-		return errs
+		autoscalingResourceSpecs, err = autoscalingResource.GetAutoscalingPolicySpecs()
+		if err != nil {
+			log.Error(
+				err,
+				"Could not get autoscaling policy specifications, skipping volume size validation",
+				"namespace", proposed.Namespace,
+				"es_name", proposed.Name,
+			)
+			autoscalingLookupErr = true
+		}
 	}
 	for i, proposedNodeSet := range proposed.Spec.NodeSets {
 		currentNodeSet := getNodeSet(proposedNodeSet.Name, current)
 		if currentNodeSet != nil {
 			// Check that no modification was made to the claims, except on storage requests.
+			// This runs regardless of whether autoscaling is active: storage class, access modes,
+			// and claim identity are immutable even for autoscaler-managed NodeSets.
 			if !apiequality.Semantic.DeepEqual(
 				claimsWithoutStorageReq(currentNodeSet.VolumeClaimTemplates),
 				claimsWithoutStorageReq(proposedNodeSet.VolumeClaimTemplates),
@@ -143,7 +151,41 @@ func validPVCModification(ctx context.Context, current esv1.Elasticsearch, propo
 			continue
 		}
 
-		if err := volumevalidations.ValidateClaimsStorageUpdate(ctx, k8sClient, matchingSset.Spec.VolumeClaimTemplates, proposedNodeSet.VolumeClaimTemplates, validateStorageClass); err != nil {
+		if autoscalingLookupErr {
+			continue
+		}
+		// Only skip the STS storage-size comparison when this specific NodeSet is covered by a
+		// storage policy. A mixed cluster may have autoscaled data NodeSets alongside manually
+		// managed master NodeSets.
+		if autoscalingResource != nil {
+			nodeSetSpec, err := proposedNodeSet.GetAutoscalingSpec(autoscalingResourceSpecs)
+			if err != nil && !errors.Is(err, esv1.ErrNodeRolesNotSet) {
+				log.Error(err, "Could not get the autoscaling policy for the NodeSet, skipping volume size validation",
+					"namespace", proposed.Namespace, "es_name", proposed.Name, "node_set", proposedNodeSet.Name)
+				continue
+			}
+			if nodeSetSpec != nil && nodeSetSpec.IsStorageDefined() {
+				log.V(1).Info(
+					"NodeSet is covered by a storage autoscaling policy, skipping volume size validation",
+					"namespace", proposed.Namespace,
+					"es_name", proposed.Name,
+					"node_set", proposedNodeSet.Name,
+				)
+				continue
+			}
+		}
+
+		// Mirror BuildStatefulSet (AppendDefaultPVCs → ApplyStorageOverride): a nodeSet that omits
+		// volumeClaimTemplates gets the default elasticsearch-data claim injected at build time, so
+		// the validator must produce the same resolved claim list or it compares against an empty
+		// slice and silently misses storage-decrease checks on the default claim.
+		proposedVCTs := defaults.AppendDefaultPVCs(
+			proposedNodeSet.VolumeClaimTemplates,
+			proposedNodeSet.PodTemplate.Spec,
+			volume.DefaultVolumeClaimTemplates...,
+		)
+		proposedClaims := volume.ApplyStorageOverride(proposedVCTs, proposedNodeSet.Resources.Storage)
+		if err := volumevalidations.ValidateClaimsStorageUpdate(ctx, k8sClient, matchingSset.Spec.VolumeClaimTemplates, proposedClaims, validateStorageClass); err != nil {
 			errs = append(errs, field.Invalid(
 				field.NewPath("spec").Child("nodeSets").Index(i).Child("volumeClaimTemplates"),
 				proposedNodeSet.VolumeClaimTemplates,
@@ -164,10 +206,19 @@ func getNodeSet(name string, es esv1.Elasticsearch) *esv1.NodeSet {
 }
 
 // claimsWithoutStorageReq returns a copy of the given claims, with all storage requests set to the empty quantity.
+//
+// A claim may legitimately carry no resource requests at all: that is what a nodeSet looks like once
+// the storage size moves to spec.nodeSets[].resources.storage and the claim is left declaring only
+// the storage class and access modes. Normalising a nil map to an explicit empty storage request is
+// also what makes such a claim compare equal to the same claim with a size, which is the point of
+// this function.
 func claimsWithoutStorageReq(claims []corev1.PersistentVolumeClaim) []corev1.PersistentVolumeClaim {
 	result := make([]corev1.PersistentVolumeClaim, 0, len(claims))
 	for _, claim := range claims {
 		patchedClaim := *claim.DeepCopy()
+		if patchedClaim.Spec.Resources.Requests == nil {
+			patchedClaim.Spec.Resources.Requests = corev1.ResourceList{}
+		}
 		patchedClaim.Spec.Resources.Requests[corev1.ResourceStorage] = resource.Quantity{}
 		result = append(result, patchedClaim)
 	}

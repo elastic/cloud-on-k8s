@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -40,7 +39,7 @@ func Test_reconcileReqForSoftOwner(t *testing.T) {
 				},
 			},
 			wantReconcileRequests: []reconcile.Request{
-				{NamespacedName: types.NamespacedName{Namespace: "ns", Name: "es"}},
+				{Namespace: "ns", Name: "es"},
 			},
 		},
 		{

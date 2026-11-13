@@ -9,7 +9,6 @@ import (
 
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -79,12 +78,10 @@ func GetESConfigSecret(client k8s.Client, namespace string, ssetName string) (co
 func ConfigSecret(es esv1.Elasticsearch, ssetName string, configData []byte, meta metadata.Metadata) corev1.Secret {
 	mergedMeta := meta.Merge(metadata.Metadata{Labels: label.NewConfigLabels(k8s.ExtractNamespacedName(&es), ssetName)})
 	return corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   es.Namespace,
-			Name:        ConfigSecretName(ssetName),
-			Labels:      mergedMeta.Labels,
-			Annotations: mergedMeta.Annotations,
-		},
+		Namespace:   es.Namespace,
+		Name:        ConfigSecretName(ssetName),
+		Labels:      mergedMeta.Labels,
+		Annotations: mergedMeta.Annotations,
 		Data: map[string][]byte{
 			ConfigFileName: configData,
 		},
@@ -107,10 +104,8 @@ func DeleteConfig(ctx context.Context, client k8s.Client, namespace string, sset
 	// build a dummy config with no data but the correct Namespace & Name,
 	// to target the correct resource for deletion
 	cfgSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      ConfigSecretName(ssetName),
-		},
+		Namespace: namespace,
+		Name:      ConfigSecretName(ssetName),
 	}
 	return client.Delete(ctx, &cfgSecret)
 }

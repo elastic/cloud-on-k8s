@@ -51,6 +51,21 @@ func newBuilder(name, randSuffix string) Builder {
 		WithPodLabel(run.TestNameLabel, name)
 }
 
+func (b Builder) DeepCopy() *Builder {
+	ems := b.EMS.DeepCopy()
+	builderCopy := Builder{
+		EMS: *ems,
+	}
+	if b.MutatedFrom != nil {
+		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
+	}
+	return &builderCopy
+}
+
+func (b Builder) ResourceName() string {
+	return b.EMS.Name
+}
+
 func (b Builder) WithSuffix(suffix string) Builder {
 	if suffix != "" {
 		b.EMS.ObjectMeta.Name = b.EMS.ObjectMeta.Name + "-" + suffix
@@ -82,7 +97,12 @@ func (b Builder) WithRestrictedSecurityContext() Builder {
 }
 
 func (b Builder) WithElasticsearchRef(ref commonv1.ObjectSelector) Builder {
-	b.EMS.Spec.ElasticsearchRef = ref
+	b.EMS.Spec.ElasticsearchRef.ObjectSelector = ref
+	return b
+}
+
+func (b Builder) WithClientCertificateSecret(secretName string) Builder {
+	b.EMS.Spec.ElasticsearchRef.ClientCertificateSecretName = secretName
 	return b
 }
 
@@ -99,8 +119,8 @@ func (b Builder) WithVersion(version string) Builder {
 	return b
 }
 
-func (b Builder) WithNodeCount(count int) Builder {
-	b.EMS.Spec.Count = int32(count)
+func (b Builder) WithNodeCount(count int32) Builder {
+	b.EMS.Spec.Count = count
 	return b
 }
 

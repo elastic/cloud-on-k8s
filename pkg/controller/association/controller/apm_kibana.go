@@ -7,7 +7,6 @@ package controller
 import (
 	"context"
 
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -19,7 +18,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	ver "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana"
 	kblabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
@@ -29,6 +27,7 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedShortName:       "apm",
 		AssociatedObjTemplate:     func() commonv1.Associated { return &apmv1.ApmServer{} },
+		AssociatedObjListTemplate: func() client.ObjectList { return &apmv1.ApmServerList{} },
 		ReferencedObjTemplate:     func() client.Object { return &kbv1.Kibana{} },
 		ExternalServiceURL:        getKibanaExternalURL,
 		ReferencedResourceVersion: referencedKibanaStatusVersion,
@@ -46,8 +45,8 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		AssociationResourceNameLabelName:      kblabel.KibanaNameLabelName,
 		AssociationResourceNamespaceLabelName: kblabel.KibanaNamespaceLabelName,
 
-		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
-			ElasticsearchRef: getElasticsearchFromKibana,
+		ElasticsearchRef: getElasticsearchFromKibana,
+		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{ //nolint:gosec
 			UserSecretSuffix: "apm-kb-user",
 			ESUserRole: func(_ commonv1.Associated) (string, error) {
 				return user.ApmAgentUserRole, nil
@@ -58,21 +57,21 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 
 func getKibanaExternalURL(c k8s.Client, assoc commonv1.Association) (string, error) {
 	kibanaRef := assoc.AssociationRef()
-	if !kibanaRef.IsDefined() {
+	if !kibanaRef.IsSet() {
 		return "", nil
 	}
 	kb := kbv1.Kibana{}
 	if err := c.Get(context.Background(), kibanaRef.NamespacedName(), &kb); err != nil {
 		return "", err
 	}
-	serviceName := kibanaRef.ServiceName
+	serviceName := kibanaRef.GetServiceName()
 	if serviceName == "" {
 		serviceName = kbv1.HTTPService(kb.Name)
 	}
 	nsn := types.NamespacedName{Namespace: kb.Namespace, Name: serviceName}
 
 	// Get Kibana base path if configured
-	basePath, err := kibana.GetKibanaBasePath(kb)
+	basePath, err := kbv1.GetKibanaBasePath(kb)
 	if err != nil {
 		return "", err
 	}
@@ -121,23 +120,4 @@ func referencedKibanaStatusVersion(c k8s.Client, kbAssociation commonv1.Associat
 		return "", false, err
 	}
 	return kb.Status.Version, false, nil
-}
-
-// getElasticsearchFromKibana returns the Elasticsearch reference in which the user must be created for this association.
-func getElasticsearchFromKibana(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
-	kibanaRef := association.AssociationRef()
-	if !kibanaRef.IsDefined() {
-		return false, commonv1.ObjectSelector{}, nil
-	}
-
-	kb := kbv1.Kibana{}
-	err := c.Get(context.Background(), kibanaRef.NamespacedName(), &kb)
-	if errors.IsNotFound(err) {
-		return false, commonv1.ObjectSelector{}, nil
-	}
-	if err != nil {
-		return false, commonv1.ObjectSelector{}, err
-	}
-
-	return true, kb.EsAssociation().AssociationRef(), nil
 }

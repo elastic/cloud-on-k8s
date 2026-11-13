@@ -9,7 +9,6 @@ import (
 	"maps"
 
 	"gopkg.in/yaml.v3"
-	"k8s.io/utils/ptr"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
@@ -74,7 +73,7 @@ var (
 		{
 			Names:                  []string{"*"},
 			Privileges:             []string{"monitor", "read", "view_index_metadata"},
-			AllowRestrictedIndices: ptr.To[bool](true),
+			AllowRestrictedIndices: new(true),
 		},
 	}
 	diagnosticsAppsKibanaPrivileges = []esclient.ApplicationRole{
@@ -226,6 +225,15 @@ var (
 					Names:      []string{"filebeat-*"},
 					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index"},
 				},
+				{
+					// logs-elastic* covers data streams for ES-managed log datasets (e.g. logs-elasticsearch.querylog-*)
+					// that are shipped by the Filebeat sidecar starting with ES 9.4. Uses a broad pattern to
+					// accommodate additional datasets that will follow the same naming convention.
+					// auto_configure is required because data streams need it to create backing indices from
+					// the managed index template on first write.
+					Names:      []string{"logs-elastic*"},
+					Privileges: []string{"manage", "read", "create_doc", "view_index_metadata", "create_index", "auto_configure"},
+				},
 			},
 		},
 		FleetAdminUserRole: esclient.Role{
@@ -350,6 +358,13 @@ func BeatKibanaRoleName(version, beatType string) string {
 // RolesFileContent is a map {role name -> yaml role spec}.
 // We care about the role names here, but consider the roles spec as a yaml blob we don't need to access.
 type RolesFileContent map[string]any
+
+// PolicyRoles bundles the two SCP-derived role fields that always travel together:
+// the role definitions and the hash used to track when ES has applied them.
+type PolicyRoles struct {
+	Roles RolesFileContent
+	Hash  string
+}
 
 // parseRolesFileContent returns a RolesFileContent from the given data.
 // Since rolesFileContent already corresponds to a deserialized yaml representation of the roles files,

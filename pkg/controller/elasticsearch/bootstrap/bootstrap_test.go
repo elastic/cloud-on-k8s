@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
@@ -19,18 +18,16 @@ import (
 
 func bootstrappedES() *esv1.Elasticsearch {
 	return &esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "cluster",
-			Annotations: map[string]string{ClusterUUIDAnnotationName: "uuid"},
-		},
-		Spec: esv1.ElasticsearchSpec{Version: "7.3.0"},
+		Name:        "cluster",
+		Annotations: map[string]string{ClusterUUIDAnnotationName: "uuid"},
+		Spec:        esv1.ElasticsearchSpec{Version: "7.3.0"},
 	}
 }
 
 func notBootstrappedES() *esv1.Elasticsearch {
 	return &esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Name: "cluster"},
-		Spec:       esv1.ElasticsearchSpec{Version: "7.3.0"},
+		Name: "cluster",
+		Spec: esv1.ElasticsearchSpec{Version: "7.3.0"},
 	}
 }
 

@@ -9,6 +9,7 @@ package e2e
 import (
 	"bufio"
 	"os"
+	"strings"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -24,7 +25,11 @@ import (
 const sampleFile = "../../config/samples/apm/apm_es_kibana.yaml"
 
 // TestSmoke runs a test suite using the ApmServer + Kibana + ES + Beat sample.
-func TestSmoke(t *testing.T) {
+func TestSmoke_Core(t *testing.T) {
+	runStatefulSmoke(t)
+}
+
+func runStatefulSmoke(t *testing.T) {
 	var esBuilder elasticsearch.Builder
 	var kbBuilder kibana.Builder
 	var apmBuilder apmserver.Builder
@@ -70,4 +75,29 @@ func TestSmoke(t *testing.T) {
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).
 		RunSequential(t)
+}
+
+func isSmokeSample(sampleFile string) bool {
+	s, _ := strings.CutPrefix(sampleFile, "../../")
+	switch s {
+	case
+		"config/samples/apm/apm_es_kibana.yaml",
+		"config/samples/elasticsearch/elasticsearch.yaml",
+		"config/samples/logstash/logstash_pv.yaml",
+		"config/samples/logstash/logstash_stackmonitor.yaml":
+		return true
+	}
+	return false
+}
+
+// samplesRequiringLicense lists the samples, relative to root directory, that configure an Enterprise feature and
+// therefore need an Enterprise license to be installed in the operator.
+var samplesRequiringLicense = map[string]struct{}{
+	"config/samples/kibana/kibana_bg.yaml": {}, // spec.backgroundTasks
+}
+
+func sampleRequiresLicense(sample string) bool {
+	s, _ := strings.CutPrefix(sample, "../../")
+	_, ok := samplesRequiringLicense[s]
+	return ok
 }

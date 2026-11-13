@@ -41,24 +41,20 @@ func TestReconcile(t *testing.T) {
 				es: esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es1", Namespace: "ns1"}},
 				secrets: []client.Object{
 					&v1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "b",
-							Namespace: "ns1",
-							Labels: map[string]string{
-								label.ClusterNameLabelName: "es1",
-								commonv1.TypeLabelName:     TypeLabelValue,
-							},
+						Name:      "b",
+						Namespace: "ns1",
+						Labels: map[string]string{
+							label.ClusterNameLabelName: "es1",
+							commonv1.TypeLabelName:     TypeLabelValue,
 						},
 						Data: map[string][]byte{certificates.CAFileName: []byte("cert1\n")},
 					},
 					&v1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "a",
-							Namespace: "ns1",
-							Labels: map[string]string{
-								label.ClusterNameLabelName: "es1",
-								commonv1.TypeLabelName:     TypeLabelValue,
-							},
+						Name:      "a",
+						Namespace: "ns1",
+						Labels: map[string]string{
+							label.ClusterNameLabelName: "es1",
+							commonv1.TypeLabelName:     TypeLabelValue,
 						},
 						Data: map[string][]byte{certificates.CAFileName: []byte("cert2\n")},
 					},
@@ -73,35 +69,29 @@ func TestReconcile(t *testing.T) {
 				es: esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es1", Namespace: "ns1"}},
 				secrets: []client.Object{
 					&v1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "b",
-							Namespace: "ns1",
-							Labels: map[string]string{
-								label.ClusterNameLabelName: "es1",
-								commonv1.TypeLabelName:     TypeLabelValue,
-							},
+						Name:      "b",
+						Namespace: "ns1",
+						Labels: map[string]string{
+							label.ClusterNameLabelName: "es1",
+							commonv1.TypeLabelName:     TypeLabelValue,
 						},
 						Data: map[string][]byte{certificates.CAFileName: []byte("cert1\n")},
 					},
 					&v1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "c",
-							Namespace: "ns1",
-							Labels: map[string]string{
-								label.ClusterNameLabelName: "es1",
-								commonv1.TypeLabelName:     "foo",
-							},
+						Name:      "c",
+						Namespace: "ns1",
+						Labels: map[string]string{
+							label.ClusterNameLabelName: "es1",
+							commonv1.TypeLabelName:     "foo",
 						},
 						Data: map[string][]byte{certificates.CAFileName: []byte("cert3\n")},
 					},
 					&v1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "a",
-							Namespace: "ns1",
-							Labels: map[string]string{
-								label.ClusterNameLabelName: "es1",
-								commonv1.TypeLabelName:     TypeLabelValue,
-							},
+						Name:      "a",
+						Namespace: "ns1",
+						Labels: map[string]string{
+							label.ClusterNameLabelName: "es1",
+							commonv1.TypeLabelName:     TypeLabelValue,
 						},
 						Data: map[string][]byte{certificates.CAFileName: []byte("cert2\n")},
 					},

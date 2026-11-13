@@ -117,12 +117,10 @@ func NewCPURecommender(
 	}
 
 	cpuRecommender := cpu{
-		base: base{
-			log:                      log,
-			autoscalingSpec:          autoscalingSpec,
-			statusBuilder:            statusBuilder,
-			currentAutoscalingStatus: currentAutoscalingStatus,
-		},
+		log:                      log,
+		autoscalingSpec:          autoscalingSpec,
+		statusBuilder:            statusBuilder,
+		currentAutoscalingStatus: currentAutoscalingStatus,
 		requiredTotalCPUCapacity: autoscalingPolicyResult.RequiredCapacity.Total.Processors,
 		requiredNodeCPUCapacity:  autoscalingPolicyResult.RequiredCapacity.Node.Processors,
 	}

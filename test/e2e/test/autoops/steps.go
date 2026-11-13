@@ -7,7 +7,9 @@ package autoops
 import (
 	"context"
 	"fmt"
+	"maps"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -22,7 +24,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/generation"
 )
+
+const k8sRequestRetryTimeout = time.Minute
 
 func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
@@ -90,6 +96,19 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{}.
 		WithStep(test.Step{
+			// Wait for all ES clusters matching the policy selector to be reachable before creating the
+			// AutoOpsAgentPolicy. The autoops-agent (elastic-otel-collector) initialises its metricbeat
+			// receiver immediately on startup and does not retry on a failed initial connection. If ES is
+			// not yet accepting connections at that point the receiver stays in a failed state, the
+			// OTel health-check endpoint returns HTTP 500, and the pod readiness probe never passes.
+			// This step guards against that race between ECK marking ES Ready and the ES HTTP endpoint
+			// being truly accessible.
+			Name: "ES clusters matching selector should be reachable before creating AutoOpsAgentPolicy",
+			Test: test.Eventually(func() error {
+				return b.checkMatchingESClustersReachable(k)
+			}),
+		}).
+		WithStep(test.Step{
 			Name: "Creating configuration secret should succeed",
 			Test: func(t *testing.T) {
 				t.Helper()
@@ -102,12 +121,11 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Creating an AutoOpsAgentPolicy should succeed",
 			Test: func(t *testing.T) {
 				t.Helper()
-				for _, obj := range b.RuntimeObjects() {
-					err := k.Client.Create(context.Background(), obj)
-					if err != nil && !apierrors.IsAlreadyExists(err) {
-						require.NoError(t, err)
-					}
-				}
+				require.NoError(t, k.CreateWithRetry(
+					test.IsRetryableError,
+					k8sRequestRetryTimeout,
+					b.RuntimeObjects()...,
+				))
 			},
 		}).
 		WithStep(test.Step{
@@ -135,6 +153,13 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 					return err
 				}
 				if policy.Status.Phase != autoopsv1alpha1.ReadyPhase {
+					// The autoops-agent (elastic-otel-collector) does not retry when its metricbeat
+					// receiver fails on the initial ES connection. If the agent started before the ES
+					// endpoint was fully reachable, its health endpoint returns HTTP 500 permanently and
+					// the pod stays not-ready forever. Delete such stuck pods so the Deployment creates a
+					// fresh one that can connect successfully.
+					// See https://github.com/elastic/beats/issues/49099
+					_ = b.deleteStuckAutoOpsAgentPods(k)
 					return fmt.Errorf("policy not ready, phase: %s", policy.Status.Phase)
 				}
 				if policy.Status.Resources == 0 {
@@ -172,7 +197,8 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 					return nil
 				})
 			}),
-		})
+		}).
+		WithStep(test.CheckFieldsNotOwnedByOperator(&b.AutoOpsAgentPolicy, k, nil))
 }
 
 func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
@@ -267,7 +293,23 @@ func (b Builder) forEachAutoOpsDeployment(k *test.K8sClient, fn func(deployment 
 }
 
 func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
-	return test.StepList{}
+	return test.StepList{
+		{
+			Name: "Updating the AutoOpsAgentPolicy spec should succeed",
+			Test: test.Eventually(func() error {
+				var policy autoopsv1alpha1.AutoOpsAgentPolicy
+				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.AutoOpsAgentPolicy), &policy); err != nil {
+					return err
+				}
+				if policy.Annotations == nil {
+					policy.Annotations = make(map[string]string)
+				}
+				maps.Copy(policy.Annotations, b.AutoOpsAgentPolicy.Annotations)
+				policy.Spec = b.AutoOpsAgentPolicy.Spec
+				return k.Client.Update(context.Background(), &policy)
+			}),
+		},
+	}
 }
 
 func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
@@ -317,5 +359,94 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 }
 
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
-	return test.StepList{}
+	var generationBeforeMutation, observedGenerationBeforeMutation int64
+	isMutated := b.MutatedFrom != nil
+	return test.StepList{
+		generation.RetrieveGenerationsStep(&b.AutoOpsAgentPolicy, k, &generationBeforeMutation, &observedGenerationBeforeMutation),
+	}.WithSteps(b.UpgradeTestSteps(k)).
+		WithSteps(b.CheckK8sTestSteps(k)).
+		WithSteps(b.CheckStackTestSteps(k)).
+		WithStep(generation.CompareObjectGenerationsStep(&b.AutoOpsAgentPolicy, k, isMutated, generationBeforeMutation, observedGenerationBeforeMutation))
+}
+
+// checkMatchingESClustersReachable verifies that every ES cluster that this policy will monitor has
+// a reachable and healthy HTTP endpoint. It mirrors the filtering logic used by the operator so that
+// only clusters which will actually receive an autoops-agent deployment are checked.
+func (b Builder) checkMatchingESClustersReachable(k *test.K8sClient) error {
+	selector, err := metav1.LabelSelectorAsSelector(&b.AutoOpsAgentPolicy.Spec.ResourceSelector)
+	if err != nil {
+		return fmt.Errorf("parsing resource selector: %w", err)
+	}
+
+	var esList esv1.ElasticsearchList
+	if err := k.Client.List(context.Background(), &esList, &k8sclient.ListOptions{LabelSelector: selector}); err != nil {
+		return fmt.Errorf("listing ES clusters: %w", err)
+	}
+
+	isNamespaceAllowed, err := k8s.NamespaceFilterFunc(context.Background(), k.Client, b.AutoOpsAgentPolicy.Spec.NamespaceSelector)
+	if err != nil {
+		return fmt.Errorf("building namespace filter: %w", err)
+	}
+
+	for _, es := range esList.Items {
+		if !isNamespaceAllowed(es.Namespace) {
+			continue
+		}
+		if es.Status.Phase != esv1.ElasticsearchReadyPhase {
+			return fmt.Errorf("ES cluster %s/%s is not ready yet (phase: %s)", es.Namespace, es.Name, es.Status.Phase)
+		}
+		esClient, err := elasticsearch.NewElasticsearchClient(es, k)
+		if err != nil {
+			return fmt.Errorf("creating ES client for %s/%s: %w", es.Namespace, es.Name, err)
+		}
+		health, err := esClient.GetClusterHealth(context.Background())
+		if err != nil {
+			return fmt.Errorf("ES cluster %s/%s not reachable: %w", es.Namespace, es.Name, err)
+		}
+		if health.Status == esv1.ElasticsearchRedHealth {
+			return fmt.Errorf("ES cluster %s/%s health is red", es.Namespace, es.Name)
+		}
+	}
+	return nil
+}
+
+// deleteStuckAutoOpsAgentPods deletes AutoOps agent pods that have been running but not-ready for
+// longer than stuckPodThreshold. This works around the elastic-otel-collector's metricbeat receiver
+// not retrying after a failed initial ES connection: the pod stays in a permanently broken state
+// where the health endpoint returns HTTP 500 and the readiness probe never passes.
+// Deleting the pod lets the Deployment controller create a fresh replacement that can connect
+// eventually when ES is reachable. This is a temporary workaround until https://github.com/elastic/beats/issues/49099
+// is resolved.
+func (b Builder) deleteStuckAutoOpsAgentPods(k *test.K8sClient) error {
+	const stuckPodThreshold = 60 * time.Second
+
+	return b.forEachAutoOpsDeployment(k, func(deployment appsv1.Deployment) error {
+		var pods corev1.PodList
+		podSelector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
+			MatchLabels: deployment.Spec.Selector.MatchLabels,
+		})
+		if err != nil {
+			return err
+		}
+		if err := k.Client.List(context.Background(), &pods,
+			k8sclient.InNamespace(b.AutoOpsAgentPolicy.Namespace),
+			k8sclient.MatchingLabelsSelector{Selector: podSelector},
+		); err != nil {
+			return err
+		}
+
+		for i := range pods.Items {
+			pod := &pods.Items[i]
+			if pod.Status.Phase != corev1.PodRunning || k8s.IsPodReady(*pod) {
+				continue
+			}
+			if time.Since(pod.Status.StartTime.Time) < stuckPodThreshold {
+				continue
+			}
+			if err := k.Client.Delete(context.Background(), pod); err != nil && !apierrors.IsNotFound(err) {
+				return fmt.Errorf("deleting stuck pod %s: %w", pod.Name, err)
+			}
+		}
+		return nil
+	})
 }

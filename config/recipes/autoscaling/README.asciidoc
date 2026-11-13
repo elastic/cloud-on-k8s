@@ -1,0 +1,28 @@
+= Elasticsearch Autoscaling
+
+This recipe demonstrates how to use the `ElasticsearchAutoscaler` resource to automatically scale Elasticsearch node sets based on cluster load and storage requirements.
+
+IMPORTANT: This recipe is for illustration purposes only and should not be considered production-ready.
+
+CAUTION: This recipe uses the `node.store.allow_mmap: false` configuration value to avoid configuring memory mapping settings on the underlying host. This could have a significant performance impact on your Elasticsearch clusters and should not be used in production without careful consideration. See https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html for more information.
+
+== Recipe
+
+The manifest deploys a three-tier Elasticsearch cluster (dedicated master, data/ingest/transform, and ML nodes) together with an `ElasticsearchAutoscaler` that defines scaling policies for the data and ML tiers.
+
+[source,sh]
+----
+kubectl apply -f elasticsearch.yaml
+----
+
+=== Autoscaling policies
+
+Two policies are configured:
+
+`di` (data, ingest, transform):: Scales between 3 and 8 nodes. CPU scales from 2 to 8 cores; memory from 2 Gi to 16 Gi; storage from 64 Gi to 512 Gi per node. The Elasticsearch link:https://www.elastic.co/guide/en/elasticsearch/reference/current/autoscaling-deciders.html[autoscaling deciders] drive scale-out decisions based on storage and reactive memory pressure.
+
+`ml` (machine learning):: Scales between 1 and 9 nodes. CPU scales from 1 to 4 cores; memory from 2 Gi to 8 Gi per node. Storage is fixed at 1 Gi (ML nodes do not require significant local storage).
+
+The master node set is not managed by the autoscaler and remains at a fixed count of 3.
+
+See link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-autoscaling.html[ECK autoscaling documentation] for more information.

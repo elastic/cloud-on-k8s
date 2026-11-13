@@ -71,10 +71,8 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 			wantNodeSetsResources: &v1alpha1.NodeSetsResources{
 				Name:             "aspec",
 				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 3}, {Name: "nodeset-2", NodeCount: 2}},
-				NodeResources: v1alpha1.NodeResources{
-					Requests: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceStorage: resource.MustParse("10Gi"),
-					},
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceStorage: resource.MustParse("10Gi"),
 				},
 			},
 		},
@@ -112,11 +110,9 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 			wantNodeSetsResources: &v1alpha1.NodeSetsResources{
 				Name:             "aspec",
 				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 3}, {Name: "nodeset-2", NodeCount: 2}},
-				NodeResources: v1alpha1.NodeResources{
-					Requests: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceMemory:  resource.MustParse("32Gi"),
-						corev1.ResourceStorage: resource.MustParse("10Gi"),
-					},
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory:  resource.MustParse("32Gi"),
+					corev1.ResourceStorage: resource.MustParse("10Gi"),
 				},
 			},
 		},
@@ -154,10 +150,8 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 			wantNodeSetsResources: &v1alpha1.NodeSetsResources{
 				Name:             "aspec",
 				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 3}, {Name: "nodeset-2", NodeCount: 2}},
-				NodeResources: v1alpha1.NodeResources{
-					Requests: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceMemory: resource.MustParse("32Gi"),
-					},
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("32Gi"),
 				},
 			},
 		},
@@ -216,10 +210,8 @@ func TestNodeSetsResourcesResourcesFromStatefulSets(t *testing.T) {
 			wantNodeSetsResources: &v1alpha1.NodeSetsResources{
 				Name:             "aspec",
 				NodeSetNodeCount: []v1alpha1.NodeSetNodeCount{{Name: "nodeset-1", NodeCount: 3}, {Name: "nodeset-2", NodeCount: 2}},
-				NodeResources: v1alpha1.NodeResources{
-					Requests: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceStorage: resource.MustParse("10Gi"),
-					},
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceStorage: resource.MustParse("10Gi"),
 				},
 			},
 		},
@@ -245,10 +237,8 @@ func buildStatefulSet(
 	volumeClaimTemplates map[string]resource.Quantity,
 ) *appsv1.StatefulSet {
 	statefulSet := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      esv1.StatefulSet("esname", nodeSetName),
-			Namespace: "esns",
-		},
+		Name:      esv1.StatefulSet("esname", nodeSetName),
+		Namespace: "esns",
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: int32ptr(replicas),
 		},
@@ -257,7 +247,7 @@ func buildStatefulSet(
 	// Add volumes
 	for volumeName, volumeRequest := range volumeClaimTemplates {
 		pvc := corev1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{Name: volumeName},
+			Name: volumeName,
 			Spec: corev1.PersistentVolumeClaimSpec{
 				Resources: corev1.VolumeResourceRequirements{
 					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceStorage: volumeRequest},

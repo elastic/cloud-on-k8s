@@ -14,7 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	"k8s.io/utils/ptr"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -127,16 +126,14 @@ func newUpgradeTestPods(pods ...testPod) upgradeTestPods {
 
 func (u upgradeTestPods) toES(version string, maxUnavailable int, annotations map[string]string) esv1.Elasticsearch {
 	return esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        TestEsName,
-			Namespace:   TestEsNamespace,
-			Annotations: annotations,
-		},
+		Name:        TestEsName,
+		Namespace:   TestEsNamespace,
+		Annotations: annotations,
 		Spec: esv1.ElasticsearchSpec{
 			Version: version,
 			UpdateStrategy: esv1.UpdateStrategy{
 				ChangeBudget: esv1.ChangeBudget{
-					MaxUnavailable: ptr.To[int32](int32(maxUnavailable)),
+					MaxUnavailable: new(int32(maxUnavailable)), //nolint:gosec // G115: maxUnavailable is a small test value, cannot realistically overflow int32
 				},
 			},
 		},
@@ -284,14 +281,12 @@ func (t testPod) toPod() corev1.Pod {
 		deletionTimestamp = &now
 	}
 	pod := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:              t.name,
-			Namespace:         TestEsNamespace,
-			UID:               t.uid,
-			DeletionTimestamp: deletionTimestamp,
-			ResourceVersion:   t.resourceVersion,
-			Finalizers:        t.finalizers,
-		},
+		Name:              t.name,
+		Namespace:         TestEsNamespace,
+		UID:               t.uid,
+		DeletionTimestamp: deletionTimestamp,
+		ResourceVersion:   t.resourceVersion,
+		Finalizers:        t.finalizers,
 	}
 
 	if t.version == "" {
@@ -329,7 +324,9 @@ func (t testPod) toPod() corev1.Pod {
 
 type testESState struct {
 	inCluster []string
-	health    client.Health
+	// partialNodes is true if some nodes did not respond to the nodes request
+	partialNodes bool
+	health       client.Health
 	ESState
 }
 
@@ -339,6 +336,18 @@ func (t *testESState) ShardAllocationsEnabled() (bool, error) {
 
 func (t *testESState) Health() (client.Health, error) {
 	return t.health, nil
+}
+
+func (t *testESState) NodeNameToID() (map[string]string, error) {
+	nodeNameToID := make(map[string]string, len(t.inCluster))
+	for _, nodeName := range t.inCluster {
+		nodeNameToID[nodeName] = nodeName
+	}
+	return nodeNameToID, nil
+}
+
+func (t *testESState) NodesResponsePartial() (bool, error) {
+	return t.partialNodes, nil
 }
 
 func (t *testESState) NodesInCluster(nodeNames []string) (bool, error) {

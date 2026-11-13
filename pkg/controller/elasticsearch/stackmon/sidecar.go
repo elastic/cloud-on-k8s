@@ -16,6 +16,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	beatstackmon "github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/common/stackmon"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
@@ -33,7 +34,7 @@ const (
 	cfgHashAnnotation = "elasticsearch.k8s.elastic.co/monitoring-config-hash"
 )
 
-func Metricbeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, meta metadata.Metadata) (stackmon.BeatSidecar, error) {
+func Metricbeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, meta metadata.Metadata, clientAuthenticationRequired bool) (stackmon.BeatSidecar, error) {
 	username := user.MonitoringUserName
 	password, err := user.GetMonitoringUserPassword(client, k8s.ExtractNamespacedName(&es))
 	if err != nil {
@@ -50,12 +51,24 @@ func Metricbeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, m
 		return stackmon.BeatSidecar{}, err
 	}
 
+	// When the source ES has client authentication enabled, mount the internal client certificate
+	// so Metricbeat can authenticate via mTLS when connecting to the local ES.
+	var clientCertVolume volume.VolumeLike
+	if clientAuthenticationRequired {
+		clientCertVolume = volume.NewSecretVolumeWithMountPath(
+			certificates.OperatorClientCertSecretName(esv1.ESNamer, es.Name),
+			"metricbeat-es-client-cert",
+			"/mnt/elastic-internal/es-monitoring-client-certs",
+		)
+	}
+
 	input := stackmon.TemplateParams{
-		URL:      fmt.Sprintf("%s://localhost:%d", es.Spec.HTTP.Protocol(), network.HTTPPort),
-		Username: username,
-		Password: password,
-		IsSSL:    es.Spec.HTTP.TLS.Enabled(),
-		CAVolume: caVolume,
+		URL:              fmt.Sprintf("%s://localhost:%d", es.Spec.HTTP.Protocol(), network.HTTPPort),
+		Username:         username,
+		Password:         password,
+		IsSSL:            es.Spec.HTTP.TLS.Enabled(),
+		CAVolume:         caVolume,
+		ClientCertVolume: clientCertVolume,
 	}
 
 	cfg, err := stackmon.RenderTemplate(v, metricbeatConfigTemplate, input)
@@ -63,7 +76,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, m
 		return stackmon.BeatSidecar{}, err
 	}
 
-	metricbeat, err := stackmon.NewMetricBeatSidecar(ctx, client, &es, v, caVolume, cfg, meta)
+	metricbeat, err := stackmon.NewMetricBeatSidecar(ctx, client, &es, v, caVolume, clientCertVolume, cfg, meta)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
@@ -76,11 +89,17 @@ func Metricbeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, m
 }
 
 func Filebeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, meta metadata.Metadata) (stackmon.BeatSidecar, error) {
-	fileBeat, err := stackmon.NewFileBeatSidecar(ctx, client, &es, es.Spec.Version, filebeatConfig, nil, meta)
+	ver, err := version.Parse(es.Spec.Version)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
-	ver, err := version.Parse(es.Spec.Version)
+
+	cfg, err := stackmon.RenderTemplate(ver, filebeatConfigTemplate, nil)
+	if err != nil {
+		return stackmon.BeatSidecar{}, err
+	}
+
+	fileBeat, err := stackmon.NewFileBeatSidecar(ctx, client, &es, es.Spec.Version, cfg, nil, meta)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}
@@ -90,7 +109,7 @@ func Filebeat(ctx context.Context, client k8s.Client, es esv1.Elasticsearch, met
 
 // WithMonitoring updates the Elasticsearch Pod template builder to deploy Metricbeat and Filebeat in sidecar containers
 // in the Elasticsearch pod and injects the volumes for the beat configurations and the ES CA certificates.
-func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch, meta metadata.Metadata) (*defaults.PodTemplateBuilder, error) {
+func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.PodTemplateBuilder, es esv1.Elasticsearch, meta metadata.Metadata, clientAuthenticationRequired bool) (*defaults.PodTemplateBuilder, error) {
 	isMonitoringReconcilable, err := monitoring.IsReconcilable(&es)
 	if err != nil {
 		return nil, err
@@ -103,7 +122,7 @@ func WithMonitoring(ctx context.Context, client k8s.Client, builder *defaults.Po
 	volumes := make([]corev1.Volume, 0)
 
 	if monitoring.IsMetricsDefined(&es) {
-		b, err := Metricbeat(ctx, client, es, meta)
+		b, err := Metricbeat(ctx, client, es, meta, clientAuthenticationRequired)
 		if err != nil {
 			return nil, err
 		}

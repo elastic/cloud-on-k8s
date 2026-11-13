@@ -15,12 +15,13 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/ptr"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	commonapikey "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/apikey"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/defaults"
 	common_deployment "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
@@ -32,7 +33,9 @@ import (
 )
 
 const (
-	autoOpsAgentType         = "autoops-agent"
+	// TypeLabelValue is the type label value for AutoOps Agent resources.
+	TypeLabelValue           = "autoops-agent"
+	autoOpsAgentType         = TypeLabelValue
 	configVolumeName         = "config-volume"
 	configVolumePath         = "/mnt/config"
 	configHashAnnotationName = "autoops.k8s.elastic.co/config-hash"
@@ -86,41 +89,53 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 		caSecretName := autoopsv1alpha1.CASecret(policy.GetName(), es)
 		caVolume := volume.NewSecretVolumeWithMountPath(
 			caSecretName,
-			fmt.Sprintf("es-ca-%s-%s", es.Name, es.Namespace),
+			caCertVolumeName(es),
 			fmt.Sprintf("/mnt/elastic-internal/es-ca/%s-%s", es.Namespace, es.Name),
 		)
 		volumes = append(volumes, caVolume.Volume())
 		volumeMounts = append(volumeMounts, caVolume.VolumeMount())
 	}
 
+	if annotation.HasClientAuthenticationRequired(&es) {
+		// Add client certificate volume for this ES instance when client authentication is required
+		clientCertSecretName := autoopsv1alpha1.ClientCertSecret(policy.GetName(), es)
+		clientCertVolume := volume.NewSecretVolumeWithMountPath(
+			clientCertSecretName,
+			clientCertVolumeName(es),
+			fmt.Sprintf("/mnt/elastic-internal/es-client-cert/%s-%s", es.Namespace, es.Name),
+		)
+		volumes = append(volumes, clientCertVolume.Volume())
+		volumeMounts = append(volumeMounts, clientCertVolume.VolumeMount())
+	}
+
 	annotations := map[string]string{configHashAnnotationName: configHash}
 	meta := metadata.Propagate(&policy, metadata.Metadata{Labels: labels, Annotations: annotations})
-	builder := defaults.NewPodTemplateBuilder(policy.Spec.PodTemplate, autoOpsAgentType).
-		WithArgs("--config", path.Join(configVolumePath, autoOpsESConfigFileName)).
+	builder := defaults.NewPodTemplateBuilder(policy.Spec.PodTemplate, autoopsv1alpha1.AutoOpsAgentContainerName).
+		WithArgs("--config", path.Join(configVolumePath, autoopsv1alpha1.ConfigFileName)).
 		WithLabels(meta.Labels).
 		WithAnnotations(meta.Annotations).
 		WithDockerImage(policy.Spec.Image, container.ImageRepository(container.AutoOpsAgentImage, v)).
 		WithEnv(autoopsEnvVars(policy, es)...).
-		WithResources(defaultResources).
+		WithResourcesAndOverrides(defaultResources, policy.Spec.Resources).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithPorts([]corev1.ContainerPort{{Name: "http", ContainerPort: int32(readinessProbePort), Protocol: corev1.ProtocolTCP}}).
 		WithReadinessProbe(readinessProbe()).
 		WithContainersSecurityContext(corev1.SecurityContext{
-			AllowPrivilegeEscalation: ptr.To(false),
+			AllowPrivilegeEscalation: new(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{"ALL"},
 			},
-			Privileged: ptr.To(false),
+			Privileged: new(false),
 			// Can't set this to true because of:
 			// failed to build pipelines:
 			// failed to create "metricbeatreceiver" receiver for data type "logs":
 			// error creating metricbeatreceiver: error loading meta data:
 			// failed to create Beat meta file: open data/meta.json.new: read-only file system
-			ReadOnlyRootFilesystem: ptr.To(false),
+			ReadOnlyRootFilesystem: new(false),
 			// Can't currently do this because of:
 			// Error: container has runAsNonRoot and image has non-numeric user (elastic-agent)
-			// RunAsNonRoot:           ptr.To(true),
+			// RunAsNonRoot:           new(true),
 		})
 
 	if r.params.SetDefaultSecurityContext {
@@ -139,9 +154,17 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 		},
 		Metadata:             meta,
 		PodTemplateSpec:      builder.PodTemplate,
-		Replicas:             1,
+		Replicas:             new(int32(1)),
 		RevisionHistoryLimit: policy.Spec.RevisionHistoryLimit,
 	}), nil
+}
+
+func caCertVolumeName(es esv1.Elasticsearch) string {
+	return volume.CAVolumeName("es", es.Namespace, es.Name)
+}
+
+func clientCertVolumeName(es esv1.Elasticsearch) string {
+	return volume.ClientCertVolumeName("es", es.Namespace, es.Name)
 }
 
 // readinessProbe is the readiness probe for the AutoOps Agent container
@@ -153,22 +176,27 @@ func readinessProbe() corev1.Probe {
 		PeriodSeconds:       10,
 		SuccessThreshold:    1,
 		TimeoutSeconds:      5,
-		ProbeHandler: corev1.ProbeHandler{
-			HTTPGet: &corev1.HTTPGetAction{
-				Port:   intstr.FromInt(readinessProbePort),
-				Path:   "/health/status",
-				Scheme: scheme,
-			},
+		HTTPGet: &corev1.HTTPGetAction{
+			Port:   intstr.FromInt(readinessProbePort),
+			Path:   "/health/status",
+			Scheme: scheme,
 		},
 	}
 }
 
 // buildConfigHash builds a hash of the ConfigMap data and secret values
 // to trigger pod restart on config changes
-func buildConfigHash(ctx context.Context, configMap corev1.ConfigMap, apiKeySecret corev1.Secret, c k8s.Client, policy autoopsv1alpha1.AutoOpsAgentPolicy) (string, error) {
+func buildConfigHash(
+	ctx context.Context,
+	configMap corev1.ConfigMap,
+	apiKeySecret corev1.Secret,
+	clientCertSecret *corev1.Secret,
+	c k8s.Client,
+	policy autoopsv1alpha1.AutoOpsAgentPolicy,
+) (string, error) {
 	configHash := fnv.New32a()
 
-	if configData, ok := configMap.Data[autoOpsESConfigFileName]; ok {
+	if configData, ok := configMap.Data[autoopsv1alpha1.ConfigFileName]; ok {
 		_, _ = configHash.Write([]byte(configData))
 	}
 
@@ -183,7 +211,7 @@ func buildConfigHash(ctx context.Context, configMap corev1.ConfigMap, apiKeySecr
 	// 1. The optional keys are included here.
 	//   1a. cloud-connected-mode-api-url is optional, and is only required if connecting to an environment such as non-production or air-gapped.
 	// 2. The required keys are already validated in the controller, so they should always be present.
-	keys := []string{autoOpsToken, autoOpsOTelURL, ccmAPIKey, ccmAPIURL}
+	keys := []string{autoOpsOTelURL, ccmAPIKey, ccmAPIURL}
 	for _, key := range keys {
 		if data, ok := autoopsSecret.Data[key]; ok {
 			_, _ = configHash.Write(data)
@@ -196,6 +224,17 @@ func buildConfigHash(ctx context.Context, configMap corev1.ConfigMap, apiKeySecr
 		_, _ = configHash.Write(apiKeyData)
 	}
 
+	// If client certificate secret is set it folds it into the hash so cert rotation
+	// rolls the deployment.
+	if clientCertSecret != nil && len(clientCertSecret.Data) > 0 {
+		if data, ok := clientCertSecret.Data[certificates.CertFileName]; ok {
+			_, _ = configHash.Write(data)
+		}
+		if data, ok := clientCertSecret.Data[certificates.KeyFileName]; ok {
+			_, _ = configHash.Write(data)
+		}
+	}
+
 	return fmt.Sprint(configHash.Sum32()), nil
 }
 
@@ -205,17 +244,6 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 	esService := services.InternalServiceURL(es)
 	return []corev1.EnvVar{
 		{
-			Name: "AUTOOPS_TOKEN",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: policy.Spec.AutoOpsRef.SecretName,
-					},
-					Key: "autoops-token",
-				},
-			},
-		},
-		{
 			Name:  "AUTOOPS_ES_URL",
 			Value: esService,
 		},
@@ -223,10 +251,8 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 			Name: "AUTOOPS_OTEL_URL",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: policy.Spec.AutoOpsRef.SecretName,
-					},
-					Key: "autoops-otel-url",
+					Name: policy.Spec.AutoOpsRef.SecretName,
+					Key:  "autoops-otel-url",
 				},
 			},
 		},
@@ -234,11 +260,9 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 			Name: "AUTOOPS_ES_API_KEY",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: autoopsv1alpha1.APIKeySecret(policy.GetName(), k8s.ExtractNamespacedName(&es)),
-					},
+					Name:     autoopsv1alpha1.APIKeySecret(policy.GetName(), k8s.ExtractNamespacedName(&es)),
 					Key:      apiKeySecretKey,
-					Optional: ptr.To(false),
+					Optional: new(false),
 				},
 			},
 		},
@@ -246,10 +270,8 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 			Name: "ELASTIC_CLOUD_CONNECTED_MODE_API_KEY",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: policy.Spec.AutoOpsRef.SecretName,
-					},
-					Key: "cloud-connected-mode-api-key",
+					Name: policy.Spec.AutoOpsRef.SecretName,
+					Key:  "cloud-connected-mode-api-key",
 				},
 			},
 		},
@@ -257,11 +279,9 @@ func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticse
 			Name: "ELASTIC_CLOUD_CONNECTED_MODE_API_URL",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: policy.Spec.AutoOpsRef.SecretName,
-					},
+					Name:     policy.Spec.AutoOpsRef.SecretName,
 					Key:      "cloud-connected-mode-api-url",
-					Optional: ptr.To(true),
+					Optional: new(true),
 				},
 			},
 		},

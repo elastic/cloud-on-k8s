@@ -6,26 +6,32 @@ package autoops
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	commonapikey "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/apikey"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	commonlabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
@@ -46,21 +52,9 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 	}{
 		{
 			name: "config secret not found sets invalid phase",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.1.0",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "missing-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			policy: newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
+				a.Spec.AutoOpsRef.SecretName = "missing-secret"
+			}),
 			initialObjects: []client.Object{},
 			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
 				Phase: autoopsv1alpha1.InvalidPhase,
@@ -69,28 +63,14 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 		},
 		{
 			name: "config secret missing required keys sets invalid phase",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "invalid-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			policy: newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
+				a.Spec.AutoOpsRef.SecretName = "invalid-secret"
+			}),
 			initialObjects: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "invalid-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{},
+					Name:      "invalid-secret",
+					Namespace: "ns-1",
+					Data:      map[string][]byte{},
 				},
 			},
 			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
@@ -100,39 +80,19 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 		},
 		{
 			name: "invalid label selector sets error phase",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchExpressions: []metav1.LabelSelectorRequirement{
-							{
-								Key:      "app",
-								Operator: "InvalidOperator",
-								Values:   []string{"elasticsearch"},
-							},
+			policy: newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
+				a.Spec.ResourceSelector = metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "app",
+							Operator: "InvalidOperator",
+							Values:   []string{"elasticsearch"},
 						},
 					},
-				},
-			},
+				}
+			}),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
+				newSecret(),
 			},
 			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
 				Phase: autoopsv1alpha1.ErrorPhase,
@@ -140,34 +100,10 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 			wantResults: reconcile.Result{},
 		},
 		{
-			name: "no ES resources found sets no monitored resources phase",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			name:   "no ES resources found sets no monitored resources phase",
+			policy: newAutoOpsAgentPolicy(),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
+				newSecret(),
 			},
 			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
 				Phase:     autoopsv1alpha1.NoMonitoredResourcesPhase,
@@ -176,47 +112,11 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 			wantResults: reconcile.Result{},
 		},
 		{
-			name: "ES resource not ready",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			name:   "ES resource not ready",
+			policy: newAutoOpsAgentPolicy(),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchApplyingChangesPhase,
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-				},
+				newSecret(),
+				newElasticsearch(func(e *esv1.Elasticsearch) { e.Status.Phase = esv1.ElasticsearchApplyingChangesPhase }),
 			},
 			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
 				Resources: 1,
@@ -226,47 +126,11 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 			wantResults: reconcile.Result{RequeueAfter: 10 * time.Second},
 		},
 		{
-			name: "successful reconciliation with one ready ES",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			name:   "successful reconciliation with one ready ES",
+			policy: newAutoOpsAgentPolicy(),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
+				newSecret(),
+				newElasticsearch(),
 			},
 			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
 				Resources: 1,
@@ -276,60 +140,15 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 			wantResults: reconcile.Result{},
 		},
 		{
-			name: "multiple ES resources with mixed states",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			name:   "multiple ES resources with mixed states",
+			policy: newAutoOpsAgentPolicy(),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-2",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchApplyingChangesPhase,
-					},
-				},
+				newSecret(),
+				newElasticsearch(),
+				newElasticsearch(func(e *esv1.Elasticsearch) {
+					e.ObjectMeta.Name = "es-2"
+					e.Status.Phase = esv1.ElasticsearchApplyingChangesPhase
+				}),
 			},
 			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
 				Resources: 2,
@@ -340,70 +159,28 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 			wantResults: reconcile.Result{RequeueAfter: 10 * time.Second},
 		},
 		{
-			name: "single ES with ready deployment shows ready: 1, resources: 1",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			name:   "single ES with ready deployment shows ready: 1, resources: 1",
+			policy: newAutoOpsAgentPolicy(),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
+				newSecret(),
+				newElasticsearch(),
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      autoopsv1alpha1.Config("policy-1", esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es-1", Namespace: "ns-1"}}),
-						Namespace: "ns-1",
-					},
+					Name:      autoopsv1alpha1.Config("policy-1", esv1.Elasticsearch{Name: "es-1", Namespace: "ns-1"}),
+					Namespace: "ns-1",
 					Data: map[string]string{
-						autoOpsESConfigFileName: "test-config",
+						autoopsv1alpha1.ConfigFileName: "test-config",
 					},
 				},
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      autoopsv1alpha1.APIKeySecret("policy-1", types.NamespacedName{Name: "es-1", Namespace: "ns-1"}),
-						Namespace: "ns-1",
-					},
+					Name:      autoopsv1alpha1.APIKeySecret("policy-1", types.NamespacedName{Name: "es-1", Namespace: "ns-1"}),
+					Namespace: "ns-1",
 					Data: map[string][]byte{
 						apiKeySecretKey: []byte("test-api-key"),
 					},
 				},
 				&appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      autoopsv1alpha1.Deployment("policy-1", esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es-1", Namespace: "ns-1"}}),
-						Namespace: "ns-1",
-					},
+					Name:      autoopsv1alpha1.Deployment("policy-1", esv1.Elasticsearch{Name: "es-1", Namespace: "ns-1"}),
+					Namespace: "ns-1",
 					Status: appsv1.DeploymentStatus{
 						Conditions: []appsv1.DeploymentCondition{
 							{
@@ -423,83 +200,29 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 			wantResults: reconcile.Result{},
 		},
 		{
-			name: "two ES instances: one with ready deployment, one without shows ready: 1, resources: 2",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
+			name:   "two ES instances: one with ready deployment, one without shows ready: 1, resources: 2",
+			policy: newAutoOpsAgentPolicy(),
 			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-2",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
+				newSecret(),
+				newElasticsearch(),
+				newElasticsearch(func(e *esv1.Elasticsearch) { e.ObjectMeta.Name = "es-2" }),
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      autoopsv1alpha1.Config("policy-1", esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es-1", Namespace: "ns-1"}}),
-						Namespace: "ns-1",
-					},
+					Name:      autoopsv1alpha1.Config("policy-1", esv1.Elasticsearch{Name: "es-1", Namespace: "ns-1"}),
+					Namespace: "ns-1",
 					Data: map[string]string{
-						autoOpsESConfigFileName: "test-config",
+						autoopsv1alpha1.ConfigFileName: "test-config",
 					},
 				},
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      autoopsv1alpha1.APIKeySecret("policy-1", types.NamespacedName{Name: "es-1", Namespace: "ns-1"}),
-						Namespace: "ns-1",
-					},
+					Name:      autoopsv1alpha1.APIKeySecret("policy-1", types.NamespacedName{Name: "es-1", Namespace: "ns-1"}),
+					Namespace: "ns-1",
 					Data: map[string][]byte{
 						apiKeySecretKey: []byte("test-api-key"),
 					},
 				},
 				&appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      autoopsv1alpha1.Deployment("policy-1", esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es-1", Namespace: "ns-1"}}),
-						Namespace: "ns-1",
-					},
+					Name:      autoopsv1alpha1.Deployment("policy-1", esv1.Elasticsearch{Name: "es-1", Namespace: "ns-1"}),
+					Namespace: "ns-1",
 					Status: appsv1.DeploymentStatus{
 						Conditions: []appsv1.DeploymentCondition{
 							{
@@ -519,130 +242,35 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 			wantResults: reconcile.Result{},
 		},
 		{
-			name: "deprecated ES version is ignored",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.2.1",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-				},
-			},
-			initialObjects: []client.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-deprecated",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "7.15.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
-			},
-			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
-				Resources: 1,
-				Ready:     0,
-				Errors:    0,
-				Phase:     "",
-			},
-		},
-		{
 			name: "two ES instances: filter by namespace shows ready: 1, resources: 1",
-			policy: autoopsv1alpha1.AutoOpsAgentPolicy{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "policy-1",
-					Namespace: "ns-1",
-				},
-				Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-					Version: "9.1.0",
-					AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
-						SecretName: "config-secret",
-					},
-					ResourceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"app": "elasticsearch"},
-					},
-					NamespaceSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"kubernetes.io/metadata.name": "ns-1"},
-					},
-				},
-			},
+			policy: newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
+				a.Spec.NamespaceSelector = metav1.LabelSelector{
+					MatchLabels: map[string]string{"kubernetes.io/metadata.name": "ns-1"},
+				}
+			}),
 			initialObjects: []client.Object{
 				&corev1.Namespace{
-					TypeMeta: metav1.TypeMeta{
-						Kind:       "Namespace",
-						APIVersion: "v1",
-					},
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "ns-1",
-						Labels: map[string]string{
-							"kubernetes.io/metadata.name": "ns-1",
-						},
+					Kind:       "Namespace",
+					APIVersion: "v1",
+					Name:       "ns-1",
+					Labels: map[string]string{
+						"kubernetes.io/metadata.name": "ns-1",
 					},
 				},
 				&corev1.Namespace{
-					TypeMeta: metav1.TypeMeta{
-						Kind:       "Namespace",
-						APIVersion: "v1",
-					},
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "ns-2",
-						Labels: map[string]string{
-							"kubernetes.io/metadata.name": "ns-2",
-						},
+					Kind:       "Namespace",
+					APIVersion: "v1",
+					Name:       "ns-2",
+					Labels: map[string]string{
+						"kubernetes.io/metadata.name": "ns-2",
 					},
 				},
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "config-secret",
-						Namespace: "ns-1",
-					},
-					Data: map[string][]byte{
-						"cloud-connected-mode-api-key": []byte("test-key"),
-						"autoops-otel-url":             []byte("https://test-url"),
-						"autoops-token":                []byte("test-token"),
-					},
-				},
+				newSecret(),
+				newElasticsearch(),
 				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-1",
-						Namespace: "ns-1",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
-					Spec: esv1.ElasticsearchSpec{
-						Version: "9.1.0",
-					},
-					Status: esv1.ElasticsearchStatus{
-						Phase: esv1.ElasticsearchReadyPhase,
-					},
-				},
-				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es-2",
-						Namespace: "ns-2",
-						Labels:    map[string]string{"app": "elasticsearch"},
-					},
+					Name:      "es-2",
+					Namespace: "ns-2",
+					Labels:    map[string]string{"app": "elasticsearch"},
 					Spec: esv1.ElasticsearchSpec{
 						Version: "9.1.0",
 					},
@@ -651,28 +279,22 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 					},
 				},
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      autoopsv1alpha1.Config("policy-1", esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es-1", Namespace: "ns-1"}}),
-						Namespace: "ns-1",
-					},
+					Name:      autoopsv1alpha1.Config("policy-1", esv1.Elasticsearch{Name: "es-1", Namespace: "ns-1"}),
+					Namespace: "ns-1",
 					Data: map[string]string{
-						autoOpsESConfigFileName: "test-config",
+						autoopsv1alpha1.ConfigFileName: "test-config",
 					},
 				},
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      autoopsv1alpha1.APIKeySecret("policy-1", types.NamespacedName{Name: "es-1", Namespace: "ns-1"}),
-						Namespace: "ns-1",
-					},
+					Name:      autoopsv1alpha1.APIKeySecret("policy-1", types.NamespacedName{Name: "es-1", Namespace: "ns-1"}),
+					Namespace: "ns-1",
 					Data: map[string][]byte{
 						apiKeySecretKey: []byte("test-api-key"),
 					},
 				},
 				&appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      autoopsv1alpha1.Deployment("policy-1", esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es-1", Namespace: "ns-1"}}),
-						Namespace: "ns-1",
-					},
+					Name:      autoopsv1alpha1.Deployment("policy-1", esv1.Elasticsearch{Name: "es-1", Namespace: "ns-1"}),
+					Namespace: "ns-1",
 					Status: appsv1.DeploymentStatus{
 						Conditions: []appsv1.DeploymentCondition{
 							{
@@ -709,7 +331,6 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 					Dialer: &fakeDialer{},
 				},
 				dynamicWatches: watches.NewDynamicWatches(),
-				licenseChecker: license.NewLicenseChecker(k8sClient, "test-namespace"),
 			}
 
 			ctx := context.Background()
@@ -722,10 +343,315 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 			expectError := tt.wantStatus.Phase == autoopsv1alpha1.ErrorPhase || tt.wantStatus.Phase == autoopsv1alpha1.InvalidPhase
 			require.Equal(t, expectError, gotErr != nil, "expected error: %v, got error: %v", expectError, gotErr)
 
+			// avoid having to initialize it in every testcase entry.
+			if tt.wantStatus.Details == nil {
+				tt.wantStatus.Details = map[string]autoopsv1alpha1.AutoOpsResourceStatus{}
+			}
+
 			if !cmp.Equal(tt.wantStatus, state.status, cmpopts.IgnoreFields(autoopsv1alpha1.AutoOpsAgentPolicyStatus{}, "ObservedGeneration")) {
 				t.Errorf("status mismatch:\n%s", cmp.Diff(tt.wantStatus, state.status, cmpopts.IgnoreFields(autoopsv1alpha1.AutoOpsAgentPolicyStatus{}, "ObservedGeneration")))
 			}
 			require.Equal(t, tt.wantResults, gotResult)
+		})
+	}
+}
+
+func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrorsAndSkipped(t *testing.T) {
+	scheme.SetupScheme()
+
+	tests := []struct {
+		name             string
+		policy           autoopsv1alpha1.AutoOpsAgentPolicy
+		initialObjects   []client.Object
+		accessReviewer   *fakeAccessReviewer
+		esClientProvider commonesclient.Provider
+		interceptorFuncs *interceptor.Funcs
+		wantErr          bool
+		wantStatus       autoopsv1alpha1.AutoOpsAgentPolicyStatus
+	}{
+		{
+			name:   "accessReviewer error sets correct status Details",
+			policy: newAutoOpsAgentPolicy(),
+			initialObjects: []client.Object{
+				newSecret(),
+				newElasticsearch(),
+			},
+			accessReviewer: &fakeAccessReviewer{err: errors.New("access review failed")},
+			wantErr:        true,
+			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
+				Errors: 1,
+				Details: map[string]autoopsv1alpha1.AutoOpsResourceStatus{
+					"ns-1/es-1": {
+						Phase: autoopsv1alpha1.ErrorResourcePhase,
+						Error: "Failed trying to perform RBAC check: access review failed",
+					},
+				},
+			},
+		},
+		{
+			name: "rbac not allowed sets correct status Details",
+			policy: newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
+				a.Spec.ServiceAccountName = "test-sa"
+			}),
+			initialObjects: []client.Object{
+				newSecret(),
+				newElasticsearch(),
+			},
+			accessReviewer: &fakeAccessReviewer{allowed: false},
+			wantErr:        false,
+			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
+				Skipped: 1,
+				Details: map[string]autoopsv1alpha1.AutoOpsResourceStatus{
+					"ns-1/es-1": {
+						Phase:   autoopsv1alpha1.SkippedResourcePhase,
+						Message: "RBAC access denied for service account test-sa",
+					},
+				},
+			},
+		},
+		{
+			name:   "reconcileAutoOpsESCASecret failure sets correct status Details",
+			policy: newAutoOpsAgentPolicy(),
+			initialObjects: []client.Object{
+				newSecret(),
+				newElasticsearch(),
+				// The ES http-certs-public secret that contains the CA certificate
+				&corev1.Secret{
+					Name:      "es-1-es-http-certs-public",
+					Namespace: "ns-1",
+					Data: map[string][]byte{
+						"tls.crt": []byte("test-ca-cert"),
+						"ca.crt":  []byte("test-ca-cert"),
+					},
+				},
+			},
+			accessReviewer: &fakeAccessReviewer{allowed: true},
+			interceptorFuncs: &interceptor.Funcs{
+				Create: func(ctx context.Context, client client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+					if s, ok := obj.(*corev1.Secret); ok && strings.HasPrefix(s.Name, "policy-1-autoops-ca") {
+						return errors.New("secret creation failed")
+					}
+					return client.Create(ctx, obj, opts...)
+				},
+			},
+			wantErr: true,
+			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
+				Errors: 1,
+				Details: map[string]autoopsv1alpha1.AutoOpsResourceStatus{
+					"ns-1/es-1": {
+						Phase: autoopsv1alpha1.ErrorResourcePhase,
+						Error: "Failed to reconcile AutoOps ES CA secret: secret creation failed",
+					},
+				},
+			},
+		},
+		{
+			name:   "reconcileAutoOpsESAPIKey failure sets correct status Details",
+			policy: newAutoOpsAgentPolicy(),
+			initialObjects: []client.Object{
+				newSecret(),
+				newElasticsearch(),
+			},
+			accessReviewer: &fakeAccessReviewer{allowed: true},
+			esClientProvider: newFakeESClientProviderWithClient(&fakeESClient{
+				getAPIKeysByNameErr: errors.New("elasticsearch API error"),
+			}).Provider,
+			wantErr: true,
+			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
+				Errors: 1,
+				Details: map[string]autoopsv1alpha1.AutoOpsResourceStatus{
+					"ns-1/es-1": {
+						Phase: autoopsv1alpha1.ErrorResourcePhase,
+						Error: "Failed to reconcile AutoOps ES API key: while getting API keys by name autoops-ns-1-policy-1-ns-1-es-1: elasticsearch API error",
+					},
+				},
+			},
+		},
+		{
+			name:   "ReconcileAutoOpsESConfigMap failure sets correct status Details",
+			policy: newAutoOpsAgentPolicy(),
+			initialObjects: []client.Object{
+				newSecret(),
+				newElasticsearch(),
+			},
+			accessReviewer: &fakeAccessReviewer{allowed: true},
+			interceptorFuncs: &interceptor.Funcs{
+				Create: func(ctx context.Context, client client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+					if _, ok := obj.(*corev1.ConfigMap); ok {
+						return errors.New("configmap creation failed")
+					}
+					return client.Create(ctx, obj, opts...)
+				},
+			},
+			wantErr: true,
+			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
+				Errors: 1,
+				Details: map[string]autoopsv1alpha1.AutoOpsResourceStatus{
+					"ns-1/es-1": {
+						Phase: autoopsv1alpha1.ErrorResourcePhase,
+						Error: "Failed to reconcile AutoOps ES config map: configmap creation failed",
+					},
+				},
+			},
+		},
+		{
+			name:   "buildConfigHash failure sets correct status Details",
+			policy: newAutoOpsAgentPolicy(),
+			initialObjects: []client.Object{
+				newSecret(),
+				newElasticsearch(),
+			},
+			accessReviewer: &fakeAccessReviewer{allowed: true},
+			interceptorFuncs: func() *interceptor.Funcs {
+				// Track calls to config-secret to fail only on buildConfigHash (second call)
+				configSecretGetCount := 0
+				return &interceptor.Funcs{
+					Get: func(ctx context.Context, client client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+						if _, ok := obj.(*corev1.Secret); ok && key.Name == "config-secret" && key.Namespace == "ns-1" {
+							configSecretGetCount++
+							// First call is from validateConfigSecret, let it pass
+							// Second call is from buildConfigHash, fail it
+							if configSecretGetCount > 1 {
+								return errors.New("config secret access failed during hash computation")
+							}
+						}
+						return client.Get(ctx, key, obj, opts...)
+					},
+				}
+			}(),
+			wantErr: true,
+			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
+				Errors: 1,
+				Details: map[string]autoopsv1alpha1.AutoOpsResourceStatus{
+					"ns-1/es-1": {
+						Phase: autoopsv1alpha1.ErrorResourcePhase,
+						Error: "Failed to prepare AutoOps agent deployment: while getting autoops configuration secret ns-1/config-secret: config secret access failed during hash computation",
+					},
+				},
+			},
+		},
+		{
+			name: "buildDeployment failure sets correct status Details",
+			policy: newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
+				a.Spec.Version = "invalid-version" // Invalid version will cause buildDeployment to fail
+			}),
+			initialObjects: []client.Object{
+				newSecret(),
+				newElasticsearch(),
+			},
+			accessReviewer: &fakeAccessReviewer{allowed: true},
+			wantErr:        true,
+			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
+				Errors: 1,
+				Details: map[string]autoopsv1alpha1.AutoOpsResourceStatus{
+					"ns-1/es-1": {
+						Phase: autoopsv1alpha1.ErrorResourcePhase,
+						Error: "Failed to build AutoOps agent deployment: No Major.Minor.Patch elements found",
+					},
+				},
+			},
+		},
+		{
+			name:   "deployment.Reconcile failure sets correct status Details",
+			policy: newAutoOpsAgentPolicy(),
+			initialObjects: []client.Object{
+				newSecret(),
+				newElasticsearch(),
+			},
+			accessReviewer: &fakeAccessReviewer{allowed: true},
+			interceptorFuncs: &interceptor.Funcs{
+				Create: func(ctx context.Context, client client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+					if d, ok := obj.(*appsv1.Deployment); ok && strings.HasPrefix(d.Name, "policy-1-autoops-deploy") {
+						return errors.New("deployment creation failed")
+					}
+					return client.Create(ctx, obj, opts...)
+				},
+			},
+			wantErr: true,
+			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
+				Errors: 1,
+				Details: map[string]autoopsv1alpha1.AutoOpsResourceStatus{
+					"ns-1/es-1": {
+						Phase: autoopsv1alpha1.ErrorResourcePhase,
+						Error: "Failed to reconcile AutoOps agent deployment: deployment creation failed",
+					},
+				},
+			},
+		},
+		{
+			name:   "deprecated ES version is ignored",
+			policy: newAutoOpsAgentPolicy(),
+			initialObjects: []client.Object{
+				newSecret(),
+				newElasticsearch(func(e *esv1.Elasticsearch) {
+					e.ObjectMeta.Name = "es-deprecated"
+					e.Spec.Version = "7.15.0"
+				}),
+			},
+			accessReviewer:   &fakeAccessReviewer{allowed: true},
+			interceptorFuncs: nil,
+			wantErr:          false,
+			wantStatus: autoopsv1alpha1.AutoOpsAgentPolicyStatus{
+				Resources: 0,
+				Ready:     0,
+				Errors:    0,
+				Skipped:   1,
+				Phase:     "NoMonitoredResources",
+				Details: map[string]autoopsv1alpha1.AutoOpsResourceStatus{
+					"ns-1/es-deprecated": {Phase: "Skipped", Message: "ES cluster is in deprecated version 7.15.0"},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			esClientProvider := tt.esClientProvider
+			if esClientProvider == nil {
+				esClientProvider = newFakeESClientProvider().Provider
+			}
+
+			var k8sClient k8s.Client
+			if tt.interceptorFuncs == nil {
+				k8sClient = k8s.NewFakeClient(tt.initialObjects...)
+			} else {
+				k8sClient = k8s.NewFakeClientBuilder(tt.initialObjects...).
+					WithInterceptorFuncs(*tt.interceptorFuncs).
+					Build()
+			}
+
+			r := &AgentPolicyReconciler{
+				Client:           k8sClient,
+				esClientProvider: esClientProvider,
+				accessReviewer:   tt.accessReviewer,
+				recorder:         toolsevents.NewFakeRecorder(10),
+				params: operator.Parameters{
+					Dialer: &fakeDialer{},
+				},
+				dynamicWatches: watches.NewDynamicWatches(),
+			}
+
+			ctx := t.Context()
+			state := newState(tt.policy)
+			results := reconciler.NewResult(ctx)
+			gotResults := r.internalReconcile(ctx, tt.policy, results, state)
+
+			_, gotErr := gotResults.Aggregate()
+			if tt.wantErr {
+				require.Error(t, gotErr, "expected error")
+			} else {
+				require.NoError(t, gotErr, "unexpected error")
+			}
+
+			// Verify Skipped count
+			require.Equal(t, tt.wantStatus.Skipped, state.status.Skipped, "Skipped count mismatch")
+
+			// Verify Errors count
+			require.Equal(t, tt.wantStatus.Errors, state.status.Errors, "Errors count mismatch")
+
+			// Verify Details field
+			require.Len(t, state.status.Details, len(tt.wantStatus.Details))
+			require.Equal(t, tt.wantStatus.Details, state.status.Details)
 		})
 	}
 }
@@ -735,36 +661,28 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 
 	// Common test fixtures
 	ns1 := corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "ns-1",
-			Labels: map[string]string{
-				"kubernetes.io/metadata.name": "ns-1",
-			},
+		Name: "ns-1",
+		Labels: map[string]string{
+			"kubernetes.io/metadata.name": "ns-1",
 		},
 	}
 	ns2 := corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "ns-2",
-			Labels: map[string]string{
-				"kubernetes.io/metadata.name": "ns-2",
-			},
+		Name: "ns-2",
+		Labels: map[string]string{
+			"kubernetes.io/metadata.name": "ns-2",
 		},
 	}
 	ns3 := corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "ns-3",
-			Labels: map[string]string{
-				"kubernetes.io/metadata.name": "ns-3",
-			},
+		Name: "ns-3",
+		Labels: map[string]string{
+			"kubernetes.io/metadata.name": "ns-3",
 		},
 	}
 
 	es1 := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es-1",
-			Namespace: "ns-1",
-			Labels:    map[string]string{"app": "elasticsearch"},
-		},
+		Name:      "es-1",
+		Namespace: "ns-1",
+		Labels:    map[string]string{"app": "elasticsearch"},
 		Spec: esv1.ElasticsearchSpec{
 			Version: "9.1.0",
 		},
@@ -774,11 +692,9 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 	}
 
 	es2 := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es-2",
-			Namespace: "ns-1",
-			Labels:    map[string]string{"app": "elasticsearch"},
-		},
+		Name:      "es-2",
+		Namespace: "ns-1",
+		Labels:    map[string]string{"app": "elasticsearch"},
 		Spec: esv1.ElasticsearchSpec{
 			Version: "9.1.0",
 		},
@@ -788,11 +704,9 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 	}
 
 	es3 := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es-3",
-			Namespace: "ns-2",
-			Labels:    map[string]string{"app": "elasticsearch", "env": "prod"},
-		},
+		Name:      "es-3",
+		Namespace: "ns-2",
+		Labels:    map[string]string{"app": "elasticsearch", "env": "prod"},
 		Spec: esv1.ElasticsearchSpec{
 			Version: "9.1.0",
 		},
@@ -802,14 +716,11 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 	}
 
 	configSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "config-secret",
-			Namespace: "ns-1",
-		},
+		Name:      "config-secret",
+		Namespace: "ns-1",
 		Data: map[string][]byte{
 			"cloud-connected-mode-api-key": []byte("test-key"),
 			"autoops-otel-url":             []byte("https://test-url"),
-			"autoops-token":                []byte("test-token"),
 		},
 	}
 
@@ -824,12 +735,10 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 	}
 
 	initialPolicy := autoopsv1alpha1.AutoOpsAgentPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "policy-1",
-			Namespace: "ns-1",
-		},
+		Name:      "policy-1",
+		Namespace: "ns-1",
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-			Version: "9.2.1",
+			Version: "9.2.4",
 			AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 				SecretName: "config-secret",
 			},
@@ -843,6 +752,7 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 		name                     string
 		updatedResourceSelector  metav1.LabelSelector
 		updatedNamespaceSelector metav1.LabelSelector
+		extraInitialSecrets      []client.Object
 		expectedDeployments      int
 		expectedConfigMaps       int
 		expectedSecrets          int
@@ -854,6 +764,40 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 			updatedResourceSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": "elasticsearch", "env": "prod"},
 			},
+			expectedDeployments: 1,
+			expectedConfigMaps:  1,
+			expectedSecrets:     1,
+			shouldExist:         []esv1.Elasticsearch{es3},
+			shouldNotExist:      []esv1.Elasticsearch{es1, es2},
+		},
+		{
+			name: "selector change should also cleanup client cert secrets for ES with client auth",
+			updatedResourceSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": "elasticsearch", "env": "prod"},
+			},
+			extraInitialSecrets: []client.Object{
+				&corev1.Secret{
+					Name:      "orphaned-client-cert",
+					Namespace: ns1.Name,
+					Labels: map[string]string{
+						PolicyNameLabelKey:                      "policy-1",
+						policyNamespaceLabelKey:                 ns1.Name,
+						policySecretTypeLabelKey:                clientCertSecretType,
+						reconciler.SoftOwnerNameLabel:           es1.Name,
+						reconciler.SoftOwnerNamespaceLabel:      es1.Namespace,
+						reconciler.SoftOwnerKindLabel:           esv1.Kind,
+						commonlabels.ClientCertificateLabelName: "true",
+						commonapikey.MetadataKeyESName:          es1.Name,
+						commonapikey.MetadataKeyESNamespace:     es1.Namespace,
+					},
+					Data: map[string][]byte{
+						"tls.crt": []byte("test-cert"),
+						"tls.key": []byte("test-key"),
+					},
+				},
+			},
+			// es3 remains, es1 and es2 are cleaned up.
+			// es1 had client auth so its client cert secret is also cleaned up.
 			expectedDeployments: 1,
 			expectedConfigMaps:  1,
 			expectedSecrets:     1,
@@ -897,7 +841,10 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient := k8s.NewFakeClient(initialObjects...)
+			objs := make([]client.Object, 0, len(initialObjects)+len(tt.extraInitialSecrets))
+			objs = append(objs, initialObjects...)
+			objs = append(objs, tt.extraInitialSecrets...)
+			k8sClient := k8s.NewFakeClient(objs...)
 			esClientProvider := newFakeESClientProvider().Provider
 			r := &AgentPolicyReconciler{
 				Client:           k8sClient,
@@ -907,7 +854,6 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 					Dialer: &fakeDialer{},
 				},
 				dynamicWatches: watches.NewDynamicWatches(),
-				licenseChecker: license.NewLicenseChecker(k8sClient, "test-namespace"),
 			}
 
 			ctx := context.Background()
@@ -932,7 +878,8 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 
 			var secrets corev1.SecretList
 			require.NoError(t, k8sClient.List(ctx, &secrets, client.InNamespace(ns1.Name), client.MatchingLabels{PolicyNameLabelKey: "policy-1"}))
-			require.Len(t, secrets.Items, 3, "Expected 3 secrets for es-1, es-2, and es-3")
+			expectedInitialSecrets := 3 + len(tt.extraInitialSecrets)
+			require.Lenf(t, secrets.Items, expectedInitialSecrets, "Expected %d secrets for es-1, es-2, and es-3", expectedInitialSecrets)
 
 			// Update selector and re-reconcile
 			updatedPolicy := initialPolicy.DeepCopy()
@@ -1014,11 +961,9 @@ func TestAutoOpsAgentPolicyReconciler_accessRevokedCleanup(t *testing.T) {
 
 	// ES clusters that will be used in the test
 	es1 := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es-1",
-			Namespace: "ns-1",
-			Labels:    map[string]string{"app": "elasticsearch"},
-		},
+		Name:      "es-1",
+		Namespace: "ns-1",
+		Labels:    map[string]string{"app": "elasticsearch"},
 		Spec: esv1.ElasticsearchSpec{
 			Version: "9.1.0",
 		},
@@ -1028,11 +973,9 @@ func TestAutoOpsAgentPolicyReconciler_accessRevokedCleanup(t *testing.T) {
 	}
 
 	es2 := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es-2",
-			Namespace: "ns-1",
-			Labels:    map[string]string{"app": "elasticsearch"},
-		},
+		Name:      "es-2",
+		Namespace: "ns-1",
+		Labels:    map[string]string{"app": "elasticsearch"},
 		Spec: esv1.ElasticsearchSpec{
 			Version: "9.1.0",
 		},
@@ -1042,24 +985,19 @@ func TestAutoOpsAgentPolicyReconciler_accessRevokedCleanup(t *testing.T) {
 	}
 
 	configSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "config-secret",
-			Namespace: "ns-1",
-		},
+		Name:      "config-secret",
+		Namespace: "ns-1",
 		Data: map[string][]byte{
 			"cloud-connected-mode-api-key": []byte("test-key"),
 			"autoops-otel-url":             []byte("https://test-url"),
-			"autoops-token":                []byte("test-token"),
 		},
 	}
 
 	policy := autoopsv1alpha1.AutoOpsAgentPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "policy-1",
-			Namespace: "ns-1",
-		},
+		Name:      "policy-1",
+		Namespace: "ns-1",
 		Spec: autoopsv1alpha1.AutoOpsAgentPolicySpec{
-			Version: "9.2.1",
+			Version: "9.2.4",
 			AutoOpsRef: autoopsv1alpha1.AutoOpsRef{
 				SecretName: "config-secret",
 			},
@@ -1086,12 +1024,11 @@ func TestAutoOpsAgentPolicyReconciler_accessRevokedCleanup(t *testing.T) {
 			Client:           k8sClient,
 			esClientProvider: esClientProvider,
 			accessReviewer:   accessReviewer,
-			recorder:         record.NewFakeRecorder(10),
+			recorder:         toolsevents.NewFakeRecorder(10),
 			params: operator.Parameters{
 				Dialer: &fakeDialer{},
 			},
 			dynamicWatches: watches.NewDynamicWatches(),
-			licenseChecker: license.NewLicenseChecker(k8sClient, "test-namespace"),
 		}
 
 		ctx := context.Background()
@@ -1167,3 +1104,340 @@ func TestAutoOpsAgentPolicyReconciler_accessRevokedCleanup(t *testing.T) {
 		require.Equal(t, 1, state.status.Resources, "Resources count should be 1 after access revoked")
 	})
 }
+
+// buildDeploymentName returns the expected name for the AutoOps Deployment for a given policy+ES pair.
+func buildDeploymentName(policyName string, esName, esNamespace string) string {
+	return autoopsv1alpha1.Deployment(policyName, esv1.Elasticsearch{
+		Name: esName, Namespace: esNamespace,
+	})
+}
+
+func TestInternalReconcile_PauseOrchestration(t *testing.T) {
+	scheme.SetupScheme()
+
+	policyWithPause := newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
+		if a.Annotations == nil {
+			a.Annotations = make(map[string]string)
+		}
+		a.Annotations[common.PauseOrchestrationAnnotation] = "true"
+	})
+
+	tests := []struct {
+		name                     string
+		policy                   autoopsv1alpha1.AutoOpsAgentPolicy
+		initialObjects           []client.Object
+		wantConditionStatus      corev1.ConditionStatus
+		wantConditionMsg         string
+		wantDeploymentNotCreated bool // assert no new Deployment is created
+		wantDeploymentCreated    bool // assert at least one Deployment is created
+		wantReady                int
+	}{
+		{
+			name:   "paused with no existing deployment reports PendingChanges",
+			policy: policyWithPause,
+			initialObjects: []client.Object{
+				newSecret(),
+				newElasticsearch(),
+			},
+			wantConditionStatus:      corev1.ConditionTrue,
+			wantConditionMsg:         common.PausedWithPendingChangesMessage,
+			wantDeploymentNotCreated: true,
+		},
+		{
+			name:   "paused with existing deployment with different hash reports PendingChanges",
+			policy: policyWithPause,
+			initialObjects: []client.Object{
+				newSecret(),
+				newElasticsearch(),
+				&appsv1.Deployment{
+					Name:      buildDeploymentName("policy-1", "es-1", "ns-1"),
+					Namespace: "ns-1",
+					Labels: map[string]string{
+						"common.k8s.elastic.co/template-hash": "old-stale-hash",
+					},
+				},
+			},
+			wantConditionStatus:      corev1.ConditionTrue,
+			wantConditionMsg:         common.PausedWithPendingChangesMessage,
+			wantDeploymentNotCreated: true,
+		},
+		{
+			name: "paused with two ES clusters: neither has a deployment — reports PendingChanges",
+			policy: newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
+				if a.Annotations == nil {
+					a.Annotations = make(map[string]string)
+				}
+				a.Annotations[common.PauseOrchestrationAnnotation] = "true"
+			}),
+			initialObjects: []client.Object{
+				newSecret(),
+				newElasticsearch(), // es-1: no Deployment → IsNotFound → pending
+				newElasticsearch(func(e *esv1.Elasticsearch) { e.Name = "es-2" }), // es-2: same
+			},
+			wantConditionStatus:      corev1.ConditionTrue,
+			wantConditionMsg:         common.PausedWithPendingChangesMessage,
+			wantDeploymentNotCreated: true,
+		},
+		{
+			name:   "paused with ready deployment counts ready correctly",
+			policy: policyWithPause,
+			initialObjects: []client.Object{
+				newSecret(),
+				newElasticsearch(),
+				&appsv1.Deployment{
+					Name:      buildDeploymentName("policy-1", "es-1", "ns-1"),
+					Namespace: "ns-1",
+					Labels: map[string]string{
+						"common.k8s.elastic.co/template-hash": "old-stale-hash",
+					},
+					Status: appsv1.DeploymentStatus{
+						Conditions: []appsv1.DeploymentCondition{
+							{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+			},
+			wantConditionStatus:      corev1.ConditionTrue,
+			wantConditionMsg:         common.PausedWithPendingChangesMessage,
+			wantDeploymentNotCreated: true,
+			wantReady:                1,
+		},
+		{
+			name: "condition flips to False on resume",
+			// Policy has no pause annotation but has a pre-existing OrchestrationPaused=True condition.
+			policy: newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
+				a.Status.Conditions = commonv1.Conditions{
+					{
+						Type:    commonv1.OrchestrationPaused,
+						Status:  corev1.ConditionTrue,
+						Message: common.PausedNoChangesMessage,
+					},
+				}
+			}),
+			initialObjects: []client.Object{
+				newSecret(),
+				newElasticsearch(),
+			},
+			// After a successful resume reconcile the condition should be set to False and a Deployment created.
+			wantConditionStatus:   corev1.ConditionFalse,
+			wantConditionMsg:      common.PausedOrchestrationResumed,
+			wantDeploymentCreated: true,
+		},
+		{
+			name:   "paused with no accessible ES clusters reports PausedNoChanges",
+			policy: policyWithPause,
+			initialObjects: []client.Object{
+				newSecret(),
+				// no Elasticsearch object: accessibleClusters == 0, early-return path
+			},
+			wantConditionStatus:      corev1.ConditionTrue,
+			wantConditionMsg:         common.PausedNoChangesMessage,
+			wantDeploymentNotCreated: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			k8sClient := k8s.NewFakeClient(tt.initialObjects...)
+			r := &AgentPolicyReconciler{
+				Client:           k8sClient,
+				esClientProvider: newFakeESClientProvider().Provider,
+				accessReviewer:   &fakeAccessReviewer{allowed: true},
+				recorder:         toolsevents.NewFakeRecorder(10),
+				params:           operator.Parameters{Dialer: &fakeDialer{}},
+				dynamicWatches:   watches.NewDynamicWatches(),
+			}
+
+			ctx := t.Context()
+			state := newState(tt.policy)
+			results := reconciler.NewResult(ctx)
+			r.internalReconcile(ctx, tt.policy, results, state)
+
+			// Verify exactly one OrchestrationPaused condition.
+			idx := state.status.Conditions.Index(commonv1.OrchestrationPaused)
+			require.GreaterOrEqual(t, idx, 0, "expected OrchestrationPaused condition to be set")
+			cond := state.status.Conditions[idx]
+			assert.Equal(t, tt.wantConditionStatus, cond.Status, "condition Status mismatch")
+			assert.Equal(t, tt.wantConditionMsg, cond.Message, "condition Message mismatch")
+
+			// Verify single condition entry (no duplicates by type).
+			count := 0
+			for _, c := range state.status.Conditions {
+				if c.Type == commonv1.OrchestrationPaused {
+					count++
+				}
+			}
+			assert.Equal(t, 1, count, "expected exactly one OrchestrationPaused condition")
+
+			// Verify no Deployment was created when orchestration is paused.
+			if tt.wantDeploymentNotCreated {
+				var deplList appsv1.DeploymentList
+				require.NoError(t, k8sClient.List(ctx, &deplList))
+				for _, d := range deplList.Items {
+					_, hasPolicyLabel := d.Labels[PolicyNameLabelKey]
+					assert.False(t, hasPolicyLabel, "unexpected new Deployment created while paused: %s", d.Name)
+				}
+			}
+
+			// Verify at least one Deployment was created on the normal reconcile path.
+			if tt.wantDeploymentCreated {
+				var deplList appsv1.DeploymentList
+				require.NoError(t, k8sClient.List(ctx, &deplList))
+				found := false
+				for _, d := range deplList.Items {
+					if _, hasPolicyLabel := d.Labels[PolicyNameLabelKey]; hasPolicyLabel {
+						found = true
+						break
+					}
+				}
+				assert.True(t, found, "expected a Deployment to be created but none was found")
+			}
+
+			if tt.wantReady > 0 {
+				assert.Equal(t, tt.wantReady, state.status.Ready, "Ready count mismatch")
+			}
+		})
+	}
+}
+
+// TestInternalReconcile_PauseOrchestration_MatchingHash verifies that when orchestration is paused
+// and the live Deployment's hash matches the expected spec, the condition reports PausedNoChangesMessage.
+// This uses a two-pass approach: the first pass (unpause) creates the Deployment with the correct
+// template hash; the second pass (paused) compares against it.
+func TestInternalReconcile_PauseOrchestration_MatchingHash(t *testing.T) {
+	scheme.SetupScheme()
+
+	k8sClient := k8s.NewFakeClient(newSecret(), newElasticsearch())
+	newReconciler := func() *AgentPolicyReconciler {
+		return &AgentPolicyReconciler{
+			Client:           k8sClient,
+			esClientProvider: newFakeESClientProvider().Provider,
+			accessReviewer:   &fakeAccessReviewer{allowed: true},
+			recorder:         toolsevents.NewFakeRecorder(10),
+			params:           operator.Parameters{Dialer: &fakeDialer{}},
+			dynamicWatches:   watches.NewDynamicWatches(),
+		}
+	}
+	ctx := t.Context()
+
+	// Pass 1: reconcile without pause annotation so the Deployment is created with the correct hash.
+	policyNoAnnotation := newAutoOpsAgentPolicy()
+	state1 := newState(policyNoAnnotation)
+	newReconciler().internalReconcile(ctx, policyNoAnnotation, reconciler.NewResult(ctx), state1)
+
+	// Pass 2: reconcile with pause annotation; the existing Deployment should match.
+	policyPaused := newAutoOpsAgentPolicy(func(a *autoopsv1alpha1.AutoOpsAgentPolicy) {
+		if a.Annotations == nil {
+			a.Annotations = make(map[string]string)
+		}
+		a.Annotations[common.PauseOrchestrationAnnotation] = "true"
+	})
+	state2 := newState(policyPaused)
+	newReconciler().internalReconcile(ctx, policyPaused, reconciler.NewResult(ctx), state2)
+
+	idx := state2.status.Conditions.Index(commonv1.OrchestrationPaused)
+	require.GreaterOrEqual(t, idx, 0, "expected OrchestrationPaused condition after paused reconcile")
+	cond := state2.status.Conditions[idx]
+	assert.Equal(t, corev1.ConditionTrue, cond.Status)
+	assert.Equal(t, common.PausedNoChangesMessage, cond.Message)
+}
+
+// TestState_SetOrchestrationPaused and TestState_MaybeResetOrchestrationPaused test the
+// aggregate condition helpers directly against a State struct.
+func TestState_SetOrchestrationPaused(t *testing.T) {
+	tests := []struct {
+		name           string
+		pendingChanges bool
+		wantMsg        string
+	}{
+		{
+			name:           "no pending changes",
+			pendingChanges: false,
+			wantMsg:        common.PausedNoChangesMessage,
+		},
+		{
+			name:           "with pending changes",
+			pendingChanges: true,
+			wantMsg:        common.PausedWithPendingChangesMessage,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			state := newState(newAutoOpsAgentPolicy())
+			state.SetOrchestrationPaused(tt.pendingChanges)
+
+			idx := state.status.Conditions.Index(commonv1.OrchestrationPaused)
+			require.GreaterOrEqual(t, idx, 0)
+			cond := state.status.Conditions[idx]
+			assert.Equal(t, corev1.ConditionTrue, cond.Status)
+			assert.Equal(t, tt.wantMsg, cond.Message)
+		})
+	}
+
+	t.Run("calling twice keeps single condition entry", func(t *testing.T) {
+		state := newState(newAutoOpsAgentPolicy())
+		state.SetOrchestrationPaused(false)
+		state.SetOrchestrationPaused(true) // second call overwrites
+		count := 0
+		for _, c := range state.status.Conditions {
+			if c.Type == commonv1.OrchestrationPaused {
+				count++
+			}
+		}
+		assert.Equal(t, 1, count)
+	})
+
+	t.Run("LastTransitionTime preserved when status and message unchanged", func(t *testing.T) {
+		policy := newAutoOpsAgentPolicy()
+		policy.Status.Conditions = commonv1.Conditions{
+			{
+				Type:               commonv1.OrchestrationPaused,
+				Status:             corev1.ConditionTrue,
+				Message:            common.PausedNoChangesMessage,
+				LastTransitionTime: metav1.Unix(1000, 0),
+			},
+		}
+		state := newState(policy)
+		state.SetOrchestrationPaused(false) // same status+message as existing condition
+		idx := state.status.Conditions.Index(commonv1.OrchestrationPaused)
+		assert.Equal(t, metav1.Unix(1000, 0), state.status.Conditions[idx].LastTransitionTime,
+			"LastTransitionTime should be preserved when status and message are unchanged")
+	})
+}
+
+func TestState_MaybeResetOrchestrationPaused(t *testing.T) {
+	t.Run("no-op when condition is absent", func(t *testing.T) {
+		state := newState(newAutoOpsAgentPolicy())
+		state.MaybeResetOrchestrationPaused()
+		assert.Empty(t, state.status.Conditions)
+	})
+
+	t.Run("no-op when condition is already False", func(t *testing.T) {
+		policy := newAutoOpsAgentPolicy()
+		policy.Status.Conditions = commonv1.Conditions{
+			{Type: commonv1.OrchestrationPaused, Status: corev1.ConditionFalse, Message: common.PausedOrchestrationResumed},
+		}
+		state := newState(policy)
+		state.MaybeResetOrchestrationPaused()
+		idx := state.status.Conditions.Index(commonv1.OrchestrationPaused)
+		assert.Equal(t, corev1.ConditionFalse, state.status.Conditions[idx].Status)
+	})
+
+	t.Run("flips True → False with resume message", func(t *testing.T) {
+		policy := newAutoOpsAgentPolicy()
+		policy.Status.Conditions = commonv1.Conditions{
+			{Type: commonv1.OrchestrationPaused, Status: corev1.ConditionTrue, Message: common.PausedNoChangesMessage},
+		}
+		state := newState(policy)
+		state.MaybeResetOrchestrationPaused()
+		idx := state.status.Conditions.Index(commonv1.OrchestrationPaused)
+		require.GreaterOrEqual(t, idx, 0)
+		cond := state.status.Conditions[idx]
+		assert.Equal(t, corev1.ConditionFalse, cond.Status)
+		assert.Equal(t, common.PausedOrchestrationResumed, cond.Message)
+	})
+}
+
+// Ensure fakeESClientProvider and fakeDialer are available from reconcile_test.go / controller_test.go.
+var _ commonesclient.Provider = newFakeESClientProvider().Provider

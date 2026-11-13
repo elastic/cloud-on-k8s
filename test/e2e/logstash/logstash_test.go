@@ -152,6 +152,8 @@ func TestMultipleLogstashes(t *testing.T) {
 func TestLogstashServerVersionUpgradeToLatest8x(t *testing.T) {
 	srcVersion, dstVersion := test.GetUpgradePathTo8x(test.Ctx().ElasticStackVersion)
 
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
+
 	name := "test-ls-version-upgrade-8x"
 
 	logstash := logstash.NewBuilder(name).

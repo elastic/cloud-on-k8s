@@ -6,6 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "eck-operator.labels" . | nindent 4 }}
+    {{- include "eck-operator.watchedLabel" . | nindent 4 }}
 data:
   eck.yaml: |-
     {{- $metricsPort := int (include "eck-operator.metrics.port" .)}}
@@ -46,6 +47,9 @@ data:
     kube-client-qps: {{ int . }}
     {{- end }}
     elasticsearch-client-timeout: {{ .Values.config.elasticsearchClientTimeout }}
+    {{- with .Values.config.cacheStartupTimeout }}
+    cache-startup-timeout: {{ . }}
+    {{- end }}
     disable-telemetry: {{ .Values.telemetry.disabled }}
     distribution-channel: {{ .Values.telemetry.distributionChannel }}
     {{- with .Values.telemetry.interval }}
@@ -56,7 +60,7 @@ data:
     enable-tracing: true
     {{- end }}
     {{- if .Values.refs.enforceRBAC }}
-    enforce-rbac-on-refs: true
+    enforce-rbac-on-refs: {{ .Values.refs.enforceRBAC }}
     {{- end }}
     enable-webhook: {{ .Values.webhook.enabled }}
     {{- if .Values.webhook.enabled }}
@@ -67,8 +71,17 @@ data:
       {{- end }}
     webhook-port: {{ .Values.webhook.port }}
     {{- end }}
+    {{- if or .Values.probes.readiness.enabled .Values.probes.liveness.enabled .Values.probes.startup.enabled }}
+    probes-bind-address: :{{ .Values.probes.port }}
+    {{- else }}
+    probes-bind-address: "0"
+    {{- end }}
     {{- with .Values.managedNamespaces }}
     namespaces: [{{ join "," . }}]
+    {{- end }}
+    {{- with .Values.managedNamespaceSelector }}
+    namespace-selector:
+      {{- . | toYaml | nindent 6 }}
     {{- end }}
     operator-namespace: {{ .Release.Namespace }}
     enable-leader-election: {{ .Values.config.enableLeaderElection }}
@@ -76,6 +89,7 @@ data:
     {{- if not .Values.config.containerSuffix }}
     ubi-only: {{ .Values.config.ubiOnly }}
     {{- end }}
+    restrict-watched-resources: {{ .Values.config.restrictWatchedResources }}
     {{- with .Values.webhook.certsSecret }}
     webhook-secret: {{ . }}
     {{- end }}

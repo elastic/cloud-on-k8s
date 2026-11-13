@@ -7,25 +7,25 @@ package logstash
 import (
 	"context"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -46,7 +46,12 @@ const (
 // The Manager will set fields on the Controller and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	r := newReconciler(mgr, params)
-	c, err := common.NewController(mgr, controllerName, r, params)
+	c, err := common.NewNamespacedController(mgr, controllerName, r, params,
+		watches.ReconcileObjectsInNamespace(
+			mgr.GetCache(),
+			func() client.ObjectList { return &logstashv1alpha1.LogstashList{} },
+		),
+	)
 	if err != nil {
 		return err
 	}
@@ -58,7 +63,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLo
 	client := mgr.GetClient()
 	return &ReconcileLogstash{
 		Client:         client,
-		recorder:       mgr.GetEventRecorderFor(controllerName),
+		recorder:       mgr.GetEventRecorder(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
 		expectations:   expectations.NewClustersExpectations(client, &appsv1.StatefulSet{}),
@@ -67,14 +72,15 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLo
 
 // addWatches adds watches for all resources this controller cares about
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLogstash) error {
+	m := r.NamespaceMatcher
 	// Watch for changes to Logstash
-	if err := c.Watch(source.Kind(mgr.GetCache(), &logstashv1alpha1.Logstash{}, &handler.TypedEnqueueRequestForObject[*logstashv1alpha1.Logstash]{})); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &logstashv1alpha1.Logstash{}, &handler.TypedEnqueueRequestForObject[*logstashv1alpha1.Logstash]{})); err != nil {
 		return err
 	}
 
 	// Watch StatefulSets
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &appsv1.StatefulSet{}, handler.TypedEnqueueRequestForOwner[*appsv1.StatefulSet](
+		watches.NamespacedKind(m, mgr.GetCache(), &appsv1.StatefulSet{}, handler.TypedEnqueueRequestForOwner[*appsv1.StatefulSet](
 			mgr.GetScheme(), mgr.GetRESTMapper(),
 			&logstashv1alpha1.Logstash{}, handler.OnlyControllerOwner(),
 		))); err != nil {
@@ -83,12 +89,12 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLogsta
 
 	// Watch Pods, to ensure `status.version` is correctly reconciled on any change.
 	// Watching StatefulSets only may lead to missing some events.
-	if err := watches.WatchPods(mgr, c, labels.NameLabelName); err != nil {
+	if err := watches.WatchPods(mgr, c, m, labels.NameLabelName); err != nil {
 		return err
 	}
 
 	// Watch services
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&logstashv1alpha1.Logstash{}, handler.OnlyControllerOwner(),
 	))); err != nil {
@@ -96,26 +102,30 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileLogsta
 	}
 
 	// Watch owned and soft-owned secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&logstashv1alpha1.Logstash{}, handler.OnlyControllerOwner(),
 	))); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(mgr, c, logstashv1alpha1.Kind); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(mgr, c, m, logstashv1alpha1.Kind); err != nil {
 		return err
 	}
 
 	// Watch dynamically referenced Secrets
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+		return err
+	}
+	// Watch dynamically referenced ConfigMaps (pipelinesRef configmap path)
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps))
 }
 
-var _ reconcile.Reconciler = &ReconcileLogstash{}
+var _ reconcile.Reconciler = (*ReconcileLogstash)(nil)
 
 // ReconcileLogstash reconciles a Logstash object
 type ReconcileLogstash struct {
 	k8s.Client
-	recorder       record.EventRecorder
+	recorder       toolsevents.EventRecorder
 	dynamicWatches watches.DynamicWatches
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
@@ -161,7 +171,7 @@ func (r *ReconcileLogstash) Reconcile(ctx context.Context, request reconcile.Req
 			logger.V(1).Info("Conflict while updating status. Requeueing", "namespace", logstash.Namespace, "ls_name", logstash.Name)
 			return results.WithRequeue().Aggregate()
 		}
-		k8s.MaybeEmitErrorEvent(r.recorder, err, logstash, events.EventReconciliationError, "Reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEventf(r.recorder, err, logstash, events.EventReconciliationError, events.EventActionStatusUpdate, "Reconciliation error: %v", err)
 	}
 	return results.WithError(err).Aggregate()
 }
@@ -205,6 +215,7 @@ func (r *ReconcileLogstash) doReconcile(ctx context.Context, logstash logstashv1
 		EventRecorder:  r.recorder,
 		Watches:        r.dynamicWatches,
 		Logstash:       logstash,
+		Version:        logstashVersion,
 		Status:         status,
 		OperatorParams: r.Parameters,
 		Expectations:   r.expectations.ForCluster(k8s.ExtractNamespacedName(&logstash)),
@@ -215,18 +226,30 @@ func (r *ReconcileLogstash) validate(ctx context.Context, logstash logstashv1alp
 	defer tracing.Span(&ctx)()
 
 	// Run create validations only as update validations require old object which we don't have here.
-	if err := validation.ValidateLogstash(&logstash); err != nil {
+	warnings, err := validation.ValidateLogstash(&logstash)
+	if err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, &logstash, events.EventReasonValidation, err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, &logstash, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(ctx, err)
+	}
+	for _, warning := range warnings {
+		k8s.EmitEvent(r.recorder, &logstash, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, warning)
 	}
 	return nil
 }
 
-func (r *ReconcileLogstash) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	r.expectations.RemoveCluster(obj)
+// OnNamespaceOutOfScope releases all controller-local state associated with the given Logstash
+// resource when its namespace no longer matches the operator's namespace selector.
+func (r *ReconcileLogstash) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(pipelines.RefWatchName(obj))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(pipelines.SecretRefWatchName(obj))
+	r.dynamicWatches.ConfigMaps.RemoveHandlerForKey(pipelines.ConfigMapRefWatchName(obj))
+	certificates.RemoveHTTPCertWatches(r.dynamicWatches, logstashv1alpha1.Namer, obj)
+}
+
+func (r *ReconcileLogstash) onDelete(ctx context.Context, obj types.NamespacedName) error {
+	r.OnNamespaceOutOfScope(obj)
+	r.expectations.RemoveCluster(obj)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, logstashv1alpha1.Kind)
 }

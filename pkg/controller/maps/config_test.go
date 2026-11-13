@@ -10,8 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -114,10 +113,8 @@ ui: true
 			args: args{
 				runtimeObjs: []client.Object{
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "sample-maps-user",
-							Namespace: "ns",
-						},
+						Name:      "sample-maps-user",
+						Namespace: "ns",
 						Data: map[string][]byte{
 							"ns-sample-maps-user": []byte("password"),
 						},
@@ -147,12 +144,114 @@ ssl:
 `,
 			wantErr: false,
 		},
+		{
+			name: "association with CA and client cert",
+			args: args{
+				runtimeObjs: []client.Object{
+					&corev1.Secret{
+						Name:      "sample-maps-user",
+						Namespace: "ns",
+						Data: map[string][]byte{
+							"ns-sample-maps-user": []byte("password"),
+						},
+					},
+				},
+				ems: emsWithAssociation(commonv1.AssociationConf{
+					AuthSecretName:       "sample-maps-user",
+					AuthSecretKey:        "ns-sample-maps-user",
+					CACertProvided:       true,
+					CASecretName:         "sample-maps-es-ca",
+					URL:                  "https://elasticsearch-sample-es-http.default.svc:9200",
+					ClientCertSecretName: "some-secret",
+				}),
+				ipFamily: corev1.IPv4Protocol,
+			},
+			want: `elasticsearch:
+    host: https://elasticsearch-sample-es-http.default.svc:9200
+    password: password
+    ssl:
+        certificate: /mnt/elastic-internal/es-client-certs/tls.crt
+        certificateAuthorities: /mnt/elastic-internal/es-certs/ca.crt
+        key: /mnt/elastic-internal/es-client-certs/tls.key
+        verificationMode: certificate
+    username: ns-sample-maps-user
+host: 0.0.0.0
+ssl:
+    certificate: /mnt/elastic-internal/http-certs/tls.crt
+    enabled: true
+    key: /mnt/elastic-internal/http-certs/tls.key
+`,
+			wantErr: false,
+		},
+		{
+			name: "association with client cert but no CA",
+			args: args{
+				runtimeObjs: []client.Object{
+					&corev1.Secret{
+						Name:      "sample-maps-user",
+						Namespace: "ns",
+						Data: map[string][]byte{
+							"ns-sample-maps-user": []byte("password"),
+						},
+					},
+				},
+				ems: emsWithAssociation(commonv1.AssociationConf{
+					AuthSecretName:       "sample-maps-user",
+					AuthSecretKey:        "ns-sample-maps-user",
+					CACertProvided:       false,
+					URL:                  "https://elasticsearch-sample-es-http.default.svc:9200",
+					ClientCertSecretName: "some-secret",
+				}),
+				ipFamily: corev1.IPv4Protocol,
+			},
+			want: `elasticsearch:
+    host: https://elasticsearch-sample-es-http.default.svc:9200
+    password: password
+    ssl:
+        certificate: /mnt/elastic-internal/es-client-certs/tls.crt
+        key: /mnt/elastic-internal/es-client-certs/tls.key
+    username: ns-sample-maps-user
+host: 0.0.0.0
+ssl:
+    certificate: /mnt/elastic-internal/http-certs/tls.crt
+    enabled: true
+    key: /mnt/elastic-internal/http-certs/tls.key
+`,
+			wantErr: false,
+		},
+		{
+			name: "PKI authentication: client cert only, no username or password",
+			args: args{
+				ems: emsWithAssociation(commonv1.AssociationConf{
+					AuthSecretName:       commonv1.NoAuthRequiredValue,
+					CACertProvided:       true,
+					CASecretName:         "sample-maps-es-ca",
+					URL:                  "https://elasticsearch-sample-es-http.default.svc:9200",
+					ClientCertSecretName: "some-secret",
+				}),
+				ipFamily: corev1.IPv4Protocol,
+			},
+			want: `elasticsearch:
+    host: https://elasticsearch-sample-es-http.default.svc:9200
+    ssl:
+        certificate: /mnt/elastic-internal/es-client-certs/tls.crt
+        certificateAuthorities: /mnt/elastic-internal/es-certs/ca.crt
+        key: /mnt/elastic-internal/es-client-certs/tls.key
+        verificationMode: certificate
+host: 0.0.0.0
+ssl:
+    certificate: /mnt/elastic-internal/http-certs/tls.crt
+    enabled: true
+    key: /mnt/elastic-internal/http-certs/tls.key
+`,
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := ReconcileMapsServer{
 				Client:         k8s.NewFakeClient(tt.args.runtimeObjs...),
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
@@ -175,10 +274,8 @@ ssl:
 
 func secretWithConfig(name string, cfg []byte) *corev1.Secret {
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      name,
-		},
+		Namespace: "ns",
+		Name:      name,
 		Data: map[string][]byte{
 			ConfigFilename: cfg,
 		},
@@ -187,22 +284,18 @@ func secretWithConfig(name string, cfg []byte) *corev1.Secret {
 
 func emsWithConfigRef(name string, cfg *commonv1.Config) v1alpha1.ElasticMapsServer {
 	return v1alpha1.ElasticMapsServer{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "ems",
-			Namespace: "ns",
-		},
+		Name:      "ems",
+		Namespace: "ns",
 		Spec: v1alpha1.MapsSpec{
 			Config:    cfg,
-			ConfigRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: name}}},
+			ConfigRef: &commonv1.ConfigSource{SecretName: name}},
 	}
 }
 
 func emsWithAssociation(associationConf commonv1.AssociationConf) v1alpha1.ElasticMapsServer {
 	ent := v1alpha1.ElasticMapsServer{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "ems",
-		},
+		Namespace: "ns",
+		Name:      "ems",
 	}
 	ent.SetAssociationConf(&associationConf)
 	return ent

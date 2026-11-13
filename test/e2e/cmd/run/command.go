@@ -50,6 +50,9 @@ type runFlags struct {
 	deployChaosJob        bool
 	e2eTags               string
 	testEnvTags           []string
+	// restrictWatchedResources enables the operator's --restrict-watched-resources flag.
+	restrictWatchedResources bool
+	containerSuffix          string
 }
 
 var log logr.Logger
@@ -96,7 +99,7 @@ func Command() *cobra.Command {
 	cmd.Flags().StringVar(&flags.scratchDirRoot, "scratch-dir", "/tmp/eck-e2e", "Path under which temporary files should be created")
 	cmd.Flags().StringVar(&flags.testRegex, "test-regex", "", "Regex to pass to the test runner")
 	cmd.Flags().StringVar(&flags.testRunName, "test-run-name", randomTestRunName(), "Name of this test run")
-	cmd.Flags().DurationVar(&flags.testTimeout, "test-timeout", 15*time.Minute, "Timeout before failing a test")
+	cmd.Flags().DurationVar(&flags.testTimeout, "test-timeout", 15*time.Minute, "Maximum duration of a single retry loop inside a test step (e.g. Eventually); does not bound the overall test or run duration")
 	cmd.Flags().StringVar(&flags.pipeline, "pipeline", "", "E2E test pipeline name")
 	cmd.Flags().StringVar(&flags.buildNumber, "build-number", "", "E2E test build number")
 	cmd.Flags().StringVar(&flags.provider, "provider", "", "E2E test infrastructure provider")
@@ -106,6 +109,8 @@ func Command() *cobra.Command {
 	cmd.Flags().BoolVar(&flags.deployChaosJob, "deploy-chaos-job", false, "Deploy the chaos job")
 	cmd.Flags().StringVar(&flags.e2eTags, "e2e-tags", "e2e", "Go tags to specify a subset of the tests using Go build constraints")
 	cmd.Flags().StringSliceVar(&flags.testEnvTags, "test-env-tags", nil, "Tags describing the environment for this test run")
+	cmd.Flags().BoolVar(&flags.restrictWatchedResources, "restrict-watched-resources", false, "Deploy the operator with the --restrict-watched-resources flag enabled")
+	cmd.Flags().StringVar(&flags.containerSuffix, "container-suffix", "", "Suffix to append to all stack container images resolved by the operator (e.g. \"-wolfi\")")
 	logutil.BindFlags(cmd.PersistentFlags())
 
 	// enable setting flags via environment variables

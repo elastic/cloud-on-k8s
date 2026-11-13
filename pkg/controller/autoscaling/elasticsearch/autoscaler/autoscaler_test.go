@@ -574,17 +574,13 @@ func (asb *AutoscalingSpecBuilder) WithCPUAndRatio(minCPU, maxCPU string, ratio 
 
 func (asb *AutoscalingSpecBuilder) Build() v1alpha1.AutoscalingPolicySpec {
 	return v1alpha1.AutoscalingPolicySpec{
-		NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{
-			Name: asb.name,
-		},
-		AutoscalingResources: v1alpha1.AutoscalingResources{
-			CPURange:     asb.cpu,
-			MemoryRange:  asb.memory,
-			StorageRange: asb.storage,
-			NodeCountRange: v1alpha1.CountRange{
-				Min: asb.nodeCountMin,
-				Max: asb.nodeCountMax,
-			},
+		Name:         asb.name,
+		CPURange:     asb.cpu,
+		MemoryRange:  asb.memory,
+		StorageRange: asb.storage,
+		NodeCountRange: v1alpha1.CountRange{
+			Min: asb.nodeCountMin,
+			Max: asb.nodeCountMax,
 		},
 	}
 }

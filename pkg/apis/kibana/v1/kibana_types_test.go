@@ -8,10 +8,81 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 )
+
+func TestBackgroundTasksEnabled(t *testing.T) {
+	tests := []struct {
+		name string
+		kb   Kibana
+		want bool
+	}{
+		{
+			name: "nil backgroundTasks returns false",
+			kb:   Kibana{Spec: KibanaSpec{Version: "8.17.0"}},
+			want: false,
+		},
+		{
+			name: "non-nil backgroundTasks returns true",
+			kb: Kibana{Spec: KibanaSpec{
+				Version:         "8.17.0",
+				BackgroundTasks: &KibanaBackgroundTasks{},
+			}},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.kb.BackgroundTasksEnabled())
+		})
+	}
+}
+
+func TestActiveRoles(t *testing.T) {
+	t.Run("no backgroundTasks returns single primary role with empty name", func(t *testing.T) {
+		kb := Kibana{Spec: KibanaSpec{Version: "8.17.0"}}
+		roles := kb.ActiveRoles()
+		require.Len(t, roles, 1)
+		assert.Equal(t, "", roles[0].Name, "empty Name suppresses NODE_ROLES env var")
+		assert.Equal(t, label.RolePrimaryValue, roles[0].LabelValue, "LabelValue=primary so the selector label is present for upgrade-path detection")
+	})
+
+	t.Run("with backgroundTasks returns UI and BG roles", func(t *testing.T) {
+		kb := Kibana{Spec: KibanaSpec{
+			Version:         "8.17.0",
+			BackgroundTasks: &KibanaBackgroundTasks{},
+		}}
+		roles := kb.ActiveRoles()
+		require.Len(t, roles, 2)
+		assert.Equal(t, label.UIRole, roles[0])
+		assert.Equal(t, label.BackgroundTasksRole, roles[1])
+	})
+}
+
+func TestGetPoolIdentityLabels(t *testing.T) {
+	t.Run("no backgroundTasks: single pool always gets role=primary", func(t *testing.T) {
+		kb := Kibana{Name: "test-kb", Spec: KibanaSpec{Version: "8.17.0"}}
+		labels := kb.GetPoolIdentityLabels(label.UIRole)
+		assert.Equal(t, label.RolePrimaryValue, labels[label.RoleLabelName],
+			"single-pool deployment always carries role=primary so DeploymentSelector can detect upgrade path")
+	})
+
+	t.Run("with backgroundTasks: UI gets primary, BG gets background_tasks", func(t *testing.T) {
+		count := int32(1)
+		kb := Kibana{Name: "test-kb", Spec: KibanaSpec{
+			Version:         "8.17.0",
+			BackgroundTasks: &KibanaBackgroundTasks{Count: &count},
+		}}
+
+		uiLabels := kb.GetPoolIdentityLabels(label.UIRole)
+		assert.Equal(t, label.RolePrimaryValue, uiLabels[label.RoleLabelName])
+
+		bgLabels := kb.GetPoolIdentityLabels(label.BackgroundTasksRole)
+		assert.Equal(t, label.RoleBackgroundTasksValue, bgLabels[label.RoleLabelName])
+	})
+}
 
 func TestApmEsAssociation_AssociationConfAnnotationName(t *testing.T) {
 	k := Kibana{}
@@ -21,17 +92,18 @@ func TestApmEsAssociation_AssociationConfAnnotationName(t *testing.T) {
 // Test_AssociationConf tests that AssociationConf reads the conf from the annotation.
 func Test_AssociationConf(t *testing.T) {
 	kb := &Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "kb",
-			Namespace: "default",
-			Annotations: map[string]string{
-				"association.k8s.elastic.co/es-conf": `{"authSecretName":"es-default-es-beat-es-mon-user","authSecretKey":"default-es-default-esmon-beat-es-mon-user","caCertProvided":true,"caSecretName":"es-es-monitoring-default-metrics-ca","url":"https://metrics-es-http.default.svc:9200","version":"8.0.0"}`,
-			},
+		Name:      "kb",
+		Namespace: "default",
+		Annotations: map[string]string{
+			"association.k8s.elastic.co/es-conf": `{"authSecretName":"es-default-es-beat-es-mon-user","authSecretKey":"default-es-default-esmon-beat-es-mon-user","caCertProvided":true,"caSecretName":"es-es-monitoring-default-metrics-ca","url":"https://metrics-es-http.default.svc:9200","version":"8.0.0"}`,
 		},
 		Spec: KibanaSpec{
-			ElasticsearchRef: commonv1.ObjectSelector{
-				Name:      "es",
-				Namespace: "default"},
+			ElasticsearchRef: commonv1.ElasticsearchSelector{
+				ObjectSelector: commonv1.ObjectSelector{
+					Name:      "es",
+					Namespace: "default",
+				},
+			},
 		},
 	}
 

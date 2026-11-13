@@ -18,5 +18,6 @@ const (
 	EnvPodName   = "POD_NAME"
 	EnvPodIP     = "POD_IP"
 	EnvNodeName  = "NODE_NAME"
+	EnvZone      = "ZONE"
 	EnvNamespace = "NAMESPACE"
 )

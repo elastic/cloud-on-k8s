@@ -14,8 +14,9 @@ import (
 const (
 	DefaultContainerRegistry = "docker.elastic.co"
 
-	UBISuffix    = "-ubi"  // suffix to use when --ubi-only
-	OldUBISuffix = "-ubi8" // old suffix to use when --ubi-only
+	UBISuffix    = "-ubi"   // suffix to use when --ubi-only
+	OldUBISuffix = "-ubi8"  // old suffix to use when --ubi-only
+	WolfiSuffix  = "-wolfi" // suffix used to select wolfi-based image variants
 )
 
 var (
@@ -66,7 +67,7 @@ const (
 	AgentImage            Image = "elastic-agent/elastic-agent"
 	MapsImage             Image = "elastic-maps-service/elastic-maps-server"
 	LogstashImage         Image = "logstash/logstash"
-	AutoOpsAgentImage     Image = "elastic-agent/elastic-otel-collector-wolfi"
+	AutoOpsAgentImage     Image = "elastic-agent/elastic-otel-collector"
 	PackageRegistryImage  Image = "package-registry/distribution"
 )
 
@@ -105,6 +106,12 @@ func ImageRepository(img Image, ver version.Version) string {
 		suffix += containerSuffix
 	}
 
+	// Wolfi-native images are already wolfi-based by default and don't publish a separate
+	// -wolfi variant; applying the suffix would produce a registry path that doesn't exist.
+	if suffix == WolfiSuffix && isWolfiNative(img) {
+		suffix = ""
+	}
+
 	if img == PackageRegistryImage {
 		return getPackageRegistryImage(useUBISuffix, suffix, ver)
 	}
@@ -117,6 +124,13 @@ func ImageRepository(img Image, ver version.Version) string {
 // other stack images and come in non-UBI variants as well.
 func isOlderMapsServerImg(img Image, ver version.Version) bool {
 	return img == MapsImage && ver.LT(MinMapsVersionOnARM)
+}
+
+// isWolfiNative returns true for images that are wolfi-based by default and do not publish a
+// separate -wolfi variant. Appending the wolfi suffix to these images would produce a registry
+// path that does not exist.
+func isWolfiNative(img Image) bool {
+	return img == PackageRegistryImage || img == EnterpriseSearchImage
 }
 
 // getUBISuffix returns the UBI suffix to use depending on the given version.

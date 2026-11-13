@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
@@ -31,10 +30,8 @@ import (
 
 func TestWithMonitoring(t *testing.T) {
 	sampleLs := logstashv1alpha1.Logstash{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "sample",
-			Namespace: "aerospace",
-		},
+		Name:      "sample",
+		Namespace: "aerospace",
 		Spec: logstashv1alpha1.LogstashSpec{
 			Version: "8.6.0",
 		},
@@ -43,22 +40,22 @@ func TestWithMonitoring(t *testing.T) {
 	logsEsRef := []commonv1.ObjectSelector{{Name: "logs", Namespace: "observability"}}
 
 	fakeMetricsBeatUserSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "sample-observability-monitoring-beat-es-mon-user", Namespace: "aerospace"},
-		Data:       map[string][]byte{"aerospace-sample-observability-monitoring-beat-es-mon-user": []byte("1234567890")},
+		Name: "sample-observability-monitoring-beat-es-mon-user", Namespace: "aerospace",
+		Data: map[string][]byte{"aerospace-sample-observability-monitoring-beat-es-mon-user": []byte("1234567890")},
 	}
 	fakeLogsBeatUserSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "sample-observability-logs-beat-es-mon-user", Namespace: "aerospace"},
-		Data:       map[string][]byte{"aerospace-sample-observability-logs-beat-es-mon-user": []byte("1234567890")},
+		Name: "sample-observability-logs-beat-es-mon-user", Namespace: "aerospace",
+		Data: map[string][]byte{"aerospace-sample-observability-logs-beat-es-mon-user": []byte("1234567890")},
 	}
 	fakeEsHTTPCertSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "sample-es-http-certs-public", Namespace: "aerospace"},
+		Name: "sample-es-http-certs-public", Namespace: "aerospace",
 		Data: map[string][]byte{
 			"tls.crt": []byte("7H1515N074r341C3r71F1C473"),
 			"ca.crt":  []byte("7H1515N074r341C3r71F1C473"),
 		},
 	}
 	fakeLsHTTPCertSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "sample-ls-http-certs-public", Namespace: "aerospace"},
+		Name: "sample-ls-http-certs-public", Namespace: "aerospace",
 		Data: map[string][]byte{
 			"tls.crt": []byte("7H1515N074r341C3r71F1C473"),
 			"ca.crt":  []byte("7H1515N074r341C3r71F1C473"),

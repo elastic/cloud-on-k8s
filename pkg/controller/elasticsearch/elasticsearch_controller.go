@@ -16,13 +16,13 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
@@ -43,6 +43,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/validation"
 	esversion "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/version"
@@ -58,7 +59,12 @@ const name = "elasticsearch-controller"
 // this is also called by cmd/main.go
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
-	c, err := common.NewController(mgr, name, reconciler, params)
+	c, err := common.NewNamespacedController(mgr, name, reconciler, params,
+		watches.ReconcileObjectsInNamespace(
+			mgr.GetCache(),
+			func() client.ObjectList { return &esv1.ElasticsearchList{} },
+		),
+	)
 	if err != nil {
 		return err
 	}
@@ -70,7 +76,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 	client := mgr.GetClient()
 	return &ReconcileElasticsearch{
 		Client:         client,
-		recorder:       mgr.GetEventRecorderFor(name),
+		recorder:       mgr.GetEventRecorder(name),
 		licenseChecker: license.NewLicenseChecker(client, params.OperatorNamespace),
 		esObservers:    observer.NewManager(params.ElasticsearchObservationInterval, params.Tracer),
 
@@ -82,42 +88,43 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 }
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileElasticsearch) error {
+	m := r.NamespaceMatcher
 	// Watch for changes to Elasticsearch
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &esv1.Elasticsearch{}, &handler.TypedEnqueueRequestForObject[*esv1.Elasticsearch]{})); err != nil {
+		watches.NamespacedKind(m, mgr.GetCache(), &esv1.Elasticsearch{}, &handler.TypedEnqueueRequestForObject[*esv1.Elasticsearch]{})); err != nil {
 		return err
 	}
 
 	// Watch StatefulSets
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &appsv1.StatefulSet{}, handler.TypedEnqueueRequestForOwner[*appsv1.StatefulSet](mgr.GetScheme(), mgr.GetRESTMapper(), &esv1.Elasticsearch{}, handler.OnlyControllerOwner()))); err != nil {
+		watches.NamespacedKind(m, mgr.GetCache(), &appsv1.StatefulSet{}, handler.TypedEnqueueRequestForOwner[*appsv1.StatefulSet](mgr.GetScheme(), mgr.GetRESTMapper(), &esv1.Elasticsearch{}, handler.OnlyControllerOwner()))); err != nil {
 		return err
 	}
 
 	// Watch pods belonging to ES clusters
-	if err := watches.WatchPods(mgr, c, label.ClusterNameLabelName); err != nil {
+	if err := watches.WatchPods(mgr, c, m, label.ClusterNameLabelName); err != nil {
 		return err
 	}
 
 	// Watch services
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](mgr.GetScheme(), mgr.GetRESTMapper(), &esv1.Elasticsearch{}, handler.OnlyControllerOwner()))); err != nil {
+		watches.NamespacedKind(m, mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](mgr.GetScheme(), mgr.GetRESTMapper(), &esv1.Elasticsearch{}, handler.OnlyControllerOwner()))); err != nil {
 		return err
 	}
 
 	// Watch config maps for dynamic watches (currently used for additional CAs trust)
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps)); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps)); err != nil {
 		return err
 	}
 
 	// Watch PodDisruptionBudgets
 	if err := c.Watch(
-		source.Kind(mgr.GetCache(), &policyv1.PodDisruptionBudget{}, handler.TypedEnqueueRequestForOwner[*policyv1.PodDisruptionBudget](mgr.GetScheme(), mgr.GetRESTMapper(), &esv1.Elasticsearch{}, handler.OnlyControllerOwner()))); err != nil {
+		watches.NamespacedKind(m, mgr.GetCache(), &policyv1.PodDisruptionBudget{}, handler.TypedEnqueueRequestForOwner[*policyv1.PodDisruptionBudget](mgr.GetScheme(), mgr.GetRESTMapper(), &esv1.Elasticsearch{}, handler.OnlyControllerOwner()))); err != nil {
 		return err
 	}
 
 	// Watch owned and soft-owned secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
 		return err
 	}
 	if err := r.dynamicWatches.Secrets.AddHandler(&watches.OwnerWatch[*corev1.Secret]{
@@ -129,7 +136,7 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileElasti
 	); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(mgr, c, esv1.Kind); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(mgr, c, m, esv1.Kind); err != nil {
 		return err
 	}
 
@@ -137,13 +144,13 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileElasti
 	return c.Watch(observer.WatchClusterHealthChange(r.esObservers))
 }
 
-var _ reconcile.Reconciler = &ReconcileElasticsearch{}
+var _ reconcile.Reconciler = (*ReconcileElasticsearch)(nil)
 
 // ReconcileElasticsearch reconciles an Elasticsearch object
 type ReconcileElasticsearch struct {
 	k8s.Client
 	operator.Parameters
-	recorder       record.EventRecorder
+	recorder       toolsevents.EventRecorder
 	licenseChecker license.Checker
 
 	esObservers *observer.Manager
@@ -201,7 +208,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 		} else {
 			log.Error(err, "Error while updating annotations", "namespace", es.Namespace, "es_name", es.Name)
 			results.WithError(err)
-			k8s.MaybeEmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, "Reconciliation error: %v", err)
+			k8s.MaybeEmitErrorEventf(r.recorder, err, &es, events.EventReconciliationError, events.EventActionAnnotateResource, "Reconciliation error: %v", err)
 		}
 	}
 
@@ -219,7 +226,7 @@ func (r *ReconcileElasticsearch) Reconcile(ctx context.Context, request reconcil
 			log.V(1).Info("Conflict while updating status", "namespace", es.Namespace, "es_name", es.Name)
 			return reconcile.Result{RequeueAfter: reconciler.DefaultRequeue}, nil
 		}
-		k8s.MaybeEmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, "Reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEventf(r.recorder, err, &es, events.EventReconciliationError, events.EventActionStatusUpdate, "Reconciliation error: %v", err)
 	}
 	return results.WithError(err).Aggregate()
 }
@@ -257,9 +264,18 @@ func (r *ReconcileElasticsearch) internalReconcile(
 	}
 
 	span, ctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
-	// this is the same validation as the webhook, but we run it again here in case the webhook has not been configured
-	_, err := validation.ValidateElasticsearch(ctx, es, r.licenseChecker, r.ExposedNodeLabels)
+	// Same validation as the webhook, run again here when the webhook is not configured.
+	admWarnings, err := validation.ValidateElasticsearch(ctx, r.Client, es, r.licenseChecker, r.ExposedNodeLabels)
 	span.End()
+
+	for _, w := range admWarnings {
+		log.Info(
+			"Elasticsearch manifest has warnings. Proceed at your own risk. "+w,
+			"namespace", es.Namespace,
+			"es_name", es.Name,
+		)
+		reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, w)
+	}
 
 	if err != nil {
 		log.Error(
@@ -268,18 +284,8 @@ func (r *ReconcileElasticsearch) internalReconcile(
 			"namespace", es.Namespace,
 			"es_name", es.Name,
 		)
-		reconcileState.UpdateElasticsearchInvalidWithEvent(err.Error())
+		reconcileState.UpdateElasticsearchInvalidWithEvent(events.EventActionValidation, err.Error())
 		return results
-	}
-
-	err = validation.CheckForWarnings(es)
-	if err != nil {
-		log.Info(
-			"Elasticsearch manifest has warnings. Proceed at your own risk. "+err.Error(),
-			"namespace", es.Namespace,
-			"es_name", es.Name,
-		)
-		reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, err.Error())
 	}
 
 	ver, err := commonversion.Parse(es.Spec.Version)
@@ -291,19 +297,22 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results.WithError(pkgerrors.Errorf("unsupported version: %s", ver))
 	}
 
-	return stateful.NewDriver(driver.Parameters{
+	driverParams := driver.Parameters{
 		OperatorParameters: r.Parameters,
 		ES:                 es,
 		ReconcileState:     reconcileState,
 		Client:             r.Client,
 		Recorder:           r.recorder,
+		URLProvider:        services.NewElasticsearchURLProvider(es, r.Client),
 		Version:            ver,
 		Expectations:       r.expectations.ForCluster(k8s.ExtractNamespacedName(&es)),
 		Observers:          r.esObservers,
 		DynamicWatches:     r.dynamicWatches,
 		SupportedVersions:  *supported,
 		LicenseChecker:     r.licenseChecker,
-	}).Reconcile(ctx)
+	}
+
+	return stateful.NewDriver(driverParams).Reconcile(ctx)
 }
 
 func (r *ReconcileElasticsearch) updateStatus(
@@ -317,7 +326,7 @@ func (r *ReconcileElasticsearch) updateStatus(
 	events, cluster := reconcileState.Apply()
 	for _, evt := range events {
 		log.V(1).Info("Recording event", "event", evt)
-		r.recorder.Event(&es, evt.EventType, evt.Reason, evt.Message)
+		k8s.EmitEvent(r.recorder, &es, evt.EventType, evt.Reason, evt.Action, evt.Message)
 	}
 	if cluster == nil {
 		return nil
@@ -356,19 +365,33 @@ func (r *ReconcileElasticsearch) annotateResource(
 		log.V(1).Info("Skipping annotation update", "es_name", es.Name, "namespace", es.Namespace)
 		return nil
 	}
-	es.SetAnnotations(expected)
-	return r.Update(ctx, &es)
+	return k8s.PatchAnnotations(ctx, r.Client, &es, newAnnotations)
+}
+
+// OnNamespaceOutOfScope releases all controller-local state associated with the given Elasticsearch resource
+// when its namespace no longer matches the operator's namespace selector. The resource is not deleted —
+// it simply becomes invisible to this operator instance — so we stop observing its cluster health and
+// remove all dynamic watches that were registered on its behalf to avoid stale watch handlers.
+//
+// Do not remove expectations when a namespace moves out of scope.
+// The Elasticsearch resource and its child resources still exist, and the
+// namespace may move back into scope before the controller cache observes
+// recent StatefulSet/pod changes. Keeping expectations preserves the usual
+// stale-cache safety across short namespace label flaps. Expectations are
+// removed on CR deletion and are also cleared by operator restart.
+func (r *ReconcileElasticsearch) OnNamespaceOutOfScope(es types.NamespacedName) {
+	r.esObservers.StopObserving(es)
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(es))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(transport.CustomTransportCertsWatchKey(es))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedRolesWatchName(es))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedFileRealmWatchName(es))
+	r.dynamicWatches.ConfigMaps.RemoveHandlerForKey(transport.AdditionalCAWatchKey(es))
+	certificates.RemoveHTTPCertWatches(r.dynamicWatches, esv1.ESNamer, es)
 }
 
 // onDelete garbage collect resources when an Elasticsearch cluster is deleted
 func (r *ReconcileElasticsearch) onDelete(ctx context.Context, es types.NamespacedName) error {
 	r.expectations.RemoveCluster(es)
-	r.esObservers.StopObserving(es)
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(es))
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(esv1.ESNamer, es.Name))
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(transport.CustomTransportCertsWatchKey(es))
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedRolesWatchName(es))
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedFileRealmWatchName(es))
-	r.dynamicWatches.ConfigMaps.RemoveHandlerForKey(transport.AdditionalCAWatchKey(es))
+	r.OnNamespaceOutOfScope(es)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, es, esv1.Kind)
 }

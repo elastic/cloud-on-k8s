@@ -9,8 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -120,10 +119,8 @@ package_paths:
 			args: args{
 				runtimeObjs: []client.Object{
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "sample-epr-user",
-							Namespace: "ns",
-						},
+						Name:      "sample-epr-user",
+						Namespace: "ns",
 						Data: map[string][]byte{
 							"ns-sample-epr-user": []byte("password"),
 						},
@@ -138,7 +135,7 @@ package_paths:
 		t.Run(tt.name, func(t *testing.T) {
 			d := ReconcilePackageRegistry{
 				Client:         k8s.NewFakeClient(tt.args.runtimeObjs...),
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
@@ -161,10 +158,8 @@ package_paths:
 
 func secretWithConfig(name string, cfg []byte) *corev1.Secret {
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      name,
-		},
+		Namespace: "ns",
+		Name:      name,
 		Data: map[string][]byte{
 			ConfigFilename: cfg,
 		},
@@ -173,12 +168,10 @@ func secretWithConfig(name string, cfg []byte) *corev1.Secret {
 
 func eprWithConfigRef(name string, cfg *commonv1.Config) v1alpha1.PackageRegistry {
 	return v1alpha1.PackageRegistry{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "epr",
-			Namespace: "ns",
-		},
+		Name:      "epr",
+		Namespace: "ns",
 		Spec: v1alpha1.PackageRegistrySpec{
 			Config:    cfg,
-			ConfigRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: name}}},
+			ConfigRef: &commonv1.ConfigSource{SecretName: name}},
 	}
 }

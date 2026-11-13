@@ -43,7 +43,7 @@ func TestEnterpriseSearchConfigUpdate(t *testing.T) {
 
 	// 1. additional config setting
 	entWithConfig := enterprisesearch.Builder{EnterpriseSearch: *entNoConfig.EnterpriseSearch.DeepCopy()}.
-		WithConfig(map[string]interface{}{"app_search.engine.document_size.limit": "100kb"}).
+		WithConfig(map[string]any{"app_search.engine.document_size.limit": "100kb"}).
 		WithMutatedFrom(&entNoConfig)
 	var expectedAdditionalConfig PartialConfig
 	err := yaml.Unmarshal([]byte(`app_search:

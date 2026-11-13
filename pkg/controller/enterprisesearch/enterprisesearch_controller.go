@@ -18,12 +18,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
@@ -50,7 +50,12 @@ const (
 // The Manager will set fields on the Controller and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
-	c, err := common.NewController(mgr, controllerName, reconciler, params)
+	c, err := common.NewNamespacedController(mgr, controllerName, reconciler, params,
+		watches.ReconcileObjectsInNamespace(
+			mgr.GetCache(),
+			func() client.ObjectList { return &entv1.EnterpriseSearchList{} },
+		),
+	)
 	if err != nil {
 		return err
 	}
@@ -62,21 +67,22 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEn
 	client := mgr.GetClient()
 	return &ReconcileEnterpriseSearch{
 		Client:         client,
-		recorder:       mgr.GetEventRecorderFor(controllerName),
+		recorder:       mgr.GetEventRecorder(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
 	}
 }
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileEnterpriseSearch) error {
+	m := r.NamespaceMatcher
 	// Watch for changes to EnterpriseSearch
-	err := c.Watch(source.Kind(mgr.GetCache(), &entv1.EnterpriseSearch{}, &handler.TypedEnqueueRequestForObject[*entv1.EnterpriseSearch]{}))
+	err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &entv1.EnterpriseSearch{}, &handler.TypedEnqueueRequestForObject[*entv1.EnterpriseSearch]{}))
 	if err != nil {
 		return err
 	}
 
 	// Watch Deployments
-	if err := c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}, handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &appsv1.Deployment{}, handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&entv1.EnterpriseSearch{}, handler.OnlyControllerOwner(),
 	))); err != nil {
@@ -85,12 +91,12 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileEnterp
 
 	// Watch Pods, to ensure `status.version` and version upgrades are correctly reconciled on any change.
 	// Watching Deployments only may lead to missing some events.
-	if err := watches.WatchPods(mgr, c, EnterpriseSearchNameLabelName); err != nil {
+	if err := watches.WatchPods(mgr, c, m, EnterpriseSearchNameLabelName); err != nil {
 		return err
 	}
 
 	// Watch services
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&entv1.EnterpriseSearch{}, handler.OnlyControllerOwner(),
 	))); err != nil {
@@ -98,26 +104,30 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileEnterp
 	}
 
 	// Watch owned and soft-owned secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&entv1.EnterpriseSearch{}, handler.OnlyControllerOwner(),
 	))); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(mgr, c, entv1.Kind); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(mgr, c, m, entv1.Kind); err != nil {
 		return err
 	}
 
 	// Dynamically watch referenced secrets to connect to Elasticsearch
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+		return err
+	}
+	// Watch ConfigMaps referenced dynamically (additional HTTP certificate authorities)
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps))
 }
 
-var _ reconcile.Reconciler = &ReconcileEnterpriseSearch{}
+var _ reconcile.Reconciler = (*ReconcileEnterpriseSearch)(nil)
 
 // ReconcileEnterpriseSearch reconciles an ApmServer object
 type ReconcileEnterpriseSearch struct {
 	k8s.Client
-	recorder       record.EventRecorder
+	recorder       toolsevents.EventRecorder
 	dynamicWatches watches.DynamicWatches
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
@@ -132,11 +142,11 @@ func (r *ReconcileEnterpriseSearch) DynamicWatches() watches.DynamicWatches {
 	return r.dynamicWatches
 }
 
-func (r *ReconcileEnterpriseSearch) Recorder() record.EventRecorder {
+func (r *ReconcileEnterpriseSearch) Recorder() toolsevents.EventRecorder {
 	return r.recorder
 }
 
-var _ driver.Interface = &ReconcileEnterpriseSearch{}
+var _ driver.Interface = (*ReconcileEnterpriseSearch)(nil)
 
 // Reconcile reads that state of the cluster for an EnterpriseSearch object and makes changes based on the state read
 // and what is in the EnterpriseSearch.Spec.
@@ -172,11 +182,15 @@ func (r *ReconcileEnterpriseSearch) Reconcile(ctx context.Context, request recon
 	return results.Aggregate()
 }
 
-func (r *ReconcileEnterpriseSearch) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	// Clean up watches
+// OnNamespaceOutOfScope releases all controller-local state associated with the given EnterpriseSearch
+// resource when its namespace no longer matches the operator's namespace selector.
+func (r *ReconcileEnterpriseSearch) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
-	// Clean up watches set on custom http tls certificates
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(entv1.Namer, obj.Name))
+	certificates.RemoveHTTPCertWatches(r.dynamicWatches, entv1.Namer, obj)
+}
+
+func (r *ReconcileEnterpriseSearch) onDelete(ctx context.Context, obj types.NamespacedName) error {
+	r.OnNamespaceOutOfScope(obj)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, entv1.Kind)
 }
 
@@ -220,7 +234,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		_, err := results.Aggregate()
-		k8s.MaybeEmitErrorEvent(r.recorder, err, &ent, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEventf(r.recorder, err, &ent, events.EventReconciliationError, events.EventActionCertificateReconciliation, "Certificate reconciliation error: %v", err)
 		return results, status
 	}
 
@@ -253,7 +267,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1.E
 		return results.WithError(fmt.Errorf("build config hash: %w", err)), status
 	}
 
-	deploy, err := r.reconcileDeployment(ctx, ent, configHash, meta)
+	deploy, err := r.reconcileDeployment(ctx, &ent, configHash, meta)
 	if err != nil {
 		return results.WithError(fmt.Errorf("reconcile deployment: %w", err)), status
 	}
@@ -278,10 +292,14 @@ func (r *ReconcileEnterpriseSearch) validate(ctx context.Context, ent *entv1.Ent
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	if _, err := ent.ValidateCreate(); err != nil {
+	warnings, err := entv1.Validate(ent, nil)
+	if err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, ent, events.EventReasonValidation, err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, ent, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
+	}
+	for _, warning := range warnings {
+		k8s.EmitEvent(r.recorder, ent, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, warning)
 	}
 
 	return nil
@@ -307,7 +325,7 @@ func (r *ReconcileEnterpriseSearch) updateStatus(ctx context.Context, ent entv1.
 		return nil // nothing to do
 	}
 	if status.IsDegraded(ent.Status.DeploymentStatus) {
-		r.recorder.Event(&ent, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Enterprise Search health degraded")
+		k8s.EmitEvent(r.recorder, &ent, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "Enterprise Search health degraded")
 	}
 	ulog.FromContext(ctx).V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),

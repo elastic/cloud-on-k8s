@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
@@ -49,6 +50,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		as,
 		Namer,
 		meta,
+		r.OperatorNamespace,
 		initContainerParameters,
 	)
 	if err != nil {
@@ -72,7 +74,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	}
 
 	deploy := deployment.New(params)
-	result, err := deployment.Reconcile(ctx, r.K8sClient(), deploy, as)
+	result, err := common.ReconcilePauseAware(ctx, r.K8sClient(), r.recorder, deploy, state.ApmServer, deployment.Reconcile)
 	if err != nil {
 		return state, err
 	}
@@ -100,7 +102,7 @@ func (r *ReconcileApmServer) deploymentParams(
 	return deployment.Params{
 		Name:                 Deployment(as.Name),
 		Namespace:            as.Namespace,
-		Replicas:             as.Spec.Count,
+		Replicas:             new(as.Spec.Count),
 		Selector:             as.GetIdentityLabels(),
 		Metadata:             meta,
 		RevisionHistoryLimit: as.Spec.RevisionHistoryLimit,

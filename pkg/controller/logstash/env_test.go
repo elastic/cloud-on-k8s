@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
@@ -19,12 +18,12 @@ import (
 
 func Test_getEnvVars(t *testing.T) {
 	fakeLogstashUserSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "logstash-sample-default-elasticsearch-sample-logstash-user", Namespace: "default"},
-		Data:       map[string][]byte{"default-logstash-sample-default-elasticsearch-sample-logstash-user": []byte("1234567890")},
+		Name: "logstash-sample-default-elasticsearch-sample-logstash-user", Namespace: "default",
+		Data: map[string][]byte{"default-logstash-sample-default-elasticsearch-sample-logstash-user": []byte("1234567890")},
 	}
 
 	fakeExternalEsSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "external-cloud-es-ref", Namespace: "default"},
+		Name: "external-cloud-es-ref", Namespace: "default",
 		Data: map[string][]byte{
 			"url":      []byte("https://some.gcp.cloud.es.io"),
 			"username": []byte("fake_user"),
@@ -37,8 +36,8 @@ func Test_getEnvVars(t *testing.T) {
 			Spec: logstashv1alpha1.LogstashSpec{
 				ElasticsearchRefs: []logstashv1alpha1.ElasticsearchCluster{
 					{
-						ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch-sample", Namespace: "default"},
-						ClusterName:    "production",
+						Name: "elasticsearch-sample", Namespace: "default",
+						ClusterName: "production",
 					},
 				},
 			},
@@ -85,10 +84,8 @@ func Test_getEnvVars(t *testing.T) {
 				{Name: "PRODUCTION_ES_PASSWORD",
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "logstash-sample-default-elasticsearch-sample-logstash-user",
-							},
-							Key: "default-logstash-sample-default-elasticsearch-sample-logstash-user",
+							Name: "logstash-sample-default-elasticsearch-sample-logstash-user",
+							Key:  "default-logstash-sample-default-elasticsearch-sample-logstash-user",
 						},
 					},
 				},
@@ -114,13 +111,63 @@ func Test_getEnvVars(t *testing.T) {
 				{Name: "PRODUCTION_ES_PASSWORD",
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "logstash-sample-default-elasticsearch-sample-logstash-user",
-							},
-							Key: "default-logstash-sample-default-elasticsearch-sample-logstash-user",
+							Name: "logstash-sample-default-elasticsearch-sample-logstash-user",
+							Key:  "default-logstash-sample-default-elasticsearch-sample-logstash-user",
 						},
 					},
 				},
+			},
+		},
+		{
+			name:   "es ref with client cert",
+			params: params,
+			setAssocConfs: func(assocs []commonv1.Association) {
+				assocs[0].SetAssociationConf(&commonv1.AssociationConf{
+					AuthSecretName:       "logstash-sample-default-elasticsearch-sample-logstash-user",
+					AuthSecretKey:        "default-logstash-sample-default-elasticsearch-sample-logstash-user",
+					CACertProvided:       true,
+					CASecretName:         "logstash-sample-logstash-es-default-elasticsearch-sample-ca",
+					URL:                  "https://elasticsearch-sample-es-http.default.svc:9200",
+					Version:              "8.7.0",
+					ClientCertSecretName: "my-client-cert",
+				})
+				assocs[0].SetNamespace("default")
+			},
+			wantEnvs: []corev1.EnvVar{
+				{Name: "PRODUCTION_ES_HOSTS", Value: "https://elasticsearch-sample-es-http.default.svc:9200"},
+				{Name: "PRODUCTION_ES_USER", Value: "default-logstash-sample-default-elasticsearch-sample-logstash-user"},
+				{Name: "PRODUCTION_ES_PASSWORD",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							Name: "logstash-sample-default-elasticsearch-sample-logstash-user",
+							Key:  "default-logstash-sample-default-elasticsearch-sample-logstash-user",
+						},
+					},
+				},
+				{Name: "PRODUCTION_ES_SSL_CERTIFICATE_AUTHORITY", Value: "/mnt/elastic-internal/elasticsearch-association/default/elasticsearch-sample/certs/ca.crt"},
+				{Name: "PRODUCTION_ES_SSL_CERTIFICATE", Value: "/mnt/elastic-internal/elasticsearch-association/default/elasticsearch-sample/client-certs/tls.crt"},
+				{Name: "PRODUCTION_ES_SSL_KEY", Value: "/mnt/elastic-internal/elasticsearch-association/default/elasticsearch-sample/client-certs/tls.key"},
+			},
+		},
+		{
+			name:   "es ref with PKI auth: no user/password env vars, only cert paths",
+			params: params,
+			setAssocConfs: func(assocs []commonv1.Association) {
+				assocs[0].SetAssociationConf(&commonv1.AssociationConf{
+					AuthSecretName:       commonv1.NoAuthRequiredValue,
+					CACertProvided:       true,
+					CASecretName:         "logstash-sample-logstash-es-default-elasticsearch-sample-ca",
+					URL:                  "https://elasticsearch-sample-es-http.default.svc:9200",
+					Version:              "8.7.0",
+					ClientCertSecretName: "my-client-cert",
+				})
+				assocs[0].SetNamespace("default")
+			},
+			wantEnvs: []corev1.EnvVar{
+				{Name: "PRODUCTION_ES_HOSTS", Value: "https://elasticsearch-sample-es-http.default.svc:9200"},
+				{Name: "PRODUCTION_ES_SSL_CERTIFICATE_AUTHORITY", Value: "/mnt/elastic-internal/elasticsearch-association/default/elasticsearch-sample/certs/ca.crt"},
+				{Name: "PRODUCTION_ES_SSL_CERTIFICATE", Value: "/mnt/elastic-internal/elasticsearch-association/default/elasticsearch-sample/client-certs/tls.crt"},
+				{Name: "PRODUCTION_ES_SSL_KEY", Value: "/mnt/elastic-internal/elasticsearch-association/default/elasticsearch-sample/client-certs/tls.key"},
 			},
 		},
 		{
@@ -143,10 +190,8 @@ func Test_getEnvVars(t *testing.T) {
 				{Name: "PRODUCTION_ES_PASSWORD",
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "external-cloud-es-ref",
-							},
-							Key: "password",
+							Name: "external-cloud-es-ref",
+							Key:  "password",
 						},
 					},
 				},

@@ -7,14 +7,14 @@ package shared
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/stretchr/testify/assert"
-
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
@@ -34,7 +34,7 @@ func Test_esReachableConditionMessage(t *testing.T) {
 	}{
 		{
 			args: args{
-				internalService:        &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "name", Namespace: "namespace"}},
+				internalService:        &corev1.Service{Name: "name", Namespace: "namespace"},
 				isServiceReady:         false,
 				isRespondingToRequests: false,
 			},
@@ -42,7 +42,7 @@ func Test_esReachableConditionMessage(t *testing.T) {
 		},
 		{
 			args: args{
-				internalService:        &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "name", Namespace: "namespace"}},
+				internalService:        &corev1.Service{Name: "name", Namespace: "namespace"},
 				isServiceReady:         true,
 				isRespondingToRequests: false,
 			},
@@ -50,7 +50,7 @@ func Test_esReachableConditionMessage(t *testing.T) {
 		},
 		{
 			args: args{
-				internalService:        &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "name", Namespace: "namespace"}},
+				internalService:        &corev1.Service{Name: "name", Namespace: "namespace"},
 				isServiceReady:         true,
 				isRespondingToRequests: true,
 			},
@@ -66,7 +66,7 @@ func Test_esReachableConditionMessage(t *testing.T) {
 	}
 }
 
-func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
+func Test_MaybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 	const operatorNamespace = "elastic-system"
 
 	tests := []struct {
@@ -82,12 +82,10 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 		{
 			name: "No policies exist - should create empty secret (enterprise enabled)",
 			es: &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-es",
-					Namespace: "default",
-					Labels: map[string]string{
-						"app": "elasticsearch",
-					},
+				Name:      "test-es",
+				Namespace: "default",
+				Labels: map[string]string{
+					"app": "elasticsearch",
 				},
 			},
 			licenseChecker:    commonlicense.MockLicenseChecker{EnterpriseEnabled: true},
@@ -98,12 +96,10 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 		{
 			name: "No policies exist - should create empty secret (enterprise disabled)",
 			es: &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-es",
-					Namespace: "default",
-					Labels: map[string]string{
-						"app": "elasticsearch",
-					},
+				Name:      "test-es",
+				Namespace: "default",
+				Labels: map[string]string{
+					"app": "elasticsearch",
 				},
 			},
 			licenseChecker:    commonlicense.MockLicenseChecker{EnterpriseEnabled: false},
@@ -112,22 +108,41 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 			wantErr:           false,
 		},
 		{
+			name: "No policies exist - empty secret already exists with missing label",
+			es: &esv1.Elasticsearch{
+				Name:      "test-es",
+				Namespace: "default",
+				Labels: map[string]string{
+					"app": "elasticsearch",
+				},
+			},
+			existingSecrets: []corev1.Secret{
+				{
+					Name:      esv1.FileSettingsSecretName("test-es"),
+					Namespace: "default",
+					Data: map[string][]byte{
+						"settings.json": []byte("{}"),
+					},
+				},
+			},
+			licenseChecker:    commonlicense.MockLicenseChecker{EnterpriseEnabled: false},
+			wantSecretCreated: true, // technically not created but we want the secret found
+			wantRequeue:       false,
+			wantErr:           false,
+		},
+		{
 			name: "Policy targets ES cluster in same namespace - should NOT create empty secret but requeue",
 			es: &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-es",
-					Namespace: "default",
-					Labels: map[string]string{
-						"app": "elasticsearch",
-					},
+				Name:      "test-es",
+				Namespace: "default",
+				Labels: map[string]string{
+					"app": "elasticsearch",
 				},
 			},
 			policies: []policyv1alpha1.StackConfigPolicy{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-policy",
-						Namespace: "default",
-					},
+					Name:      "test-policy",
+					Namespace: "default",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{
@@ -145,20 +160,16 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 		{
 			name: "Policy targets ES cluster from operator namespace - should NOT create empty secret but requeue",
 			es: &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-es",
-					Namespace: "default",
-					Labels: map[string]string{
-						"app": "elasticsearch",
-					},
+				Name:      "test-es",
+				Namespace: "default",
+				Labels: map[string]string{
+					"app": "elasticsearch",
 				},
 			},
 			policies: []policyv1alpha1.StackConfigPolicy{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "global-policy",
-						Namespace: "elastic-system",
-					},
+					Name:      "global-policy",
+					Namespace: "elastic-system",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{
@@ -176,20 +187,16 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 		{
 			name: "Policy exists but does not target ES cluster - should create empty secret",
 			es: &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-es",
-					Namespace: "default",
-					Labels: map[string]string{
-						"app": "elasticsearch",
-					},
+				Name:      "test-es",
+				Namespace: "default",
+				Labels: map[string]string{
+					"app": "elasticsearch",
 				},
 			},
 			policies: []policyv1alpha1.StackConfigPolicy{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "unrelated-policy",
-						Namespace: "default",
-					},
+					Name:      "unrelated-policy",
+					Namespace: "default",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{
@@ -207,20 +214,16 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 		{
 			name: "Policy in different namespace (not operator namespace) - should create empty secret",
 			es: &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-es",
-					Namespace: "default",
-					Labels: map[string]string{
-						"app": "elasticsearch",
-					},
+				Name:      "test-es",
+				Namespace: "default",
+				Labels: map[string]string{
+					"app": "elasticsearch",
 				},
 			},
 			policies: []policyv1alpha1.StackConfigPolicy{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "other-ns-policy",
-						Namespace: "other-namespace",
-					},
+					Name:      "other-ns-policy",
+					Namespace: "other-namespace",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{
@@ -238,21 +241,17 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 		{
 			name: "Multiple policies, one targets ES, file-settings secret does not exist - should NOT create empty secret but requeue",
 			es: &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-es",
-					Namespace: "default",
-					Labels: map[string]string{
-						"app":  "elasticsearch",
-						"team": "platform",
-					},
+				Name:      "test-es",
+				Namespace: "default",
+				Labels: map[string]string{
+					"app":  "elasticsearch",
+					"team": "platform",
 				},
 			},
 			policies: []policyv1alpha1.StackConfigPolicy{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "unrelated-policy",
-						Namespace: "default",
-					},
+					Name:      "unrelated-policy",
+					Namespace: "default",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{
@@ -262,10 +261,8 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "matching-policy",
-						Namespace: "default",
-					},
+					Name:      "matching-policy",
+					Namespace: "default",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{
@@ -283,29 +280,26 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 		{
 			name: "Multiple policies, one targets ES, file-settings secret exists - should NOT requeue",
 			es: &esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-es",
-					Namespace: "default",
-					Labels: map[string]string{
-						"app":  "elasticsearch",
-						"team": "platform",
-					},
+				Name:      "test-es",
+				Namespace: "default",
+				Labels: map[string]string{
+					"app":  "elasticsearch",
+					"team": "platform",
 				},
 			},
 			existingSecrets: []corev1.Secret{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      esv1.FileSettingsSecretName("test-es"),
-						Namespace: "default",
+					Name:      esv1.FileSettingsSecretName("test-es"),
+					Namespace: "default",
+					Data: map[string][]byte{
+						"settings.json": []byte("{}"),
 					},
 				},
 			},
 			policies: []policyv1alpha1.StackConfigPolicy{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "unrelated-policy",
-						Namespace: "default",
-					},
+					Name:      "unrelated-policy",
+					Namespace: "default",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{
@@ -315,10 +309,8 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "matching-policy",
-						Namespace: "default",
-					},
+					Name:      "matching-policy",
+					Namespace: "default",
 					Spec: policyv1alpha1.StackConfigPolicySpec{
 						ResourceSelector: metav1.LabelSelector{
 							MatchLabels: map[string]string{
@@ -349,14 +341,14 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 
 			c := k8s.NewFakeClient(initObjs...)
 
-			requeue, err := maybeReconcileEmptyFileSettingsSecret(t.Context(), c, tt.licenseChecker, tt.es, operatorNamespace)
+			requeue, err := MaybeReconcileEmptyFileSettingsSecret(t.Context(), c, tt.licenseChecker, tt.es, operatorNamespace)
 
 			// Check error expectation
 			if tt.wantErr {
-				assert.Error(t, err, "expected error at maybeReconcileEmptyFileSettingsSecret")
+				assert.Error(t, err, "expected error at MaybeReconcileEmptyFileSettingsSecret")
 				return
 			}
-			assert.NoError(t, err, "expected no error at maybeReconcileEmptyFileSettingsSecret")
+			assert.NoError(t, err, "expected no error at MaybeReconcileEmptyFileSettingsSecret")
 			assert.Equal(t, tt.wantRequeue, requeue, "expected requeue does not match")
 
 			// Check if secret was created
@@ -369,6 +361,8 @@ func Test_maybeReconcileEmptyFileSettingsSecret(t *testing.T) {
 
 			if tt.wantSecretCreated {
 				assert.NoError(t, secretErr, "expected no error at getting file-settings secret")
+				// secret should eventually end up having the watch label.
+				assert.Equal(t, commonv1.RestrictWatchedResourcesLabelValue, secret.Labels[commonv1.RestrictWatchedResourcesLabelName])
 			} else {
 				assert.True(t, apierrors.IsNotFound(secretErr), "expected IsNotFound error at getting file-settings secret")
 			}

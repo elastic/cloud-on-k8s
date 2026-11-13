@@ -7,8 +7,16 @@ package validation
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 func Test_noUnsupportedSettings(t *testing.T) {
@@ -125,7 +133,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 			expectErrors: true,
 		},
 		{
-			name: "supported client auth setting and value combination OK",
+			name: "client auth setting optional OK",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					Version: "7.0.0",
@@ -143,7 +151,7 @@ func Test_noUnsupportedSettings(t *testing.T) {
 			expectErrors: false,
 		},
 		{
-			name: "unsupported client auth setting and value combination",
+			name: "client auth setting required yields forbidden field error for warning split",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
 					Version: "7.0.0",
@@ -160,6 +168,128 @@ func Test_noUnsupportedSettings(t *testing.T) {
 			},
 			expectErrors: true,
 		},
+		{
+			name: "reserved eck_managed_pki realm name (flat key) is rejected",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.6.0",
+					Auth:    esv1.Auth{PKI: esv1.PKIRealm{Enabled: true}},
+					NodeSets: []esv1.NodeSet{
+						{
+							Config: &commonv1.Config{
+								Data: map[string]any{
+									esv1.XPackSecurityAuthcRealmsPKIECKPKIOrder: 1,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: true,
+		},
+		{
+			name: "reserved eck_managed_pki realm name (nested key) is rejected",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.6.0",
+					Auth:    esv1.Auth{PKI: esv1.PKIRealm{Enabled: true}},
+					NodeSets: []esv1.NodeSet{
+						{
+							Config: &commonv1.Config{
+								Data: map[string]any{
+									"xpack": map[string]any{
+										"security": map[string]any{
+											"authc": map[string]any{
+												"realms": map[string]any{
+													"pki": map[string]any{
+														"eck_managed_pki": map[string]any{"order": 1},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: true,
+		},
+		{
+			name: "other pki realm name is allowed",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.6.0",
+					Auth:    esv1.Auth{PKI: esv1.PKIRealm{Enabled: true}},
+					NodeSets: []esv1.NodeSet{
+						{
+							Config: &commonv1.Config{
+								Data: map[string]any{
+									"xpack.security.authc.realms.pki.my_pki.order": 2,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "reserved eck_managed_pki realm order is rejected",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.6.0",
+					Auth:    esv1.Auth{PKI: esv1.PKIRealm{Enabled: true}},
+					NodeSets: []esv1.NodeSet{
+						{
+							Config: &commonv1.Config{
+								Data: map[string]any{
+									"xpack.security.authc.realms.jwt.my_jwt.order": commonv1.ECKPKIRealmOrder,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: true,
+		},
+		{
+			name: "eck_managed_pki realm name is allowed when PKI is disabled",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.6.0",
+					NodeSets: []esv1.NodeSet{
+						{
+							Config: &commonv1.Config{
+								Data: map[string]any{
+									esv1.XPackSecurityAuthcRealmsPKIECKPKIOrder: 1,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "eck_managed_pki realm order is allowed when PKI is disabled",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					Version: "9.6.0",
+					NodeSets: []esv1.NodeSet{
+						{
+							Config: &commonv1.Config{
+								Data: map[string]any{
+									"xpack.security.authc.realms.jwt.my_jwt.order": commonv1.ECKPKIRealmOrder,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -169,5 +299,514 @@ func Test_noUnsupportedSettings(t *testing.T) {
 				t.Errorf("failed noUnsupportedSettings(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.es.Spec.Version)
 			}
 		})
+	}
+}
+
+func Test_settingsWarningsAndErrors(t *testing.T) {
+	t.Run("forbidden reserved keys stay warnings only", func(t *testing.T) {
+		es := esv1.Elasticsearch{
+			Spec: esv1.ElasticsearchSpec{
+				Version: "8.16.0",
+				NodeSets: []esv1.NodeSet{{
+					Count: 1,
+					Config: &commonv1.Config{
+						Data: map[string]any{
+							esv1.ClusterInitialMasterNodes: "foo",
+						},
+					},
+				}},
+			},
+		}
+		warns, blocking := settingsWarningsAndErrors(es)
+		require.Empty(t, blocking)
+		require.Len(t, warns, 1)
+		require.Contains(t, warns[0], unsupportedConfigErrMsg)
+	})
+	t.Run("mandatory client authentication is warning only", func(t *testing.T) {
+		es := esv1.Elasticsearch{
+			Spec: esv1.ElasticsearchSpec{
+				Version: "8.16.0",
+				NodeSets: []esv1.NodeSet{{
+					Count: 1,
+					Config: &commonv1.Config{
+						Data: map[string]any{
+							esv1.XPackSecurityHttpSslClientAuthentication: "required",
+						},
+					},
+				}},
+			},
+		}
+		warns, blocking := settingsWarningsAndErrors(es)
+		require.Empty(t, blocking)
+		require.Len(t, warns, 1)
+		require.Contains(t, warns[0], unsupportedClientAuthenticationMsg)
+	})
+	t.Run("reserved eck_managed_pki realm name is a blocking error", func(t *testing.T) {
+		es := esv1.Elasticsearch{
+			Spec: esv1.ElasticsearchSpec{
+				Version: "9.6.0",
+				Auth:    esv1.Auth{PKI: esv1.PKIRealm{Enabled: true}},
+				NodeSets: []esv1.NodeSet{{
+					Count: 1,
+					Config: &commonv1.Config{
+						Data: map[string]any{
+							esv1.XPackSecurityAuthcRealmsPKIECKPKIOrder: 1,
+						},
+					},
+				}},
+			},
+		}
+		warns, blocking := settingsWarningsAndErrors(es)
+		require.Empty(t, warns)
+		require.Len(t, blocking, 1)
+		require.Contains(t, blocking[0].Detail, "eck_managed_pki")
+	})
+}
+
+func Test_validateReservedPKIRealmInPolicyConfig(t *testing.T) {
+	policyConfigSecret := func(config string) *corev1.Secret {
+		return &corev1.Secret{
+			Name:      esv1.StackConfigElasticsearchConfigSecretName("es"),
+			Namespace: "ns",
+			Data:      map[string][]byte{esv1.StackConfigElasticsearchConfigKey: []byte(config)},
+		}
+	}
+	mkES := func(pkiEnabled bool) esv1.Elasticsearch {
+		return esv1.Elasticsearch{
+			Name:      "es",
+			Namespace: "ns",
+			Spec: esv1.ElasticsearchSpec{
+				Version:  "9.6.0",
+				HTTP:     commonv1.HTTPConfigWithClientOptions{TLS: commonv1.TLSWithClientOptions{Client: commonv1.ClientOptions{Authentication: true}}},
+				Auth:     esv1.Auth{PKI: esv1.PKIRealm{Enabled: pkiEnabled}},
+				NodeSets: []esv1.NodeSet{{Name: "default", Count: 1}},
+			},
+		}
+	}
+	reservedOrder := policyConfigSecret(`{"xpack.security.authc.realms.jwt.my_jwt.order":2147483647}`)
+
+	tests := []struct {
+		name     string
+		es       esv1.Elasticsearch
+		secret   *corev1.Secret
+		wantErrs []string
+	}{
+		{
+			name: "PKI enabled without policy config",
+			es:   mkES(true),
+		},
+		{
+			name:   "PKI enabled with policy config not clashing with the realm",
+			es:     mkES(true),
+			secret: policyConfigSecret(`{"xpack.security.authc.realms.jwt.my_jwt.order":1}`),
+		},
+		{
+			name:     "PKI enabled with policy config using the reserved realm order",
+			es:       mkES(true),
+			secret:   reservedOrder,
+			wantErrs: []string{"realm order 2147483647 is reserved for the ECK-managed PKI realm eck_managed_pki"},
+		},
+		{
+			name:     "PKI enabled with policy config under the reserved realm name",
+			es:       mkES(true),
+			secret:   policyConfigSecret(`{"xpack.security.authc.realms.pki.eck_managed_pki.order":1}`),
+			wantErrs: []string{"realm name eck_managed_pki is reserved for ECK-managed PKI authentication"},
+		},
+		{
+			name:   "PKI disabled with policy config using the reserved realm order",
+			es:     mkES(false),
+			secret: reservedOrder,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := k8s.NewFakeClient()
+			if tt.secret != nil {
+				c = k8s.NewFakeClient(tt.secret)
+			}
+			errs, err := validateReservedPKIRealmInPolicyConfig(t.Context(), c, tt.es)
+			require.NoError(t, err)
+			require.Len(t, errs, len(tt.wantErrs), "unexpected errors: %v", errs)
+			for i, wantErr := range tt.wantErrs {
+				require.Equal(t, "spec.auth.pki.enabled", errs[i].Field)
+				require.Contains(t, errs[i].Detail, wantErr)
+			}
+
+			// ValidateElasticsearch must deny the resource with the same errors.
+			_, err = ValidateElasticsearch(t.Context(), c, tt.es, &license.MockLicenseChecker{EnterpriseEnabled: true}, nil)
+			var errMsg string
+			if err != nil {
+				errMsg = err.Error()
+			}
+			require.Equal(t, len(tt.wantErrs) > 0, err != nil, "unexpected error state: %v", err)
+			for _, wantErr := range tt.wantErrs {
+				require.Contains(t, errMsg, wantErr)
+			}
+		})
+	}
+}
+
+func Test_validZoneAwarenessAffinityWarnings(t *testing.T) {
+	requiredAffinityWithExpression := func(key string, operator corev1.NodeSelectorOperator) *corev1.Affinity {
+		return &corev1.Affinity{
+			NodeAffinity: &corev1.NodeAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+					NodeSelectorTerms: []corev1.NodeSelectorTerm{
+						{
+							MatchExpressions: []corev1.NodeSelectorRequirement{
+								{Key: key, Operator: operator, Values: []string{"a"}},
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	topologyExprPath := func(nodeSetIndex int) string {
+		return field.NewPath("spec").Child("nodeSets").Index(nodeSetIndex).Child("podTemplate", "spec", "affinity", "nodeAffinity", "requiredDuringSchedulingIgnoredDuringExecution", "nodeSelectorTerms").Index(0).Child("matchExpressions").Index(0).String()
+	}
+
+	tests := []struct {
+		name           string
+		es             esv1.Elasticsearch
+		expectedFields []string
+	}{
+		{
+			name: "warns on not-in for zone-aware nodeset topology key",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "za",
+							ZoneAwareness: &esv1.ZoneAwareness{},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithExpression(esv1.DefaultZoneAwarenessTopologyKey, corev1.NodeSelectorOpNotIn),
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedFields: []string{topologyExprPath(0)},
+		},
+		{
+			name: "warns on not-in for non-zone-aware nodeset in zone-aware cluster",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name: "za",
+							ZoneAwareness: &esv1.ZoneAwareness{
+								TopologyKey: "topology.custom.io/rack",
+							},
+						},
+						{
+							Name: "plain",
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithExpression("topology.custom.io/rack", corev1.NodeSelectorOpNotIn),
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedFields: []string{topologyExprPath(1)},
+		},
+		{
+			name: "does not warn when no nodeset enables zone awareness",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name: "plain",
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithExpression(esv1.DefaultZoneAwarenessTopologyKey, corev1.NodeSelectorOpNotIn),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "does not warn on unrelated key",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "za",
+							ZoneAwareness: &esv1.ZoneAwareness{},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithExpression("nodepool", corev1.NodeSelectorOpNotIn),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "warns on does-not-exist on default zone-awareness topology key",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "za",
+							ZoneAwareness: &esv1.ZoneAwareness{},
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithExpression(esv1.DefaultZoneAwarenessTopologyKey, corev1.NodeSelectorOpDoesNotExist),
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedFields: []string{topologyExprPath(0)},
+		},
+		{
+			name: "warns on does-not-exist on non-zone-aware nodeset in zone-aware cluster",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name: "za",
+							ZoneAwareness: &esv1.ZoneAwareness{
+								TopologyKey: "topology.custom.io/rack",
+							},
+						},
+						{
+							Name: "plain",
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithExpression("topology.custom.io/rack", corev1.NodeSelectorOpDoesNotExist),
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedFields: []string{topologyExprPath(1)},
+		},
+		{
+			name: "does not warn on does-not-exist when no nodeset enables zone awareness",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name: "plain",
+							PodTemplate: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Affinity: requiredAffinityWithExpression(esv1.DefaultZoneAwarenessTopologyKey, corev1.NodeSelectorOpDoesNotExist),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			warnings := validZoneAwarenessAffinityWarnings(tt.es)
+			actualFields := make([]string, len(warnings))
+			for i, warning := range warnings {
+				actualFields[i] = warning.Field
+			}
+			assert.ElementsMatch(t, tt.expectedFields, actualFields)
+		})
+	}
+}
+
+func Test_shorthandResourcesOverrideWarning(t *testing.T) {
+	cpu := resource.MustParse("500m")
+	memory := resource.MustParse("1Gi")
+
+	// nodeSet is a small helper to build a NodeSet with a main container carrying the given resources.
+	nodeSet := func(name string, shorthand commonv1.Resources, containerName string, containerResources corev1.ResourceRequirements) esv1.NodeSet {
+		return esv1.NodeSet{
+			Name:      name,
+			Resources: esv1.NodeSetResources{Resources: shorthand},
+			PodTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: containerName, Resources: containerResources},
+					},
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name     string
+		es       esv1.Elasticsearch
+		warnings int
+	}{
+		{
+			name: "no warning when shorthand resources do not overlap pod template",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"default",
+					commonv1.Resources{Requests: commonv1.ResourceAllocations{CPU: &cpu}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceMemory: memory}},
+				),
+			}}},
+			warnings: 0,
+		},
+		{
+			name: "warning when shorthand requests.cpu overlaps pod template",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"default",
+					commonv1.Resources{Requests: commonv1.ResourceAllocations{CPU: &cpu}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceCPU: cpu}},
+				),
+			}}},
+			warnings: 1,
+		},
+		{
+			name: "warning when shorthand requests.memory overlaps pod template",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"default",
+					commonv1.Resources{Requests: commonv1.ResourceAllocations{Memory: &memory}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceMemory: memory}},
+				),
+			}}},
+			warnings: 1,
+		},
+		{
+			name: "warning when shorthand limits.cpu overlaps pod template",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"default",
+					commonv1.Resources{Limits: commonv1.ResourceAllocations{CPU: &cpu}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Limits: corev1.ResourceList{corev1.ResourceCPU: cpu}},
+				),
+			}}},
+			warnings: 1,
+		},
+		{
+			name: "warning when shorthand limits.memory overlaps pod template",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"default",
+					commonv1.Resources{Limits: commonv1.ResourceAllocations{Memory: &memory}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Limits: corev1.ResourceList{corev1.ResourceMemory: memory}},
+				),
+			}}},
+			warnings: 1,
+		},
+		{
+			name: "no warning when main container is absent from pod template",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"default",
+					commonv1.Resources{Requests: commonv1.ResourceAllocations{CPU: &cpu}},
+					"not-"+esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceCPU: cpu}},
+				),
+			}}},
+			warnings: 0,
+		},
+		{
+			name: "multiple NodeSets - warning only emitted for overlapping one",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"clean",
+					commonv1.Resources{Requests: commonv1.ResourceAllocations{CPU: &cpu}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceMemory: memory}},
+				),
+				nodeSet(
+					"overlapping",
+					commonv1.Resources{Requests: commonv1.ResourceAllocations{Memory: &memory}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceMemory: memory}},
+				),
+			}}},
+			warnings: 1,
+		},
+		{
+			name: "multiple NodeSets - warning emitted for every overlapping NodeSet",
+			es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{
+				nodeSet(
+					"cpu-overlap",
+					commonv1.Resources{Requests: commonv1.ResourceAllocations{CPU: &cpu}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceCPU: cpu}},
+				),
+				nodeSet(
+					"limits-memory-overlap",
+					commonv1.Resources{Limits: commonv1.ResourceAllocations{Memory: &memory}},
+					esv1.ElasticsearchContainerName,
+					corev1.ResourceRequirements{Limits: corev1.ResourceList{corev1.ResourceMemory: memory}},
+				),
+			}}},
+			warnings: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actualWarnings := shorthandResourcesOverrideWarning(tt.es)
+			require.Len(t, actualWarnings, tt.warnings)
+			for _, w := range actualWarnings {
+				assert.Contains(t, w.Detail, "overrides")
+			}
+		})
+	}
+}
+
+// Test_shorthandResourcesOverrideWarning_autoscaled checks that NodeSets driven by an autoscaling
+// policy are NOT exempt from the warning. The shorthand there is written by the autoscaling
+// controller, so the values being shadowed are the user's own, and this is precisely the case the
+// autoscaling contract asks charts to avoid. Removing the container resources from the manifest
+// clears the warning without turning autoscaling off.
+//
+// The warning is deliberately blind to autoscaling: it reports the overlap wherever it finds it,
+// which is why no client is needed to compute it.
+func Test_shorthandResourcesOverrideWarning_autoscaled(t *testing.T) {
+	cpu := resource.MustParse("500m")
+	es := esv1.Elasticsearch{
+		Name: "es", Namespace: "ns",
+		Spec: esv1.ElasticsearchSpec{
+			Version: "8.16.0",
+			// "data" is the tier a policy would target; "master" stands in for a hand-managed one.
+			NodeSets: []esv1.NodeSet{
+				nodeSetWithShorthandAndContainer("autoscaled", "data", cpu),
+				nodeSetWithShorthandAndContainer("manual", "master", cpu),
+			},
+		},
+	}
+
+	got := shorthandResourcesOverrideWarning(es)
+	require.Len(t, got, 2, "an autoscaled NodeSet must warn just like a hand-managed one")
+	assert.Contains(t, got[0].Field, "nodeSets[0]")
+	assert.Contains(t, got[1].Field, "nodeSets[1]")
+}
+
+func nodeSetWithShorthandAndContainer(name, role string, cpu resource.Quantity) esv1.NodeSet {
+	return esv1.NodeSet{
+		Name:   name,
+		Config: &commonv1.Config{Data: map[string]any{"node.roles": []string{role}}},
+		Resources: esv1.NodeSetResources{Resources: commonv1.Resources{
+			Requests: commonv1.ResourceAllocations{CPU: &cpu},
+		}},
+		PodTemplate: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{
+			Name:      esv1.ElasticsearchContainerName,
+			Resources: corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceCPU: cpu}},
+		}}}},
 	}
 }

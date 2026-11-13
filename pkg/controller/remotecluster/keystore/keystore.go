@@ -34,6 +34,27 @@ const (
 	RemoteClusterAPIKeysType = "remote-cluster-api-keys"
 )
 
+// APIKeySecretSource returns the remote API keys secret as a NamespacedSecretSource if it exists.
+// Returns nil if the secret does not exist.
+func APIKeySecretSource(ctx context.Context, es *esv1.Elasticsearch, c k8s.Client) ([]commonv1.NamespacedSecretSource, error) {
+	secretName := types.NamespacedName{
+		Name:      esv1.RemoteAPIKeysSecretName(es.Name),
+		Namespace: es.Namespace,
+	}
+	if err := c.Get(ctx, secretName, &corev1.Secret{}); err != nil {
+		if errors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return []commonv1.NamespacedSecretSource{
+		{
+			Namespace:  es.Namespace,
+			SecretName: secretName.Name,
+		},
+	}, nil
+}
+
 var (
 	credentialsSecretSettingsRegEx = regexp.MustCompile(`^cluster\.remote\.([\w-]+)\.credentials$`)
 )
@@ -233,15 +254,13 @@ func (aks *APIKeyStore) Save(ctx context.Context, c k8s.Client, owner *esv1.Elas
 	expectedLabels := labels.AddCredentialsLabel(label.NewLabels(k8s.ExtractNamespacedName(owner)))
 	expectedLabels[commonv1.TypeLabelName] = RemoteClusterAPIKeysType
 	expected := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretName.Name,
-			Namespace: secretName.Namespace,
-			Annotations: map[string]string{
-				aliasesAnnotationName: string(aliases),
-			},
-			Labels: expectedLabels,
+		Name:      secretName.Name,
+		Namespace: secretName.Namespace,
+		Annotations: map[string]string{
+			aliasesAnnotationName: string(aliases),
 		},
-		Data: data,
+		Labels: expectedLabels,
+		Data:   data,
 	}
 	if _, err := reconciler.ReconcileSecret(ctx, c, expected, owner); err != nil {
 		if errors.IsConflict(err) {
@@ -263,7 +282,7 @@ func (aks *APIKeyStore) deleteSecret(ctx context.Context, c k8s.Client, secretNa
 	}
 	results := &reconciler.Results{}
 	if err := c.Delete(ctx,
-		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: secretName.Name, Namespace: secretName.Namespace}},
+		&corev1.Secret{Name: secretName.Name, Namespace: secretName.Namespace},
 		deleteOptions...,
 	); err != nil {
 		if errors.IsNotFound(err) {

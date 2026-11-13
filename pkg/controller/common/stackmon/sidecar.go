@@ -32,13 +32,14 @@ func NewMetricBeatSidecar(
 	resource monitoring.HasMonitoring,
 	imageVersion semver.Version,
 	caVolume volume.VolumeLike,
+	clientCertVolume volume.VolumeLike,
 	baseConfig string,
 	meta metadata.Metadata,
 ) (BeatSidecar, error) {
 	image := container.ImageRepository(container.MetricbeatImage, imageVersion)
 	// EmptyDir volume so that MetricBeat does not write in the container image, which allows ReadOnlyRootFilesystem: true
 	emptyDir := volume.NewEmptyDirVolume("metricbeat-data", "/usr/share/metricbeat/data")
-	return NewBeatSidecar(ctx, client, "metricbeat", image, imageVersion.String(), resource, monitoring.GetMetricsAssociation(resource), baseConfig, meta, caVolume, emptyDir)
+	return NewBeatSidecar(ctx, client, "metricbeat", image, imageVersion.String(), resource, monitoring.GetMetricsAssociation(resource), baseConfig, meta, caVolume, clientCertVolume, emptyDir)
 }
 
 func NewFileBeatSidecar(
@@ -138,9 +139,10 @@ func CAVolume(
 // TemplateParams are commonly used parameters to render a Beats configuration template.
 // Stack monitoring implementations can choose to implement their own template parameters if needed.
 type TemplateParams struct {
-	URL      string
-	Username string
-	Password string
-	IsSSL    bool
-	CAVolume volume.VolumeLike
+	URL              string
+	Username         string
+	Password         string
+	IsSSL            bool
+	CAVolume         volume.VolumeLike
+	ClientCertVolume volume.VolumeLike
 }

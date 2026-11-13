@@ -24,6 +24,7 @@ import (
 func AddAgentKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedObjTemplate:     func() commonv1.Associated { return &agentv1alpha1.Agent{} },
+		AssociatedObjListTemplate: func() client.ObjectList { return &agentv1alpha1.AgentList{} },
 		ReferencedObjTemplate:     func() client.Object { return &kbv1.Kibana{} },
 		ExternalServiceURL:        getKibanaExternalURL,
 		ReferencedResourceVersion: referencedKibanaStatusVersion,
@@ -42,8 +43,8 @@ func AddAgentKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, par
 		AssociationResourceNameLabelName:      kblabel.KibanaNameLabelName,
 		AssociationResourceNamespaceLabelName: kblabel.KibanaNamespaceLabelName,
 
-		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
-			ElasticsearchRef: getElasticsearchFromKibana,
+		ElasticsearchRef: getElasticsearchFromKibana,
+		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{ //nolint:gosec
 			UserSecretSuffix: "agent-kb-user",
 			ESUserRole: func(associated commonv1.Associated) (string, error) {
 				agent, ok := associated.(*agentv1alpha1.Agent)

@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
@@ -39,7 +38,7 @@ func (f *fakeVotingConfigExclusionsESClient) AddVotingConfigExclusions(_ context
 func Test_ClearVotingConfigExclusions(t *testing.T) {
 	// dummy statefulset with 3 pods
 	statefulSet3rep := sset.TestSset{Name: "nodes", Version: "7.2.0", Replicas: 3, Master: true, Data: true}.Build()
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es", Namespace: statefulSet3rep.Namespace}}
+	es := esv1.Elasticsearch{Name: "es", Namespace: statefulSet3rep.Namespace}
 	pods := make([]corev1.Pod, 0, *statefulSet3rep.Spec.Replicas)
 	for _, podName := range sset.PodNames(statefulSet3rep) {
 		pods = append(pods, sset.TestPod{
@@ -101,7 +100,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 }
 
 func TestAddToVotingConfigExclusions(t *testing.T) {
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es", Namespace: "ns"}}
+	es := esv1.Elasticsearch{Name: "es", Namespace: "ns"}
 	tests := []struct {
 		name              string
 		es                *esv1.Elasticsearch

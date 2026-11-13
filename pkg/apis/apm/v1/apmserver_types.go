@@ -16,7 +16,7 @@ import (
 
 const (
 	ApmServerContainerName = "apm-server"
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "ApmServer"
 )
@@ -32,7 +32,7 @@ type ApmServerSpec struct {
 	// Count of APM Server instances to deploy.
 	Count int32 `json:"count,omitempty"`
 
-	// Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
+	// Config holds the APM Server configuration. See: https://www.elastic.co/docs/solutions/observability/apm/apm-server/configure
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Config *commonv1.Config `json:"config,omitempty"`
 
@@ -40,13 +40,19 @@ type ApmServerSpec struct {
 	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
 
 	// ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster.
-	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
+	ElasticsearchRef commonv1.ElasticsearchSelector `json:"elasticsearchRef,omitempty"`
 
 	// KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster.
 	// It allows APM agent central configuration management in Kibana.
 	KibanaRef commonv1.ObjectSelector `json:"kibanaRef,omitempty"`
 
-	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
+	// Resources provides a shorthand to set CPU and Memory resources on the APM Server container. When set, these
+	// values override any CPU or memory resource settings specified in the PodTemplate for the primary APM Server
+	// container. To set resources on other containers, use the PodTemplate.
+	// +kubebuilder:validation:Optional
+	Resources commonv1.Resources `json:"resources,omitzero"`
+
+	// PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
@@ -117,10 +123,6 @@ type ApmServerList struct {
 	Items           []ApmServer `json:"items"`
 }
 
-func init() {
-	SchemeBuilder.Register(&ApmServer{}, &ApmServerList{})
-}
-
 // IsMarkedForDeletion returns true if the APM is going to be deleted
 func (as *ApmServer) IsMarkedForDeletion() bool {
 	return !as.DeletionTimestamp.IsZero()
@@ -153,12 +155,12 @@ func (as *ApmServer) ElasticServiceAccount() (commonv1.ServiceAccountName, error
 func (as *ApmServer) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 
-	if as.Spec.ElasticsearchRef.IsDefined() {
+	if as.Spec.ElasticsearchRef.IsSet() {
 		associations = append(associations, &ApmEsAssociation{
 			ApmServer: as,
 		})
 	}
-	if as.Spec.KibanaRef.IsDefined() {
+	if as.Spec.KibanaRef.IsSet() {
 		associations = append(associations, &ApmKibanaAssociation{
 			ApmServer: as,
 		})
@@ -170,11 +172,11 @@ func (as *ApmServer) GetAssociations() []commonv1.Association {
 func (as *ApmServer) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
 	switch typ {
 	case commonv1.ElasticsearchAssociationType:
-		if as.Spec.ElasticsearchRef.IsDefined() {
+		if as.Spec.ElasticsearchRef.IsSet() {
 			return commonv1.NewSingleAssociationStatusMap(as.Status.ElasticsearchAssociationStatus)
 		}
 	case commonv1.KibanaAssociationType:
-		if as.Spec.KibanaRef.IsDefined() {
+		if as.Spec.KibanaRef.IsSet() {
 			return commonv1.NewSingleAssociationStatusMap(as.Status.KibanaAssociationStatus)
 		}
 	}
@@ -205,12 +207,22 @@ func (as *ApmServer) GetObservedGeneration() int64 {
 	return as.Status.ObservedGeneration
 }
 
+// MergeConditions provides a nil-safe way to merge the ApmServerStatus's Conditions with the new Condition(s).
+func (as *ApmServer) MergeConditions(conditions ...commonv1.Condition) {
+	as.Status.Conditions = as.Status.Conditions.MergeWith(conditions...)
+}
+
+// Conditions returns this ApmServer's ApmServerStatus Conditions.
+func (as *ApmServer) Conditions() commonv1.Conditions {
+	return as.Status.Conditions
+}
+
 // ApmEsAssociation helps to manage the APMServer / Elasticsearch association
 type ApmEsAssociation struct {
 	*ApmServer
 }
 
-var _ commonv1.Association = &ApmEsAssociation{}
+var _ commonv1.Association = (*ApmEsAssociation)(nil)
 
 func NewApmEsAssociation(as *ApmServer) *ApmEsAssociation {
 	return &ApmEsAssociation{ApmServer: as}
@@ -234,7 +246,7 @@ func (aes *ApmEsAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
-func (aes *ApmEsAssociation) AssociationRef() commonv1.ObjectSelector {
+func (aes *ApmEsAssociation) AssociationRef() commonv1.AssociationRef {
 	return aes.Spec.ElasticsearchRef.WithDefaultNamespace(aes.Namespace)
 }
 
@@ -254,7 +266,7 @@ func (aes *ApmEsAssociation) AssociationID() string {
 	return commonv1.SingletonAssociationID
 }
 
-var _ commonv1.Association = &ApmKibanaAssociation{}
+var _ commonv1.Association = (*ApmKibanaAssociation)(nil)
 
 // ApmServer / Kibana association helper
 type ApmKibanaAssociation struct {
@@ -283,12 +295,12 @@ func (akb *ApmKibanaAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.KibanaAssociationType
 }
 
-func (akb *ApmKibanaAssociation) AssociationRef() commonv1.ObjectSelector {
+func (akb *ApmKibanaAssociation) AssociationRef() commonv1.AssociationRef {
 	return akb.Spec.KibanaRef.WithDefaultNamespace(akb.Namespace)
 }
 
 func (akb *ApmKibanaAssociation) RequiresAssociation() bool {
-	return akb.Spec.KibanaRef.IsDefined()
+	return akb.Spec.KibanaRef.IsSet()
 }
 
 func (akb *ApmKibanaAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
@@ -307,4 +319,4 @@ func (akb *ApmKibanaAssociation) AssociationID() string {
 	return commonv1.SingletonAssociationID
 }
 
-var _ commonv1.Associated = &ApmServer{}
+var _ commonv1.Associated = (*ApmServer)(nil)

@@ -14,6 +14,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	k8suuid "k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/kubernetes"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
 const (
@@ -22,20 +24,23 @@ const (
 	UUIDCfgMapName = "elastic-operator-uuid"
 	// UUIDCfgMapName is used for the operator UUID inside a config map.
 	UUIDCfgMapKey = "uuid"
+
+	// FieldOwner is the field manager name used by the operator for all Kubernetes write operations.
+	// The value matches the historical User-Agent-derived name ("elastic-operator") so that existing
+	// managedFields records attributed to that name are not abandoned on upgrade.
+	FieldOwner = "elastic-operator"
 )
 
-var (
-	// lookup of valid distribution channels
-	knownDistributionChannels = map[string]struct{}{
-		"all-in-one":                   {},
-		"helm":                         {},
-		"upstream-community-operators": {},
-		"community-operators":          {},
-		"certified-operators":          {},
-		"ironbank":                     {},
-		"image":                        {},
-	}
-)
+// lookup of valid distribution channels
+var knownDistributionChannels = map[string]struct{}{
+	"all-in-one":                   {},
+	"helm":                         {},
+	"upstream-community-operators": {},
+	"community-operators":          {},
+	"certified-operators":          {},
+	"ironbank":                     {},
+	"image":                        {},
+}
 
 var defaultOperatorNamespaces = []string{"elastic-system"}
 
@@ -129,9 +134,10 @@ func getOperatorUUID(ctx context.Context, clientset kubernetes.Interface, operat
 	if err != nil && apierrors.IsNotFound(err) {
 		newUUID := k8suuid.NewUUID()
 		cfgMap := corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: operatorNs,
-				Name:      UUIDCfgMapName,
+			Namespace: operatorNs,
+			Name:      UUIDCfgMapName,
+			Labels: map[string]string{
+				commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 			},
 			Data: map[string]string{
 				UUIDCfgMapKey: string(newUUID),
@@ -143,6 +149,18 @@ func getOperatorUUID(ctx context.Context, clientset kubernetes.Interface, operat
 		}
 
 		return newUUID, nil
+	}
+
+	// add the watch label if missing.
+	if _, hasWatchLabel := reconciledCfgMap.Labels[commonv1.RestrictWatchedResourcesLabelName]; !hasWatchLabel {
+		if reconciledCfgMap.Labels == nil {
+			reconciledCfgMap.Labels = map[string]string{}
+		}
+		reconciledCfgMap.Labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
+		_, err := c.Update(ctx, reconciledCfgMap, metav1.UpdateOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			return types.UID(""), err
+		}
 	}
 
 	UUID, ok := reconciledCfgMap.Data[UUIDCfgMapKey]

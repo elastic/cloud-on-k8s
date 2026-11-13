@@ -12,7 +12,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/stretchr/testify/require"
@@ -27,11 +27,9 @@ import (
 
 func TestReconcileBeat_Reconcile(t *testing.T) {
 	defaultBeat := beatv1beta1.Beat{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:       "testbeat",
-			Namespace:  "testing",
-			Generation: 2,
-		},
+		Name:       "testbeat",
+		Namespace:  "testing",
+		Generation: 2,
 		Spec: beatv1beta1.BeatSpec{
 			Type:      "filebeat",
 			Version:   "7.17.0",
@@ -42,10 +40,8 @@ func TestReconcileBeat_Reconcile(t *testing.T) {
 		},
 	}
 	defaultRequest := reconcile.Request{
-		NamespacedName: types.NamespacedName{
-			Name:      "testbeat",
-			Namespace: "testing",
-		},
+		Name:      "testbeat",
+		Namespace: "testing",
 	}
 	tests := []struct {
 		name      string
@@ -174,7 +170,7 @@ func TestReconcileBeat_Reconcile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ReconcileBeat{
 				Client:         tt.Client,
-				recorder:       record.NewFakeRecorder(100),
+				recorder:       toolsevents.NewFakeRecorder(100),
 				dynamicWatches: watches.NewDynamicWatches(),
 				Parameters:     operator.Parameters{},
 			}
@@ -212,7 +208,7 @@ func toBeDeleted(beat beatv1beta1.Beat) *beatv1beta1.Beat {
 
 func withESReference(beat beatv1beta1.Beat, selector commonv1.ObjectSelector) *beatv1beta1.Beat {
 	obj := beat.DeepCopy()
-	obj.Spec.ElasticsearchRef = selector
+	obj.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{ObjectSelector: selector}
 	return obj
 }
 

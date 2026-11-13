@@ -43,14 +43,12 @@ type Results struct {
 	ctx        context.Context
 }
 
-var Requeue = ReconciliationState{Result: reconcile.Result{RequeueAfter: DefaultRequeue}}
+var Requeue = ReconciliationState{RequeueAfter: DefaultRequeue}
 
 func RequeueAfter(requeueAfter time.Duration) ReconciliationState {
 	return ReconciliationState{
-		incomplete: true,
-		Result: reconcile.Result{
-			RequeueAfter: requeueAfter,
-		},
+		incomplete:   true,
+		RequeueAfter: requeueAfter,
 	}
 }
 

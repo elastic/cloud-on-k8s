@@ -128,11 +128,9 @@ func createAPIKey(
 	// Active API key not found, let's create a new one.
 	log.Info("Creating API key", "alias", remoteCluster.Name, "key", apiKeyName)
 	apiKey, err := esClient.CreateCrossClusterAPIKey(ctx, esclient.CrossClusterAPIKeyCreateRequest{
-		Name: apiKeyName,
-		CrossClusterAPIKeyUpdateRequest: esclient.CrossClusterAPIKeyUpdateRequest{
-			RemoteClusterAPIKey: *remoteCluster.APIKey,
-			Metadata:            newMetadataFor(clientES, expectedHash),
-		},
+		Name:                apiKeyName,
+		RemoteClusterAPIKey: *remoteCluster.APIKey,
+		Metadata:            newMetadataFor(clientES, expectedHash),
 	})
 	if err != nil {
 		return err

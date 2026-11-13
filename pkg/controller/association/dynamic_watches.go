@@ -8,12 +8,14 @@ import (
 	"context"
 	"fmt"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
+	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
 // referencedResourceWatchName is the name of the watch set on the referenced resource.
@@ -31,6 +33,11 @@ func esUserWatchName(associated types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-es-user-watch", associated.Namespace, associated.Name)
 }
 
+// pkiRoleMappingRequestWatchName returns the name of the watch on the ES-side PKI role mapping request Secret.
+func pkiRoleMappingRequestWatchName(associated types.NamespacedName) string {
+	return fmt.Sprintf("%s-%s-pki-role-mapping-request-watch", associated.Namespace, associated.Name)
+}
+
 // serviceWatchName returns the name of the watch setup on the custom service to be used to make requests to the
 // referenced resource.
 func serviceWatchName(associated types.NamespacedName) string {
@@ -43,12 +50,24 @@ func additionalSecretWatchName(associated types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-secrets-watch", associated.Namespace, associated.Name)
 }
 
+// userProvidedClientCertWatchName returns the name of the watch on user-provided client certificate secrets.
+func userProvidedClientCertWatchName(associated types.NamespacedName) string {
+	return fmt.Sprintf("%s-%s-user-client-cert-watch", associated.Namespace, associated.Name)
+}
+
+// clientCertTrustSourceWatchName returns the name of the watch on the client certificate trust sources published
+// into the namespaces of the servers.
+func clientCertTrustSourceWatchName(associated types.NamespacedName) string {
+	return fmt.Sprintf("%s-%s-client-cert-trust-source-watch", associated.Namespace, associated.Name)
+}
+
 // reconcileWatches sets up dynamic watches for:
 // * the referenced resource(s) managed or not by ECK (e.g. Elasticsearch for Kibana -> Elasticsearch associations)
 // * the CA secret of the referenced resource in the referenced resource namespace
 // * the referenced service to access the referenced resource
 // * the referenced secret to access the referenced resource
 // * if there's an ES user to create, watch the user Secret in ES namespace
+// * the client certificate trust sources published into the namespaces of the servers
 // All watches for all given associations are set under the same watch name and replaced with each reconciliation.
 // The given associations are expected to be of the same type (e.g. Kibana -> Elasticsearch, not Kibana -> Enterprise Search).
 func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.NamespacedName, associations []commonv1.Association) error {
@@ -74,7 +93,7 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 		ref := association.AssociationRef()
 		return types.NamespacedName{
 			Name:      certificates.PublicCertsSecretName(r.AssociationInfo.ReferencedResourceNamer, ref.NameOrSecretName()),
-			Namespace: ref.Namespace,
+			Namespace: ref.GetNamespace(),
 		}
 	}); err != nil {
 		return err
@@ -85,8 +104,8 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 	if err := ReconcileWatch(associated, filterWithServiceName(associations), r.watches.Services, serviceWatchName(associated), func(association commonv1.Association) types.NamespacedName {
 		ref := association.AssociationRef()
 		return types.NamespacedName{
-			Name:      ref.ServiceName,
-			Namespace: ref.Namespace,
+			Name:      ref.GetServiceName(),
+			Namespace: ref.GetNamespace(),
 		}
 	}); err != nil {
 		return err
@@ -95,10 +114,32 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 	// watch the Elasticsearch user secret in the Elasticsearch namespace, if needed
 	if r.ElasticsearchUserCreation != nil {
 		if err := ReconcileWatch(associated, managedElasticRef, r.watches.Secrets, esUserWatchName(associated), func(association commonv1.Association) types.NamespacedName {
-			return UserKey(association, association.AssociationRef().Namespace, r.ElasticsearchUserCreation.UserSecretSuffix)
+			return UserKey(association, association.AssociationRef().GetNamespace(), r.ElasticsearchUserCreation.UserSecretSuffix)
 		}); err != nil {
 			return err
 		}
+		if err := ReconcileWatch(associated, filterWithPKIMode(managedElasticRef), r.watches.Secrets, pkiRoleMappingRequestWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+			return PKIRoleMappingRequestKey(association, association.AssociationRef().GetNamespace(), r.AssociationName)
+		}); err != nil {
+			return err
+		}
+	}
+
+	// watch user-provided client certificate secrets
+	if err := ReconcileWatch(associated, filterWithUserProvidedClientCert(associations), r.watches.Secrets, userProvidedClientCertWatchName(associated), func(association commonv1.Association) types.NamespacedName {
+		return types.NamespacedName{
+			Name:      association.AssociationRef().GetClientCertificateSecretName(),
+			Namespace: association.GetNamespace(),
+		}
+	}); err != nil {
+		return err
+	}
+
+	// watch the client certificate trust sources in the namespaces of the servers, to publish them again if deleted
+	if err := reconcileGenericWatch(associated, managedElasticRef, r.watches.Secrets, clientCertTrustSourceWatchName(associated), func() ([]types.NamespacedName, error) {
+		return r.clientCertTrustSourceKeys(ctx, managedElasticRef)
+	}); err != nil {
+		return err
 	}
 
 	if r.AdditionalSecrets != nil {
@@ -106,15 +147,30 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 			var toWatch []types.NamespacedName
 			for _, association := range associations {
 				secs, err := r.AdditionalSecrets(ctx, r.Client, association)
+				if apierrors.IsNotFound(err) {
+					// Transitive resource not yet created; no additional secrets to watch yet.
+					// The watch on the referenced resource re-enqueues when it appears.
+					continue
+				}
 				if err != nil {
 					return nil, err
 				}
-				// Watch the source secrets
-				toWatch = append(toWatch, secs...)
-				// Also watch the target secrets
+				// Watch both the source secret and the copy in the association namespace
+				// so that changes on either side trigger reconciliation.
 				for _, sec := range secs {
+					// Watch the source secret
+					toWatch = append(toWatch, sec.Source)
+					// Also watch the target copy in the association's namespace.
+					if sec.Source.Namespace == association.GetNamespace() {
+						// Same-namespace: source and target are the same secret, no second watch needed.
+						continue
+					}
+					targetName := sec.Source.Name
+					if sec.TargetName != "" {
+						targetName = sec.TargetName
+					}
 					toWatch = append(toWatch, types.NamespacedName{
-						Name:      sec.Name,
+						Name:      targetName,
 						Namespace: association.GetNamespace(),
 					})
 				}
@@ -126,6 +182,45 @@ func (r *Reconciler) reconcileWatches(ctx context.Context, associated types.Name
 	}
 
 	return nil
+}
+
+// clientCertTrustSourceKeys returns the keys of the trust sources the client certificates of the given associations
+// are published as: in the namespace of the referenced server, and in the one of the Elasticsearch transitively
+// referenced, if any.
+func (r *Reconciler) clientCertTrustSourceKeys(ctx context.Context, associations []commonv1.Association) ([]types.NamespacedName, error) {
+	keys := make([]types.NamespacedName, 0, len(associations))
+	for _, association := range associations {
+		keys = append(keys, certificates.ClientCertTrustSourceKey(
+			association.AssociationRef().GetNamespace(),
+			types.NamespacedName{Namespace: association.GetNamespace(), Name: clientCertSecretName(association, r.AssociationName)},
+		))
+
+		if r.ReconcileTransitiveESSecrets == nil || r.ElasticsearchRef == nil {
+			continue
+		}
+		conf, err := association.AssociationConf()
+		if err != nil {
+			ulog.FromContext(ctx).V(1).Info("Cannot parse the association conf, skipping the transitive trust source watch",
+				"namespace", association.GetNamespace(), "name", association.GetName(), "error", err.Error())
+			continue
+		}
+		if conf == nil || conf.TransitiveESRef.GetClientCertSecretName() == "" {
+			// the transitive client certificate is not reconciled yet: the watch is set once the association conf is
+			continue
+		}
+		found, esRef, err := r.ElasticsearchRef(ctx, r.Client, association)
+		if apierrors.IsNotFound(err) || (err == nil && (!found || esRef.IsExternal())) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		keys = append(keys, certificates.ClientCertTrustSourceKey(
+			esRef.GetNamespace(),
+			types.NamespacedName{Namespace: association.GetNamespace(), Name: conf.TransitiveESRef.GetClientCertSecretName()},
+		))
+	}
+	return keys, nil
 }
 
 func reconcileGenericWatch[T client.Object](
@@ -189,6 +284,12 @@ func (r *Reconciler) removeWatches(associated types.NamespacedName) {
 	RemoveWatch(r.watches.Services, serviceWatchName(associated))
 	// - ES user secret
 	RemoveWatch(r.watches.Secrets, esUserWatchName(associated))
+	// - Elasticsearch-side PKI role mapping request Secret
+	RemoveWatch(r.watches.Secrets, pkiRoleMappingRequestWatchName(associated))
 	// - Additional secrets (typically in the case of Agent -> Fleet Server -> Elasticsearch)
 	RemoveWatch(r.watches.Secrets, additionalSecretWatchName(associated))
+	// - User-provided client certificate secret
+	RemoveWatch(r.watches.Secrets, userProvidedClientCertWatchName(associated))
+	// - Client certificate trust sources
+	RemoveWatch(r.watches.Secrets, clientCertTrustSourceWatchName(associated))
 }

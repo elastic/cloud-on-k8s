@@ -9,10 +9,8 @@ import (
 	"errors"
 	"hash/fnv"
 
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
-
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
@@ -20,6 +18,7 @@ import (
 	commonassociation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
@@ -38,7 +37,7 @@ type DriverParams struct {
 	Context context.Context
 
 	Client        k8s.Client
-	EventRecorder record.EventRecorder
+	EventRecorder toolsevents.EventRecorder
 	Watches       watches.DynamicWatches
 
 	Status *beatv1beta1.BeatStatus
@@ -49,7 +48,7 @@ func (dp DriverParams) K8sClient() k8s.Client {
 	return dp.Client
 }
 
-func (dp DriverParams) Recorder() record.EventRecorder {
+func (dp DriverParams) Recorder() toolsevents.EventRecorder {
 	return dp.EventRecorder
 }
 

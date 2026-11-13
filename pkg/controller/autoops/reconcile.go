@@ -7,10 +7,10 @@ package autoops
 import (
 	"context"
 	"fmt"
-	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -21,7 +21,10 @@ import (
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -34,21 +37,9 @@ func (r *AgentPolicyReconciler) doReconcile(ctx context.Context, policy autoopsv
 
 	results := reconciler.NewResult(ctx)
 
-	// Enterprise license check
-	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled(ctx)
-	if err != nil {
-		return results.WithError(err)
-	}
-	if !enabled {
-		msg := "AutoOpsAgentPolicy is an enterprise feature. Enterprise features are disabled"
-		log.Info(msg)
-		state.UpdateInvalidPhaseWithEvent(msg)
-		return results.WithRequeue(5 * time.Minute)
-	}
-
 	// run validation in case the webhook is disabled
 	if err := r.validate(ctx, &policy); err != nil {
-		state.UpdateInvalidPhaseWithEvent(err.Error())
+		state.UpdateInvalidPhaseWithEvent(events.EventActionValidation, err.Error())
 		return results.WithError(err)
 	}
 
@@ -75,7 +66,7 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		Name:      policy.Spec.AutoOpsRef.SecretName,
 	}); err != nil {
 		log.Error(err, "while validating configuration secret", "namespace", policy.Namespace, "name", policy.Spec.AutoOpsRef.SecretName)
-		state.UpdateInvalidPhaseWithEvent(err.Error())
+		state.UpdateInvalidPhaseWithEvent(events.EventActionConfigSecretValidation, err.Error())
 		return results.WithError(err)
 	}
 
@@ -116,47 +107,58 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		accessAllowed, err := isAutoOpsAssociationAllowed(ctx, r.accessReviewer, &policy, &es, r.recorder)
 		if err != nil {
 			log.Error(err, "while checking access for Elasticsearch cluster", "es_namespace", es.Namespace, "es_name", es.Name)
-			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+			state.ResourceError(es, "Failed trying to perform RBAC check", err)
 			results.WithError(err)
 			continue
 		}
-		if accessAllowed {
-			accessibleClusters = append(accessibleClusters, es)
-		} else {
+		if !accessAllowed {
+			state.ResourceSkippedDueToRBAC(es)
 			log.V(1).Info("Skipping ES cluster due to access denied", "es_namespace", es.Namespace, "es_name", es.Name)
+			continue
 		}
+
+		// check for deprecated version clusters.
+		esVersion, err := version.Parse(es.Spec.Version)
+		if err != nil {
+			log.Error(err, "while parsing ES version")
+			state.ResourceError(es, "Failed trying to parse cluster version", err)
+			results.WithError(err)
+			continue
+		}
+		if version.DeprecatedVersions.WithinRange(esVersion) == nil {
+			log.Info("Skipping ES cluster because of deprecated version", "version", es.Spec.Version)
+			state.ResourceSkippedDueToVersion(es)
+			continue
+		}
+
+		accessibleClusters = append(accessibleClusters, es)
 	}
 
-	// Clean up resources that no longer match the Policy's selector OR where access was revoked
-	if err := r.cleanupOrphanedResourcesForPolicy(ctx, log, policy, accessibleClusters); err != nil {
-		log.Error(err, "while cleaning up orphaned resources", "policy_namespace", policy.Namespace, "policy_name", policy.Name)
-		state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
-		results.WithError(err)
+	// Orphan cleanup is treated as a spec-driven write (it deletes Deployments for newly-unmatched ES
+	// clusters) so it is skipped while orchestration is paused, consistent with how other controllers
+	// handle the pause annotation.
+	if !common.IsOrchestrationPaused(&policy) {
+		if err := r.cleanupOrphanedResourcesForPolicy(ctx, log, policy, accessibleClusters); err != nil {
+			log.Error(err, "while cleaning up orphaned resources", "policy_namespace", policy.Namespace, "policy_name", policy.Name)
+			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+			results.WithError(err)
+		}
 	}
 
 	state.UpdateMonitoredResources(len(accessibleClusters))
 	if len(accessibleClusters) == 0 {
 		log.Info("No accessible Elasticsearch resources found for the AutoOpsAgentPolicy")
+		if common.IsOrchestrationPaused(&policy) {
+			state.SetOrchestrationPaused(false)
+		} else {
+			state.MaybeResetOrchestrationPaused()
+		}
 		return results
 	}
 
+	pendingChanges := false
 	for _, es := range accessibleClusters {
 		log := log.WithValues("es_namespace", es.Namespace, "es_name", es.Name)
-
-		esVersion, err := version.Parse(es.Spec.Version)
-		if err != nil {
-			log.Error(err, "while parsing ES version")
-			state.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
-			return results.WithError(err)
-		}
-
-		// No error means the version is within the deprecated range, so we skip the cluster.
-		// We do not adjust the status to indicate this issue at this time, as the status object
-		// does not currently support a status per-cluster.
-		if version.DeprecatedVersions.WithinRange(esVersion) == nil {
-			log.Info("Skipping ES cluster because of deprecated version", "version", es.Spec.Version)
-			continue
-		}
 
 		if es.Status.Phase != esv1.ElasticsearchReadyPhase {
 			log.V(1).Info("Skipping ES cluster that is not ready")
@@ -168,32 +170,52 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		if es.Spec.HTTP.TLS.Enabled() {
 			if err := r.reconcileAutoOpsESCASecret(ctx, policy, es); err != nil {
 				log.Error(err, "while reconciling AutoOps ES CA secret")
-				state.MarkResourceError()
+				state.ResourceError(es, "Failed to reconcile AutoOps ES CA secret", err)
 				results.WithError(err)
 				continue
+			}
+		}
+
+		var clientCertSecret *corev1.Secret
+		if annotation.HasClientAuthenticationRequired(&es) {
+			var certResults *reconciler.Results
+			clientCertSecret, certResults = r.reconcileAutoOpsESClientCertSecret(ctx, policy, es)
+			results.WithResults(certResults)
+			if certResults.HasError() {
+				_, certErr := certResults.Aggregate()
+				log.Error(certErr, "while reconciling AutoOps ES client cert secret")
+				state.ResourceError(es, "Failed to reconcile AutoOps ES client cert secret", certErr)
+				continue
+			}
+		} else {
+			// Clean up client cert secret if client authentication is no longer required.
+			if err := r.deleteAutoOpsESClientCertSecret(ctx, policy, es); err != nil {
+				log.Error(err, "while cleaning up AutoOps ES client cert secret")
+				results.WithError(err)
+				// continue reconciling other resources, this is not fatal
 			}
 		}
 
 		apiKeySecret, err := r.reconcileAutoOpsESAPIKey(ctx, policy, es)
 		if err != nil {
 			log.Error(err, "while reconciling AutoOps ES API key")
-			state.MarkResourceError()
+			state.ResourceError(es, "Failed to reconcile AutoOps ES API key", err)
 			results.WithError(err)
 			continue
 		}
 
-		configMap, err := ReconcileAutoOpsESConfigMap(ctx, r.Client, policy, es)
+		configMap, err := r.ReconcileAutoOpsESConfigMap(ctx, policy, es)
 		if err != nil {
 			log.Error(err, "while reconciling AutoOps ES config map")
-			state.MarkResourceError()
+			state.ResourceError(es, "Failed to reconcile AutoOps ES config map", err)
 			results.WithError(err)
 			continue
 		}
 
-		configHash, err := buildConfigHash(ctx, *configMap, *apiKeySecret, r.Client, policy)
+		configHash, err := buildConfigHash(ctx, *configMap, *apiKeySecret, clientCertSecret, r.Client, policy)
 		if err != nil {
 			log.Error(err, "while building config hash")
-			state.MarkResourceError()
+			state.ResourceError(es, "Failed to prepare AutoOps agent deployment", err)
 			results.WithError(err)
 			continue
 		}
@@ -201,15 +223,36 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		deploymentParams, err := r.buildDeployment(configHash, policy, es)
 		if err != nil {
 			log.Error(err, "while getting deployment params")
-			state.MarkResourceError()
+			state.ResourceError(es, "Failed to build AutoOps agent deployment", err)
 			results.WithError(err)
+			continue
+		}
+
+		if common.IsOrchestrationPaused(&policy) {
+			var actual appsv1.Deployment
+			err := r.Client.Get(ctx, k8s.ExtractNamespacedName(&deploymentParams), &actual)
+			switch {
+			case err == nil:
+				if common.HasPendingChanges(&deploymentParams, &actual) {
+					pendingChanges = true
+				}
+				if isDeploymentReady(actual) {
+					state.MarkResourceReady()
+				}
+			case apierrors.IsNotFound(err):
+				pendingChanges = true
+			default:
+				log.Error(err, "while fetching deployment while paused")
+				state.ResourceError(es, "Failed to fetch AutoOps agent deployment while paused", err)
+				results.WithError(err)
+			}
 			continue
 		}
 
 		reconciledDeployment, err := deployment.Reconcile(ctx, r.Client, deploymentParams, &policy)
 		if err != nil {
 			log.Error(err, "while reconciling deployment")
-			state.MarkResourceError()
+			state.ResourceError(es, "Failed to reconcile AutoOps agent deployment", err)
 			results.WithError(err)
 			continue
 		}
@@ -217,6 +260,13 @@ func (r *AgentPolicyReconciler) internalReconcile(
 		if isDeploymentReady(reconciledDeployment) {
 			state.MarkResourceReady()
 		}
+	}
+
+	switch {
+	case common.IsOrchestrationPaused(&policy):
+		state.SetOrchestrationPaused(pendingChanges)
+	default:
+		state.MaybeResetOrchestrationPaused()
 	}
 
 	// Schedule a requeue to periodically re-check RBAC permissions.
@@ -257,8 +307,8 @@ func (r *AgentPolicyReconciler) cleanupOrphanedResourcesForPolicy(
 		return fmt.Errorf("while cleaning up configmaps: %w", err)
 	}
 
-	// Cleanup both CA secrets and API Key.
-	if err := cleanupOrphanedSecrets(ctx, log, r.Client, r.esClientProvider, r.params.Dialer, policy, matchLabels, esSet); err != nil {
+	// Cleanup CA, client cert, and API key secrets.
+	if err := r.cleanupOrphanedSecrets(ctx, log, policy, matchLabels, esSet); err != nil {
 		return fmt.Errorf("while cleaning up secrets: %w", err)
 	}
 

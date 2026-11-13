@@ -3,41 +3,64 @@ plans:
   operation: create
   clusterName: ci
   provider: gke
-  kubernetesVersion: 1.33
-  machineType: n1-standard-8
+  kubernetesVersion: 1.34
+  machineType: n2d-standard-4
   serviceAccount: true
   enforceSecurityPolicies: true
-  # use kustomize in GKE to remove the NVMe provisioning already taken care of by the platform
-  diskSetup: kubectl apply -k hack/deployer/config/local-disks
   gke:
-    region: us-central1
-    localSsdCount: 1
+    region: europe-west1
+    # Cluster creation moves on to the next fallback region only when gcloud reports a capacity or quota error,
+    # detected by matching the error output against gkeCapacityErrorIndicators in
+    # hack/deployer/runner/gke.go. If a capacity or quota error fails the creation without trying the next
+    # region, add its message there.
+    fallbackRegions:
+      - us-central1
+      - europe-west2
+    # Attach, format, and provision the raw Local SSD as fixed-size local PVs.
+    localNvmeSsdBlock: true
     nodeCountPerZone: 1
     gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
 - id: gke-autopilot-ci
   operation: create
   clusterName: ci-autopilot
   provider: gke
-  kubernetesVersion: 1.33
+  kubernetesVersion: 1.34
   serviceAccount: true
   enforceSecurityPolicies: true
   # this is disabled in autopilot: container provisioner is privileged; not allowed in Autopilot
   # diskSetup: kubectl apply -k hack/deployer/config/local-disks
   gke:
     autopilot: true
-    region: us-central1
+    region: europe-west1
+    # Cluster creation moves on to the next fallback region only when gcloud reports a capacity or quota error,
+    # detected by matching the error output against gkeCapacityErrorIndicators in
+    # hack/deployer/runner/gke.go. If a capacity or quota error fails the creation without trying the next
+    # region, add its message there.
+    fallbackRegions:
+      - us-central1
+      - europe-west2
     gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
 - id: gke-dev
   operation: create
   clusterName: dev
   provider: gke
-  kubernetesVersion: 1.33
-  machineType: n1-standard-8
+  kubernetesVersion: 1.34
+  machineType: n2d-standard-8
   serviceAccount: false
   enforceSecurityPolicies: true
+  # CI-equivalent Local SSD-backed PVs can be enabled before cluster creation.
+  # See hack/deployer/README.md for the localNvmeSsdBlock override.
+  ## Bucket configuration, used for stateless. If provided, the bucket will be created and the credentials will be stored in the K8s clusters.
+  bucket:
+    # Bucket name, created in the same region as the cluster.
+    name: "{{ .ClusterName }}-development"
+    storageClass: standard
+    # Secret is the K8s Secret where the credentials will be stored.
+    secret:
+      name: "{{ .ClusterName }}-secret"
+      namespace: "{{ .ClusterName }}-namespace"
   gke:
     region: europe-west1
-    localSsdCount: 1
     nodeCountPerZone: 1
     # Uncomment option below to enable network policy enforcement in GKE.
     # networkPolicy: true
@@ -58,7 +81,7 @@ plans:
   operation: create
   clusterName: dev-autopilot
   provider: gke
-  kubernetesVersion: 1.33
+  kubernetesVersion: 1.34
   serviceAccount: false
   enforceSecurityPolicies: true
   gke:
@@ -73,7 +96,8 @@ plans:
   machineType: Standard_D8s_v3
   serviceAccount: true
   enforceSecurityPolicies: true
-  diskSetup: kubectl apply -k hack/deployer/config/local-disks
+  # AKS overlay: local-disks tuned for AKS temp disk.
+  diskSetup: kubectl apply -k hack/deployer/config/local-disks-aks
   aks:
     nodeCount: 3
     location: westeurope
@@ -93,20 +117,22 @@ plans:
 - id: ocp-ci
   operation: create
   clusterName: ci
-  clientVersion: 4.20.4
+  clientVersion: 4.22.2
   provider: ocp
-  machineType: n1-standard-8
+  machineType: e2-standard-8
   serviceAccount: true
+  diskSetup: kubectl apply -k hack/deployer/config/local-disks-ocp
   ocp:
     region: europe-west6
     nodeCount: 3
 - id: ocp-dev
   operation: create
   clusterName: dev
-  clientVersion: 4.20.4
+  clientVersion: 4.22.2
   provider: ocp
-  machineType: n1-standard-8
+  machineType: e2-standard-8
   serviceAccount: true
+  diskSetup: kubectl apply -k hack/deployer/config/local-disks-ocp
   ocp:
     region: europe-west1
     nodeCount: 3
@@ -120,7 +146,7 @@ plans:
   kubernetesVersion: 1.34
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
-    region: ap-northeast-3
+    region: ap-northeast-1
     nodeCount: 3
     nodeAMI: auto
 - id: eks-arm-ci
@@ -152,38 +178,40 @@ plans:
 - id: kind-dev
   operation: create
   clusterName: eck
-  clientVersion: 0.30.0
+  clientVersion: 0.33.0
   provider: kind
-  kubernetesVersion: 1.35.0
+  kubernetesVersion: 1.37.0
   enforceSecurityPolicies: true
+  diskSetup: kubectl apply -k hack/deployer/config/local-disks-kind
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
+    nodeImage: kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
     ipFamily: ipv4
 - id: kind-ci
   operation: create
   clusterName: kind-ci
-  clientVersion: 0.30.0
+  clientVersion: 0.33.0
   provider: kind
-  kubernetesVersion: 1.35.0
+  kubernetesVersion: 1.37.0
   enforceSecurityPolicies: true
+  diskSetup: kubectl apply -k hack/deployer/config/local-disks-kind
   kind:
     nodeCount: 3
-    nodeImage: kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
+    nodeImage: kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
     ipFamily: ipv4
 - id: k3d-dev
   operation: create
   clusterName: eck
   provider: k3d
-  kubernetesVersion: 1.35.0
+  kubernetesVersion: 1.36.2
   k3d:
-    clientImage: ghcr.io/k3d-io/k3d:5.8.3
-    nodeImage: rancher/k3s:v1.35.0-k3s1
+    clientImage: ghcr.io/k3d-io/k3d:5.9.0
+    nodeImage: rancher/k3s:v1.36.2-k3s1
 - id: k3d-ci
   operation: create
   clusterName: k3d-ci
   provider: k3d
-  kubernetesVersion: 1.35.0
+  kubernetesVersion: 1.36.2
   k3d:
-    clientImage: ghcr.io/k3d-io/k3d:5.8.3
-    nodeImage: rancher/k3s:v1.35.0-k3s1
+    clientImage: ghcr.io/k3d-io/k3d:5.9.0
+    nodeImage: rancher/k3s:v1.36.2-k3s1

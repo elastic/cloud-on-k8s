@@ -32,7 +32,7 @@ func authToGCP(
 
 		gcpDir := filepath.Join(os.Getenv("HOME"), GCPDir)
 		keyFileName := filepath.Join(gcpDir, ServiceAccountFilename)
-		if err := os.MkdirAll(gcpDir, os.ModePerm); err != nil {
+		if err := os.MkdirAll(gcpDir, os.ModePerm); err != nil { //nolint:gosec
 			return err
 		}
 

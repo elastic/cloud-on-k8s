@@ -10,11 +10,11 @@ import (
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/certificates/transport"
@@ -95,7 +95,7 @@ func copyCertificateAuthority(
 			"local_namespace", source.Namespace,
 			"local_name", source.Namespace,
 		)
-		r.recorder.Event(source, corev1.EventTypeWarning, EventReasonClusterCaCertNotFound, caCertMissingError(sourceKey))
+		k8s.EmitEvent(r.recorder, source, corev1.EventTypeWarning, EventReasonClusterCaCertNotFound, events.EventActionGetSecret, caCertMissingError(sourceKey))
 		// CA secrets are watched, we don't need to requeue.
 		// If CA is created later it will trigger a new reconciliation.
 		return nil
@@ -118,19 +118,15 @@ func deleteCertificateAuthorities(
 
 	// Delete local secret
 	if err := r.Client.Delete(ctx, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: local.Namespace,
-			Name:      remoteCASecretName(local.Name, remote),
-		},
+		Namespace: local.Namespace,
+		Name:      remoteCASecretName(local.Name, remote),
 	}); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 	// Delete remote secret
 	if err := r.Client.Delete(ctx, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: remote.Namespace,
-			Name:      remoteCASecretName(remote.Name, local),
-		},
+		Namespace: remote.Namespace,
+		Name:      remoteCASecretName(remote.Name, local),
 	}); err != nil && !errors.IsNotFound(err) {
 		return err
 	}

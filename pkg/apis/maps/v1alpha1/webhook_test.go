@@ -5,11 +5,9 @@
 package v1alpha1_test
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	admissionv1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,7 +26,7 @@ func TestWebhook(t *testing.T) {
 			Object: func(t *testing.T, uid string) []byte {
 				t.Helper()
 				m := mkMaps(uid)
-				return serialize(t, m)
+				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -41,7 +39,7 @@ func TestWebhook(t *testing.T) {
 				m.SetAnnotations(map[string]string{
 					corev1.LastAppliedConfigAnnotation: `{"metadata":{"name": "ekesn", "namespace": "default", "uid": "e7a18cfb-b017-475c-8da2-1ec941b1f285", "creationTimestamp":"2020-03-24T13:43:20Z" },"spec":{"version":"7.6.1", "unknown": "UNKNOWN"}}`,
 				})
-				return serialize(t, m)
+				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookFailed(
 				`"unknown": unknown field found in the kubectl.kubernetes.io/last-applied-configuration annotation is unknown`,
@@ -54,7 +52,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				m := mkMaps(uid)
 				m.SetName(strings.Repeat("x", 100))
-				return serialize(t, m)
+				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookFailed(
 				`metadata.name: Too long: may not be more than 36 bytes`,
@@ -67,7 +65,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				m := mkMaps(uid)
 				m.Spec.Version = "7.x"
-				return serialize(t, m)
+				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Invalid value: "7.x": Invalid version: No Major.Minor.Patch elements found`,
@@ -80,11 +78,72 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				m := mkMaps(uid)
 				m.Spec.Version = "7.14.0"
-				return serialize(t, m)
+				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookSucceededWithWarnings(
 				`Version 7.14.0 is EOL and support for it will be removed in a future release of the ECK operator`,
 			),
+		},
+		{
+			Name:      "deprecated-at-lowest-supported-7-11-0",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "7.11.0"
+				return test.MustMarshalJSON(t, m)
+			},
+			Check: test.ValidationWebhookSucceededWithWarnings(
+				`Version 7.11.0 is EOL and support for it will be removed in a future release of the ECK operator`,
+			),
+		},
+		{
+			Name:      "create-8-0-0-no-deprecation-warning",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "8.0.0"
+				return test.MustMarshalJSON(t, m)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "update-deprecated-same-version-label-change-still-warns",
+			Operation: admissionv1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "7.14.0"
+				return test.MustMarshalJSON(t, m)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "7.14.0"
+				m.Labels = map[string]string{"warmed": "restart"}
+				return test.MustMarshalJSON(t, m)
+			},
+			Check: test.ValidationWebhookSucceededWithWarnings(
+				`Version 7.14.0 is EOL and support for it will be removed in a future release of the ECK operator`,
+			),
+		},
+		{
+			Name:      "update-from-deprecated-to-supported-clears-deprecation-warning",
+			Operation: admissionv1.Update,
+			OldObject: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "7.14.0"
+				return test.MustMarshalJSON(t, m)
+			},
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "8.12.0"
+				return test.MustMarshalJSON(t, m)
+			},
+			Check: test.ValidationWebhookSucceeded,
 		},
 		{
 			Name:      "unsupported-version-lower",
@@ -93,7 +152,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				m := mkMaps(uid)
 				m.Spec.Version = "3.1.2"
-				return serialize(t, m)
+				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Invalid value: "3.1.2": Unsupported version: version 3.1.2 is lower than the lowest supported version`,
@@ -106,7 +165,7 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				m := mkMaps(uid)
 				m.Spec.Version = "300.1.2"
-				return serialize(t, m)
+				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Invalid value: "300.1.2": Unsupported version: version 300.1.2 is higher than the highest supported version`,
@@ -119,8 +178,8 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				m := mkMaps(uid)
 				m.Spec.Version = "8.12.0"
-				m.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "esname", Namespace: "esns", ServiceName: "essvc"}
-				return serialize(t, m)
+				m.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{Name: "esname", Namespace: "esns", ServiceName: "essvc"}
+				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -131,8 +190,8 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				m := mkMaps(uid)
 				m.Spec.Version = "8.12.0"
-				m.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname"}
-				return serialize(t, m)
+				m.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{SecretName: "esname"}
+				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookSucceeded,
 		},
@@ -143,8 +202,8 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				m := mkMaps(uid)
 				m.Spec.Version = "8.12.0"
-				m.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Name: "esname"}
-				return serialize(t, m)
+				m.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{SecretName: "esname", Name: "esname"}
+				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.elasticsearchRef: Forbidden: Invalid association reference: specify name or secretName, not both`,
@@ -157,37 +216,108 @@ func TestWebhook(t *testing.T) {
 				t.Helper()
 				m := mkMaps(uid)
 				m.Spec.Version = "8.12.0"
-				m.Spec.ElasticsearchRef = commonv1.ObjectSelector{SecretName: "esname", Namespace: "esname"}
-				return serialize(t, m)
+				m.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{SecretName: "esname", Namespace: "esname"}
+				return test.MustMarshalJSON(t, m)
 			},
 			Check: test.ValidationWebhookFailed(
 				`spec.elasticsearchRef: Forbidden: Invalid association reference: serviceName or namespace can only be used in combination with name, not with secretName`,
 			),
 		},
+		{
+			Name:      "pki-authentication-rejected-on-unsupported-version",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
+					Name:               "esname",
+					AuthenticationMode: commonv1.AuthenticationModePKI,
+				}
+				return test.MustMarshalJSON(t, m)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.elasticsearchRef.authenticationMode: Invalid value: "PKI": PKI authentication mode requires Elastic Maps Server 9\.6\.0 or higher`,
+			),
+		},
+		{
+			Name:      "pki-authentication-rejected-on-previous-minor-version",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "9.5.6"
+				m.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
+					Name:               "esname",
+					AuthenticationMode: commonv1.AuthenticationModePKI,
+				}
+				return test.MustMarshalJSON(t, m)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.elasticsearchRef.authenticationMode: Invalid value: "PKI": PKI authentication mode requires Elastic Maps Server 9\.6\.0 or higher`,
+			),
+		},
+		{
+			Name:      "pki-authentication-accepted-on-supported-version",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				m := mkMaps(uid)
+				m.Spec.Version = "9.6.0"
+				m.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
+					Name:               "esname",
+					AuthenticationMode: commonv1.AuthenticationModePKI,
+				}
+				return test.MustMarshalJSON(t, m)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "pause-orchestration false",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkMaps(uid)
+				ent.Annotations[commonv1.PauseOrchestrationAnnotation] = "false"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "pause-orchestration true",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkMaps(uid)
+				ent.Annotations[commonv1.PauseOrchestrationAnnotation] = "true"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookSucceeded,
+		},
+		{
+			Name:      "pause-orchestration invalid",
+			Operation: admissionv1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				t.Helper()
+				ent := mkMaps(uid)
+				ent.Annotations[commonv1.PauseOrchestrationAnnotation] = "True"
+				return test.MustMarshalJSON(t, ent)
+			},
+			Check: test.ValidationWebhookFailed("must be set to either 'true' or 'false' if provided"),
+		},
 	}
 
-	validator := &emsv1alpha1.ElasticMapsServer{}
+	handler := test.NewValidationWebhookHandler(emsv1alpha1.Validate)
 	gvk := metav1.GroupVersionKind{Group: emsv1alpha1.GroupVersion.Group, Version: emsv1alpha1.GroupVersion.Version, Kind: emsv1alpha1.Kind}
-	test.RunValidationWebhookTests(t, gvk, validator, testCases...)
+	test.RunValidationWebhookTests(t, gvk, "elasticmapsservers", handler, testCases...)
 }
 
 func mkMaps(uid string) *emsv1alpha1.ElasticMapsServer {
 	return &emsv1alpha1.ElasticMapsServer{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "webhook-test",
-			UID:  types.UID(uid),
-		},
+		Name:        "webhook-test",
+		UID:         types.UID(uid),
+		Annotations: make(map[string]string),
 		Spec: emsv1alpha1.MapsSpec{
 			Version: "7.17.0",
 		},
 	}
-}
-
-func serialize(t *testing.T, k *emsv1alpha1.ElasticMapsServer) []byte {
-	t.Helper()
-
-	objBytes, err := json.Marshal(k)
-	require.NoError(t, err)
-
-	return objBytes
 }

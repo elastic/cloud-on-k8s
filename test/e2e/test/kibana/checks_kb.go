@@ -39,7 +39,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 	tests := test.StepList{
 		checks.CheckKbStatusHealthy(b),
 	}
-	if b.Kibana.Spec.EnterpriseSearchRef.IsDefined() {
+	if b.Kibana.Spec.EnterpriseSearchRef.IsSet() {
 		tests = append(tests, checks.CheckEntSearchAccess(b))
 	}
 

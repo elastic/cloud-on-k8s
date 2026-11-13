@@ -37,7 +37,7 @@ const (
 )
 
 func Metricbeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana, basePath string, meta metadata.Metadata) (stackmon.BeatSidecar, error) {
-	if !kb.Spec.ElasticsearchRef.IsDefined() {
+	if !kb.Spec.ElasticsearchRef.IsSet() {
 		// should never happen because of the pre-creation validation
 		return stackmon.BeatSidecar{}, errors.New(validations.InvalidKibanaElasticsearchRefForStackMonitoringMsg) //nolint:staticcheck
 	}
@@ -78,13 +78,11 @@ func Metricbeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana, basePath
 	}
 
 	configData := inputConfigData{
-		TemplateParams: stackmon.TemplateParams{
-			Username: username,
-			Password: password,
-			URL:      fmt.Sprintf("%s://localhost:%d", kb.Spec.HTTP.Protocol(), network.HTTPPort), // Metricbeat in the sidecar connects to the monitored resource using `localhost`
-			IsSSL:    kb.Spec.HTTP.TLS.Enabled(),                                                  // enable SSL configuration based on whether the monitored resource has TLS enabled
-			CAVolume: caVol,
-		},
+		Username: username,
+		Password: password,
+		URL:      fmt.Sprintf("%s://localhost:%d", kb.Spec.HTTP.Protocol(), network.HTTPPort), // Metricbeat in the sidecar connects to the monitored resource using `localhost`
+		IsSSL:    kb.Spec.HTTP.TLS.Enabled(),                                                  // enable SSL configuration based on whether the monitored resource has TLS enabled
+		CAVolume: caVol,
 		BasePath: basePath,
 	}
 
@@ -93,7 +91,7 @@ func Metricbeat(ctx context.Context, client k8s.Client, kb kbv1.Kibana, basePath
 		return stackmon.BeatSidecar{}, err
 	}
 
-	metricbeat, err := stackmon.NewMetricBeatSidecar(ctx, client, &kb, v, caVol, cfg, meta)
+	metricbeat, err := stackmon.NewMetricBeatSidecar(ctx, client, &kb, v, caVol, nil, cfg, meta)
 	if err != nil {
 		return stackmon.BeatSidecar{}, err
 	}

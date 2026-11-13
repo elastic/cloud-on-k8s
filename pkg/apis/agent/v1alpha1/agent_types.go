@@ -17,9 +17,11 @@ import (
 )
 
 const (
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Agent"
+	// AgentContainerName is the name of the main Elastic Agent container in the pod.
+	AgentContainerName = "agent"
 	// FleetServerServiceAccount is the Elasticsearch service account to be used to authenticate.
 	FleetServerServiceAccount commonv1.ServiceAccountName = "fleet-server"
 )
@@ -60,6 +62,12 @@ type AgentSpec struct {
 	// +kubebuilder:validation:Optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
+	// Resources provides a shorthand to set CPU and Memory resources on the Agent container. When set, these
+	// values override any CPU or memory resource settings specified in the DaemonSet, Deployment, or StatefulSet
+	// PodTemplate for the primary Agent container. To set resources on other containers, use the PodTemplate.
+	// +kubebuilder:validation:Optional
+	Resources commonv1.Resources `json:"resources,omitzero"`
+
 	// DaemonSet specifies the Agent should be deployed as a DaemonSet, and allows providing its spec.
 	// Cannot be used along with `deployment` or `statefulSet`.
 	// +kubebuilder:validation:Optional
@@ -79,8 +87,10 @@ type AgentSpec struct {
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 
 	// HTTP holds the HTTP layer configuration for the Agent in Fleet mode with Fleet Server enabled.
+	// Set tls.client.authentication to true to require connecting Elastic Agents to present a client
+	// certificate (requires an Enterprise license and Elastic Agent 8.19.19+, 9.3.8+, 9.4.4+, or 9.5.0+).
 	// +kubebuilder:validation:Optional
-	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
+	HTTP commonv1.HTTPConfigWithClientOptions `json:"http,omitempty"`
 
 	// Mode specifies the runtime mode for the Agent. The configuration can be specified locally through
 	// `config` or `configRef` (`standalone` mode), or come from Fleet during runtime (`fleet` mode). Starting with
@@ -99,21 +109,27 @@ type AgentSpec struct {
 	// +kubebuilder:validation:Optional
 	PolicyID string `json:"policyID,omitempty"`
 
+	// SpaceID is the ID of the Space where the Agent Policy is defined.
+	// When empty, the default Space is used. Only effective for Kibana version 9.1.0+.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Pattern="^[a-z0-9_-]+$"
+	SpaceID string `json:"spaceID,omitempty"`
+
 	// KibanaRef is a reference to Kibana where Fleet should be set up and this Agent should be enrolled. Don't set
 	// unless `mode` is set to `fleet`.
 	// +kubebuilder:validation:Optional
 	KibanaRef commonv1.ObjectSelector `json:"kibanaRef,omitempty"`
 
-	// FleetServerRef is a reference to Fleet Server that this Agent should connect to to obtain it's configuration.
+	// FleetServerRef is a reference to Fleet Server that this Agent should connect to obtain its configuration.
 	// Don't set unless `mode` is set to `fleet`.
-	// References to Fleet servers running outside the Kubernetes cluster via the `secretName` attribute are not supported.
+	// References to Fleet servers running outside the Kubernetes cluster using the `secretName` attribute are not supported.
 	// +kubebuilder:validation:Optional
-	FleetServerRef commonv1.ObjectSelector `json:"fleetServerRef,omitempty"`
+	FleetServerRef commonv1.FleetServerSelector `json:"fleetServerRef,omitempty"`
 }
 
 type Output struct {
-	commonv1.ObjectSelector `json:",omitempty,inline"`
-	OutputName              string `json:"outputName,omitempty"`
+	commonv1.ElasticsearchSelector `json:",omitempty,inline"`
+	OutputName                     string `json:"outputName,omitempty"`
 }
 
 type DaemonSetSpec struct {
@@ -186,6 +202,9 @@ type AgentStatus struct {
 	// If the generation observed in status diverges from the generation in metadata, the Elastic
 	// Agent controller has not yet processed the changes contained in the Elastic Agent specification.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+	// Conditions holds the current service state of the agent resource.
+	// +optional
+	Conditions commonv1.Conditions `json:"conditions"`
 }
 
 type AgentHealth string
@@ -225,6 +244,28 @@ const (
 // Elastic Agent advanced configuration is documented here: https://www.elastic.co/docs/reference/fleet/advanced-kubernetes-managed-by-fleet
 var FleetAdvancedConfigMinVersion = semver.MustParse("8.13.0")
 
+// FleetServerESClientAuthMinVersion is the minimum Elastic Agent version that supports presenting
+// a client certificate to Elasticsearch when running as Fleet Server. The FLEET_SERVER_ES_CERT and
+// FLEET_SERVER_ES_CERT_KEY environment variables were introduced in elastic-agent 8.13.0:
+// https://github.com/elastic/elastic-agent/commit/075a642b
+var FleetServerESClientAuthMinVersion = semver.MustParse("8.13.0")
+
+// FleetServerClientAuthSupported reports whether v supports Fleet Server client certificate
+// authentication.
+func FleetServerClientAuthSupported(v semver.Version) bool {
+	v = version.WithoutPre(v)
+	switch {
+	case v.Major == 8 && v.Minor == 19:
+		return v.GTE(version.From(8, 19, 19))
+	case v.Major == 9 && v.Minor == 3:
+		return v.GTE(version.From(9, 3, 8))
+	case v.Major == 9 && v.Minor == 4:
+		return v.GTE(version.From(9, 4, 4))
+	default:
+		return v.GTE(version.From(9, 5, 0))
+	}
+}
+
 // FleetModeEnabled returns true iff the Agent is running in fleet mode.
 func (a AgentSpec) FleetModeEnabled() bool {
 	return a.Mode == AgentFleetMode
@@ -259,7 +300,7 @@ type Agent struct {
 
 // +kubebuilder:object:root=true
 
-var _ commonv1.Associated = &Agent{}
+var _ commonv1.Associated = (*Agent)(nil)
 
 var FleetServerServiceAccountMinVersion = semver.MustParse("7.17.0")
 
@@ -272,13 +313,13 @@ func (a *Agent) GetAssociations() []commonv1.Association {
 		})
 	}
 
-	if a.Spec.KibanaRef.IsDefined() {
+	if a.Spec.KibanaRef.IsSet() {
 		associations = append(associations, &AgentKibanaAssociation{
 			Agent: a,
 		})
 	}
 
-	if a.Spec.FleetServerRef.IsDefined() {
+	if a.Spec.FleetServerRef.IsSet() {
 		associations = append(associations, &AgentFleetServerAssociation{
 			Agent: a,
 		})
@@ -309,11 +350,11 @@ func (a *Agent) AssociationStatusMap(typ commonv1.AssociationType) commonv1.Asso
 	case commonv1.ElasticsearchAssociationType:
 		return a.Status.ElasticsearchAssociationsStatus
 	case commonv1.KibanaAssociationType:
-		if a.Spec.KibanaRef.IsDefined() {
+		if a.Spec.KibanaRef.IsSet() {
 			return commonv1.NewSingleAssociationStatusMap(a.Status.KibanaAssociationStatus)
 		}
 	case commonv1.FleetServerAssociationType:
-		if a.Spec.FleetServerRef.IsDefined() {
+		if a.Spec.FleetServerRef.IsSet() {
 			return commonv1.NewSingleAssociationStatusMap(a.Status.FleetServerAssociationStatus)
 		}
 	}
@@ -354,13 +395,22 @@ func (a *Agent) GetObservedGeneration() int64 {
 	return a.Status.ObservedGeneration
 }
 
-type AgentESAssociation struct {
-	*Agent
-	// ref is the object selector of the Elasticsearch used in Association
-	ref commonv1.ObjectSelector
+func (a *Agent) MergeConditions(conditions ...commonv1.Condition) {
+	a.Status.Conditions = a.Status.Conditions.MergeWith(conditions...)
 }
 
-var _ commonv1.Association = &AgentESAssociation{}
+// Conditions returns this Agent's AgentStatus Conditions.
+func (a *Agent) Conditions() commonv1.Conditions {
+	return a.Status.Conditions
+}
+
+type AgentESAssociation struct {
+	*Agent
+	// ref is the Elasticsearch selector used in Association
+	ref commonv1.ElasticsearchSelector
+}
+
+var _ commonv1.Association = (*AgentESAssociation)(nil)
 
 func (aea *AgentESAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	if !aea.Spec.FleetServerEnabled {
@@ -394,16 +444,16 @@ func (aea *AgentESAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
-func (aea *AgentESAssociation) AssociationRef() commonv1.ObjectSelector {
+func (aea *AgentESAssociation) AssociationRef() commonv1.AssociationRef {
 	return aea.ref
 }
 
 func (aea *AgentESAssociation) AssociationConfAnnotationName() string {
-	return commonv1.ElasticsearchConfigAnnotationName(aea.ref)
+	return commonv1.ElasticsearchConfigAnnotationName(aea.ref.ObjectSelector)
 }
 
 func (aea *AgentESAssociation) AssociationConf() (*commonv1.AssociationConf, error) {
-	return commonv1.GetAndSetAssociationConfByRef(aea, aea.ref, aea.esAssocConfs)
+	return commonv1.GetAndSetAssociationConfByRef(aea, aea.ref.ObjectSelector, aea.esAssocConfs)
 }
 
 func (aea *AgentESAssociation) SupportsAuthAPIKey() bool {
@@ -415,7 +465,7 @@ func (aea *AgentESAssociation) SetAssociationConf(conf *commonv1.AssociationConf
 		aea.esAssocConfs = make(map[commonv1.ObjectSelector]commonv1.AssociationConf)
 	}
 	if conf != nil {
-		aea.esAssocConfs[aea.ref] = *conf
+		aea.esAssocConfs[aea.ref.ObjectSelector] = *conf
 	}
 }
 
@@ -423,7 +473,7 @@ type AgentKibanaAssociation struct {
 	*Agent
 }
 
-var _ commonv1.Association = &AgentKibanaAssociation{}
+var _ commonv1.Association = (*AgentKibanaAssociation)(nil)
 
 func (a *AgentKibanaAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	return "", nil
@@ -451,7 +501,7 @@ func (a *AgentKibanaAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.KibanaAssociationType
 }
 
-func (a *AgentKibanaAssociation) AssociationRef() commonv1.ObjectSelector {
+func (a *AgentKibanaAssociation) AssociationRef() commonv1.AssociationRef {
 	return a.Spec.KibanaRef.WithDefaultNamespace(a.Namespace)
 }
 
@@ -471,7 +521,7 @@ type AgentFleetServerAssociation struct {
 	*Agent
 }
 
-var _ commonv1.Association = &AgentFleetServerAssociation{}
+var _ commonv1.Association = (*AgentFleetServerAssociation)(nil)
 
 func (a *AgentFleetServerAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	return "", nil
@@ -499,7 +549,7 @@ func (a *AgentFleetServerAssociation) AssociationType() commonv1.AssociationType
 	return commonv1.FleetServerAssociationType
 }
 
-func (a *AgentFleetServerAssociation) AssociationRef() commonv1.ObjectSelector {
+func (a *AgentFleetServerAssociation) AssociationRef() commonv1.AssociationRef {
 	return a.Spec.FleetServerRef.WithDefaultNamespace(a.Namespace)
 }
 
@@ -515,7 +565,7 @@ func (a *AgentFleetServerAssociation) AssociationID() string {
 	return commonv1.SingletonAssociationID
 }
 
-var _ commonv1.Associated = &Agent{}
+var _ commonv1.Associated = (*Agent)(nil)
 
 // +kubebuilder:object:root=true
 
@@ -524,8 +574,4 @@ type AgentList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Agent `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&Agent{}, &AgentList{})
 }

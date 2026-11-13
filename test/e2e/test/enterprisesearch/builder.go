@@ -104,6 +104,10 @@ func newBuilder(name, randSuffix string) Builder {
 	return b
 }
 
+func (b Builder) ResourceName() string {
+	return b.EnterpriseSearch.Name
+}
+
 func (b Builder) Ref() commonv1.ObjectSelector {
 	return commonv1.ObjectSelector{
 		Name:      b.EnterpriseSearch.Name,
@@ -125,7 +129,12 @@ func (b Builder) WithRestrictedSecurityContext() Builder {
 }
 
 func (b Builder) WithElasticsearchRef(ref commonv1.ObjectSelector) Builder {
-	b.EnterpriseSearch.Spec.ElasticsearchRef = ref
+	b.EnterpriseSearch.Spec.ElasticsearchRef.ObjectSelector = ref
+	return b
+}
+
+func (b Builder) WithClientCertificateSecret(secretName string) Builder {
+	b.EnterpriseSearch.Spec.ElasticsearchRef.ClientCertificateSecretName = secretName
 	return b
 }
 
@@ -139,8 +148,8 @@ func (b Builder) WithVersion(version string) Builder {
 	return b
 }
 
-func (b Builder) WithNodeCount(count int) Builder {
-	b.EnterpriseSearch.Spec.Count = int32(count)
+func (b Builder) WithNodeCount(count int32) Builder {
+	b.EnterpriseSearch.Spec.Count = count
 	return b
 }
 
@@ -184,6 +193,14 @@ func (b Builder) WithLabel(key, value string) Builder {
 	}
 	b.EnterpriseSearch.Labels[key] = value
 
+	return b
+}
+
+func (b Builder) WithAnnotation(key, value string) Builder {
+	if b.EnterpriseSearch.Annotations == nil {
+		b.EnterpriseSearch.Annotations = make(map[string]string)
+	}
+	b.EnterpriseSearch.Annotations[key] = value
 	return b
 }
 

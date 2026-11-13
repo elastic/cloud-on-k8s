@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.23.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -220,6 +220,27 @@ spec:
                   Due to existing limitations, only a single ES cluster is currently supported.
                 items:
                   properties:
+                    authenticationMode:
+                      description: |-
+                        AuthenticationMode controls how this component authenticates to Elasticsearch.
+                        Credentials uses a service account token or a username and password. This is used when the field is omitted.
+                        PKI uses the TLS client certificate instead, and requires Elasticsearch 9.6.0+ with
+                        spec.http.tls.client.authentication and spec.auth.pki.enabled. Otherwise the association remains Pending.
+                        PKI is rejected for Enterprise Search and for Fleet-managed Elastic Agents and Fleet Server, and requires
+                        Elastic Maps Server 9.6.0+.
+                      enum:
+                      - Credentials
+                      - PKI
+                      type: string
+                    clientCertificateSecretName:
+                      description: |-
+                        ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                        (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                        This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.
+                        If not specified and the referenced resource requires client authentication, ECK will auto-generate a
+                        client certificate. When authenticationMode is PKI, ECK binds the Elasticsearch role mapping to the
+                        public key of this certificate.
+                      type: string
                     name:
                       description: Name of an existing Kubernetes object corresponding
                         to an Elastic resource managed by ECK.
@@ -256,10 +277,20 @@ spec:
                 type: boolean
               fleetServerRef:
                 description: |-
-                  FleetServerRef is a reference to Fleet Server that this Agent should connect to to obtain it's configuration.
+                  FleetServerRef is a reference to Fleet Server that this Agent should connect to obtain its configuration.
                   Don't set unless `mode` is set to `fleet`.
-                  References to Fleet servers running outside the Kubernetes cluster via the `secretName` attribute are not supported.
+                  References to Fleet servers running outside the Kubernetes cluster using the `secretName` attribute are not supported.
                 properties:
+                  clientCertificateSecretName:
+                    description: |-
+                      ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                      (tls.crt) and private key (tls.key) for client authentication to the referenced Fleet Server.
+                      This field is only relevant when the referenced Fleet Server has client authentication enabled.
+                      If not specified and the referenced Fleet Server requires client authentication, ECK will auto-generate a
+                      client certificate.
+                      This field can only be used when referencing a Fleet Server managed by ECK (via name); it cannot be
+                      combined with secretName.
+                    type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
                       to an Elastic resource managed by ECK.
@@ -288,8 +319,10 @@ spec:
                     type: string
                 type: object
               http:
-                description: HTTP holds the HTTP layer configuration for the Agent
-                  in Fleet mode with Fleet Server enabled.
+                description: |-
+                  HTTP holds the HTTP layer configuration for the Agent in Fleet mode with Fleet Server enabled.
+                  Set tls.client.authentication to true to require connecting Elastic Agents to present a client
+                  certificate (requires an Enterprise license and Elastic Agent 8.19.19+, 9.3.8+, 9.4.4+, or 9.5.0+).
                 properties:
                   service:
                     description: Service defines the template for the associated Kubernetes
@@ -677,6 +710,27 @@ spec:
                             description: SecretName is the name of the secret.
                             type: string
                         type: object
+                      certificateAuthorities:
+                        description: |-
+                          CertificateAuthorities is a reference to a config map with a `ca.crt` file that contains one or more
+                          x509 certificates for trusted authorities in PEM format. The operator appends them to the CA bundle it
+                          hands out to clients of this resource, such as associated resources and Stack Monitoring Beats.
+                          Use it if the CA that issued the certificate in `certificate` is not part of `ca.crt` in that secret.
+                          Clients trust only the resulting bundle. Changes to it restart associated resources that trust it.
+                          Only certificates are used, other PEM blocks are ignored.
+                        properties:
+                          configMapName:
+                            description: ConfigMapName is the name of the config map.
+                            type: string
+                        type: object
+                      client:
+                        description: Client holds client configuration options.
+                        properties:
+                          authentication:
+                            description: Authentication enables client authentication
+                              (enterprise-only feature).
+                            type: boolean
+                        type: object
                       selfSignedCertificate:
                         description: SelfSignedCertificate allows configuring the
                           self-signed certificate generated by the operator.
@@ -755,6 +809,77 @@ spec:
                   PolicyID determines into which Agent Policy this Agent will be enrolled.
                   This field will become mandatory in a future release, default policies are deprecated since 8.1.0.
                 type: string
+              resources:
+                description: |-
+                  Resources provides a shorthand to set CPU and Memory resources on the Agent container. When set, these
+                  values override any CPU or memory resource settings specified in the DaemonSet, Deployment, or StatefulSet
+                  PodTemplate for the primary Agent container. To set resources on other containers, use the PodTemplate.
+                properties:
+                  limits:
+                    description: Limits is the shorthand for the main container's
+                      CPU and memory limits.
+                    properties:
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                  requests:
+                    description: Requests is the shorthand for the main container's
+                      CPU and memory requests.
+                    properties:
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                type: object
               revisionHistoryLimit:
                 description: RevisionHistoryLimit is the number of revisions to retain
                   to allow rollback in the underlying DaemonSet or Deployment or StatefulSet.
@@ -801,6 +926,12 @@ spec:
                 description: |-
                   ServiceAccountName is used to check access from the current resource to an Elasticsearch resource in a different namespace.
                   Can only be used if ECK is enforcing RBAC on references.
+                type: string
+              spaceID:
+                description: |-
+                  SpaceID is the ID of the Space where the Agent Policy is defined.
+                  When empty, the default Space is used. Only effective for Kibana version 9.1.0+.
+                pattern: ^[a-z0-9_-]+$
                 type: string
               statefulSet:
                 description: |-
@@ -898,8 +1029,8 @@ spec:
                                 * An existing PVC (PersistentVolumeClaim)
                                 If the provisioner or an external controller can support the specified data source,
                                 it will create a new volume based on the contents of the specified data source.
-                                When the AnyVolumeDataSource feature gate is enabled, dataSource contents will be copied to dataSourceRef,
-                                and dataSourceRef contents will be copied to dataSource when dataSourceRef.namespace is not specified.
+                                dataSource contents will be copied to dataSourceRef, and dataSourceRef contents will be
+                                copied to dataSource when dataSourceRef.namespace is not specified.
                                 If the namespace is specified, then dataSourceRef will not be copied to dataSource.
                               properties:
                                 apiGroup:
@@ -944,7 +1075,6 @@ spec:
                                   specified.
                                 * While dataSource only allows local objects, dataSourceRef allows objects
                                   in any namespaces.
-                                (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled.
                                 (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
                               properties:
                                 apiGroup:
@@ -1094,6 +1224,27 @@ spec:
               availableNodes:
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the agent
+                  resource.
+                items:
+                  description: Condition represents the ECK resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of a resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               elasticsearchAssociationsStatus:
                 additionalProperties:
                   description: AssociationStatus is the status of an association resource.
@@ -1137,7 +1288,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.23.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -1200,7 +1351,7 @@ spec:
             description: ApmServerSpec holds the specification of an APM Server.
             properties:
               config:
-                description: 'Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html'
+                description: 'Config holds the APM Server configuration. See: https://www.elastic.co/docs/solutions/observability/apm/apm-server/configure'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               count:
@@ -1211,6 +1362,27 @@ spec:
                 description: ElasticsearchRef is a reference to the output Elasticsearch
                   cluster running in the same Kubernetes cluster.
                 properties:
+                  authenticationMode:
+                    description: |-
+                      AuthenticationMode controls how this component authenticates to Elasticsearch.
+                      Credentials uses a service account token or a username and password. This is used when the field is omitted.
+                      PKI uses the TLS client certificate instead, and requires Elasticsearch 9.6.0+ with
+                      spec.http.tls.client.authentication and spec.auth.pki.enabled. Otherwise the association remains Pending.
+                      PKI is rejected for Enterprise Search and for Fleet-managed Elastic Agents and Fleet Server, and requires
+                      Elastic Maps Server 9.6.0+.
+                    enum:
+                    - Credentials
+                    - PKI
+                    type: string
+                  clientCertificateSecretName:
+                    description: |-
+                      ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                      (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                      This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.
+                      If not specified and the referenced resource requires client authentication, ECK will auto-generate a
+                      client certificate. When authenticationMode is PKI, ECK binds the Elasticsearch role mapping to the
+                      public key of this certificate.
+                    type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
                       to an Elastic resource managed by ECK.
@@ -1628,6 +1800,19 @@ spec:
                             description: SecretName is the name of the secret.
                             type: string
                         type: object
+                      certificateAuthorities:
+                        description: |-
+                          CertificateAuthorities is a reference to a config map with a `ca.crt` file that contains one or more
+                          x509 certificates for trusted authorities in PEM format. The operator appends them to the CA bundle it
+                          hands out to clients of this resource, such as associated resources and Stack Monitoring Beats.
+                          Use it if the CA that issued the certificate in `certificate` is not part of `ca.crt` in that secret.
+                          Clients trust only the resulting bundle. Changes to it restart associated resources that trust it.
+                          Only certificates are used, other PEM blocks are ignored.
+                        properties:
+                          configMapName:
+                            description: ConfigMapName is the name of the config map.
+                            type: string
+                        type: object
                       selfSignedCertificate:
                         description: SelfSignedCertificate allows configuring the
                           self-signed certificate generated by the operator.
@@ -1690,11 +1875,82 @@ spec:
                     type: string
                 type: object
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the APM Server
                   pods.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              resources:
+                description: |-
+                  Resources provides a shorthand to set CPU and Memory resources on the APM Server container. When set, these
+                  values override any CPU or memory resource settings specified in the PodTemplate for the primary APM Server
+                  container. To set resources on other containers, use the PodTemplate.
+                properties:
+                  limits:
+                    description: Limits is the shorthand for the main container's
+                      CPU and memory limits.
+                    properties:
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                  requests:
+                    description: Requests is the shorthand for the main container's
+                      CPU and memory requests.
+                    properties:
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                type: object
               revisionHistoryLimit:
                 description: RevisionHistoryLimit is the number of revisions to retain
                   to allow rollback in the underlying Deployment.
@@ -1754,6 +2010,26 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the deployment.
+                items:
+                  description: Condition represents the ECK resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of a resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               count:
                 description: Count corresponds to Scale.Status.Replicas, which is
                   the actual number of observed instances of the scaled object.
@@ -1845,7 +2121,7 @@ spec:
             description: ApmServerSpec holds the specification of an APM Server.
             properties:
               config:
-                description: 'Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html'
+                description: 'Config holds the APM Server configuration. See: https://www.elastic.co/docs/solutions/observability/apm/apm-server/configure'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               count:
@@ -2286,7 +2562,7 @@ spec:
                 description: Image is the APM Server Docker image to deploy.
                 type: string
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the APM Server
                   pods.
                 type: object
@@ -2371,7 +2647,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.23.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -2395,7 +2671,7 @@ spec:
   versions:
   - additionalPrinterColumns:
     - description: Ready resources
-      jsonPath: .status.ready
+      jsonPath: .status.readyCount
       name: Ready
       type: string
     - jsonPath: .status.phase
@@ -2439,9 +2715,32 @@ spec:
                       Required when connecting via Cloud Connect. The secret must contain:
                       - `cloud-connected-mode-api-key`: Cloud Connected Mode API key
                       - `autoops-otel-url`: AutoOps OpenTelemetry endpoint URL
-                      - `autoops-token`: AutoOps authentication token
                       - `cloud-connected-mode-api-url`: (optional) Cloud Connected Mode API URL
                       This field cannot be used in combination with `name`.
+                    type: string
+                type: object
+              config:
+                description: |-
+                  Config holds additional OpenTelemetry collector configuration for the AutoOps agent.
+                  User-supplied settings are merged between the operator baseline defaults and the
+                  operator-owned mandatory settings, which always take final precedence. This allows
+                  tuning knobs such as the sending_queue sizing, appending custom metricbeat modules,
+                  or defining additional exporters and pipelines. Supplying at least one autoops_es
+                  module replaces the operator's built-in modules entirely, giving full control over
+                  which metricsets are collected and at what period. Elasticsearch connection details
+                  (hosts, SSL), OTLP endpoint and authorization, and the healthcheck extension are
+                  always injected by the operator and cannot be overridden.
+                  At most one of [`config`, `configRef`] can be specified.
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              configRef:
+                description: |-
+                  ConfigRef references a Kubernetes Secret holding the AutoOps agent configuration
+                  under the `autoops_es.yml` key. Applies the same merge semantics as `config`.
+                  At most one of [`config`, `configRef`] can be specified.
+                properties:
+                  secretName:
+                    description: SecretName is the name of the secret.
                     type: string
                 type: object
               image:
@@ -2496,7 +2795,7 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Agent pods
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -2548,6 +2847,77 @@ spec:
                     type: object
                 type: object
                 x-kubernetes-map-type: atomic
+              resources:
+                description: |-
+                  Resources provides a shorthand to set CPU and Memory resources on the AutoOps Agent container.
+                  When set, these values override any CPU or memory resource settings specified in the PodTemplate for
+                  the primary AutoOps Agent container. To set resources on other containers, use the PodTemplate.
+                properties:
+                  limits:
+                    description: Limits is the shorthand for the main container's
+                      CPU and memory limits.
+                    properties:
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                  requests:
+                    description: Requests is the shorthand for the main container's
+                      CPU and memory requests.
+                    properties:
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                type: object
               revisionHistoryLimit:
                 description: RevisionHistoryLimit is the number of revisions to retain
                   to allow rollback in the underlying Deployment.
@@ -2568,6 +2938,57 @@ spec:
             type: object
           status:
             properties:
+              conditions:
+                description: Conditions holds the current service state of the deployment.
+                items:
+                  description: Condition represents the ECK resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of a resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
+              details:
+                additionalProperties:
+                  description: |-
+                    AutoOpsResourceStatus represents the status of an individual Elasticsearch resource
+                    monitored by an AutoOpsAgentPolicy. It is used in the Details map of AutoOpsAgentPolicyStatus
+                    to provide lightweight per-resource status information. Only resources that are not in a
+                    ready state are included in the Details map; ready resources, and resources that were skipped by resource selector and namespace selector,
+                    are omitted to reduce status size.
+                  properties:
+                    error:
+                      description: |-
+                        Error contains the error message when the resource is in an error state.
+                        Only populated when Phase is "Error".
+                      type: string
+                    message:
+                      description: |-
+                        Message provides a human-readable explanation of the current phase.
+                        Only populated for non-ready states to provide context about why
+                        the resource is not ready.
+                      type: string
+                    phase:
+                      description: |-
+                        Phase indicates the current state of the monitored resource.
+                        Possible values are "Error" (resource encountered an error) or "Skipped"
+                        (resource was skipped due to RBAC permissions).
+                      type: string
+                  required:
+                  - phase
+                  type: object
+                description: Details contains lightweight per-resource details.
+                type: object
               errors:
                 description: Errors is the number of resources that are in an error
                   state.
@@ -2584,8 +3005,16 @@ spec:
                 description: Ready is the number of resources that are in a ready
                   state.
                 type: integer
+              readyCount:
+                description: ReadyCount is a human readable string of ready monitored
+                  resources vs all monitored resources, Ready/Resources.
+                type: string
               resources:
                 description: Resources is the number of resources that match the ResourceSelector.
+                type: integer
+              skipped:
+                description: Skipped is the number of resources that are skipped from
+                  monitoring due to rbac permissions.
                 type: integer
             required:
             - errors
@@ -2602,7 +3031,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.23.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -2822,6 +3251,27 @@ spec:
                 description: ElasticsearchRef is a reference to an Elasticsearch cluster
                   running in the same Kubernetes cluster.
                 properties:
+                  authenticationMode:
+                    description: |-
+                      AuthenticationMode controls how this component authenticates to Elasticsearch.
+                      Credentials uses a service account token or a username and password. This is used when the field is omitted.
+                      PKI uses the TLS client certificate instead, and requires Elasticsearch 9.6.0+ with
+                      spec.http.tls.client.authentication and spec.auth.pki.enabled. Otherwise the association remains Pending.
+                      PKI is rejected for Enterprise Search and for Fleet-managed Elastic Agents and Fleet Server, and requires
+                      Elastic Maps Server 9.6.0+.
+                    enum:
+                    - Credentials
+                    - PKI
+                    type: string
+                  clientCertificateSecretName:
+                    description: |-
+                      ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                      (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                      This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.
+                      If not specified and the referenced resource requires client authentication, ECK will auto-generate a
+                      client certificate. When authenticationMode is PKI, ECK binds the Elasticsearch role mapping to the
+                      public key of this certificate.
+                    type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
                       to an Elastic resource managed by ECK.
@@ -2976,6 +3426,77 @@ spec:
                         type: array
                     type: object
                 type: object
+              resources:
+                description: |-
+                  Resources provides a shorthand to set CPU and Memory resources on the Beat container. When set, these
+                  values override any CPU or memory resource settings specified in the DaemonSet or Deployment PodTemplate for
+                  the primary Beat container. To set resources on other containers, use the PodTemplate.
+                properties:
+                  limits:
+                    description: Limits is the shorthand for the main container's
+                      CPU and memory limits.
+                    properties:
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                  requests:
+                    description: Requests is the shorthand for the main container's
+                      CPU and memory requests.
+                    properties:
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                type: object
               revisionHistoryLimit:
                 description: RevisionHistoryLimit is the number of revisions to retain
                   to allow rollback in the underlying DaemonSet or Deployment.
@@ -3044,6 +3565,27 @@ spec:
               availableNodes:
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the beat
+                  resource.
+                items:
+                  description: Condition represents the ECK resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of a resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               elasticsearchAssociationStatus:
                 description: AssociationStatus is the status of an association resource.
                 type: string
@@ -3087,7 +3629,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.23.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -3153,7 +3695,7 @@ spec:
             properties:
               config:
                 description: 'Config holds the ElasticMapsServer configuration. See:
-                  https://www.elastic.co/guide/en/kibana/current/maps-connect-to-ems.html#elastic-maps-server-configuration'
+                  https://www.elastic.co/docs/explore-analyze/visualize/maps/maps-connect-to-ems#elastic-maps-server-configuration'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               configRef:
@@ -3173,6 +3715,27 @@ spec:
                 description: ElasticsearchRef is a reference to an Elasticsearch cluster
                   running in the same Kubernetes cluster.
                 properties:
+                  authenticationMode:
+                    description: |-
+                      AuthenticationMode controls how this component authenticates to Elasticsearch.
+                      Credentials uses a service account token or a username and password. This is used when the field is omitted.
+                      PKI uses the TLS client certificate instead, and requires Elasticsearch 9.6.0+ with
+                      spec.http.tls.client.authentication and spec.auth.pki.enabled. Otherwise the association remains Pending.
+                      PKI is rejected for Enterprise Search and for Fleet-managed Elastic Agents and Fleet Server, and requires
+                      Elastic Maps Server 9.6.0+.
+                    enum:
+                    - Credentials
+                    - PKI
+                    type: string
+                  clientCertificateSecretName:
+                    description: |-
+                      ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                      (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                      This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.
+                      If not specified and the referenced resource requires client authentication, ECK will auto-generate a
+                      client certificate. When authenticationMode is PKI, ECK binds the Elasticsearch role mapping to the
+                      public key of this certificate.
+                    type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
                       to an Elastic resource managed by ECK.
@@ -3590,6 +4153,19 @@ spec:
                             description: SecretName is the name of the secret.
                             type: string
                         type: object
+                      certificateAuthorities:
+                        description: |-
+                          CertificateAuthorities is a reference to a config map with a `ca.crt` file that contains one or more
+                          x509 certificates for trusted authorities in PEM format. The operator appends them to the CA bundle it
+                          hands out to clients of this resource, such as associated resources and Stack Monitoring Beats.
+                          Use it if the CA that issued the certificate in `certificate` is not part of `ca.crt` in that secret.
+                          Clients trust only the resulting bundle. Changes to it restart associated resources that trust it.
+                          Only certificates are used, other PEM blocks are ignored.
+                        properties:
+                          configMapName:
+                            description: ConfigMapName is the name of the config map.
+                            type: string
+                        type: object
                       selfSignedCertificate:
                         description: SelfSignedCertificate allows configuring the
                           self-signed certificate generated by the operator.
@@ -3620,11 +4196,82 @@ spec:
                 description: Image is the Elastic Maps Server Docker image to deploy.
                 type: string
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Elastic Maps
                   Server pods
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              resources:
+                description: |-
+                  Resources provides a shorthand to set CPU and Memory resources on the Elastic Maps Server container. When set,
+                  these values override any CPU or memory resource settings specified in the PodTemplate for the primary Elastic
+                  Maps Server container. To set resources on other containers, use the PodTemplate.
+                properties:
+                  limits:
+                    description: Limits is the shorthand for the main container's
+                      CPU and memory limits.
+                    properties:
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                  requests:
+                    description: Requests is the shorthand for the main container's
+                      CPU and memory requests.
+                    properties:
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                type: object
               revisionHistoryLimit:
                 description: RevisionHistoryLimit is the number of revisions to retain
                   to allow rollback in the underlying Deployment.
@@ -3652,6 +4299,26 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the deployment.
+                items:
+                  description: Condition represents the ECK resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of a resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               count:
                 description: Count corresponds to Scale.Status.Replicas, which is
                   the actual number of observed instances of the scaled object.
@@ -3691,7 +4358,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.23.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -3934,9 +4601,7 @@ spec:
                 description: Conditions holds the current service state of the autoscaling
                   controller.
                 items:
-                  description: |-
-                    Condition represents Elasticsearch resource's condition.
-                    **This API is in technical preview and may be changed or removed in a future release.**
+                  description: Condition represents the ECK resource's condition.
                   properties:
                     lastTransitionTime:
                       format: date-time
@@ -3946,8 +4611,7 @@ spec:
                     status:
                       type: string
                     type:
-                      description: ConditionType defines the condition of an Elasticsearch
-                        resource.
+                      description: ConditionType defines the condition of a resource.
                       type: string
                   required:
                   - status
@@ -4049,7 +4713,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.23.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -4135,6 +4799,16 @@ spec:
                           type: string
                       type: object
                     type: array
+                  pki:
+                    description: PKI configures the ECK-managed PKI realm.
+                    properties:
+                      enabled:
+                        description: |-
+                          Enabled specifies whether to configure the ECK-managed PKI realm, which components with
+                          elasticsearchRef.authenticationMode: PKI use to authenticate with their TLS client certificate.
+                          Requires Elasticsearch 9.6.0+ and spec.http.tls.client.authentication.
+                        type: boolean
+                    type: object
                   roles:
                     description: Roles to propagate to the Elasticsearch cluster.
                     items:
@@ -4536,6 +5210,27 @@ spec:
                             description: SecretName is the name of the secret.
                             type: string
                         type: object
+                      certificateAuthorities:
+                        description: |-
+                          CertificateAuthorities is a reference to a config map with a `ca.crt` file that contains one or more
+                          x509 certificates for trusted authorities in PEM format. The operator appends them to the CA bundle it
+                          hands out to clients of this resource, such as associated resources and Stack Monitoring Beats.
+                          Use it if the CA that issued the certificate in `certificate` is not part of `ca.crt` in that secret.
+                          Clients trust only the resulting bundle. Changes to it restart associated resources that trust it.
+                          Only certificates are used, other PEM blocks are ignored.
+                        properties:
+                          configMapName:
+                            description: ConfigMapName is the name of the config map.
+                            type: string
+                        type: object
+                      client:
+                        description: Client holds client configuration options.
+                        properties:
+                          authentication:
+                            description: Authentication enables client authentication
+                              (enterprise-only feature).
+                            type: boolean
+                        type: object
                       selfSignedCertificate:
                         description: SelfSignedCertificate allows configuring the
                           self-signed certificate generated by the operator.
@@ -4568,7 +5263,7 @@ spec:
               monitoring:
                 description: |-
                   Monitoring enables you to collect and ship log and monitoring data of this Elasticsearch cluster.
-                  See https://www.elastic.co/guide/en/elasticsearch/reference/current/monitor-elasticsearch-cluster.html.
+                  See https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring.
                   Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
                   Elasticsearch monitoring clusters running in the same Kubernetes cluster.
                 properties:
@@ -4658,8 +5353,12 @@ spec:
                     type: object
                 type: object
               nodeSets:
-                description: NodeSets allow specifying groups of Elasticsearch nodes
-                  sharing the same configuration and Pod templates.
+                description: |-
+                  NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
+                  The list is keyed by nodeSet name so that Server-Side Apply tracks field ownership per nodeSet
+                  and per field. Without this the list would default to atomic, and any write by the operator
+                  (for example the autoscaling controller updating a node count) would claim ownership of the
+                  whole nodeSets tree, conflicting with tools such as Helm that manage the rest of the spec.
                 items:
                   description: NodeSet is the specification for a group of Elasticsearch
                     nodes sharing the same configuration and a Pod template.
@@ -4681,11 +5380,97 @@ spec:
                       pattern: '[a-zA-Z0-9-]+'
                       type: string
                     podTemplate:
-                      description: PodTemplate provides customisation options (labels,
+                      description: PodTemplate provides customization options (labels,
                         annotations, affinity rules, resource requests, and so on)
                         for the Pods belonging to this NodeSet.
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
+                    resources:
+                      description: |-
+                        Resources specifies the resource requests and limits (CPU and Memory only) for the Elasticsearch nodes in this NodeSet. When set, these override the resource requests and limits set in the PodTemplate for the primary Elasticsearch container. To set the resources for other containers, use the PodTemplate.Spec.Containers[].Resources field.
+                        It also carries the storage request applied to this NodeSet's data volume claim.
+                      properties:
+                        limits:
+                          description: Limits is the shorthand for the main container's
+                            CPU and memory limits.
+                          properties:
+                            cpu:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: |-
+                                CPU overrides the main container's CPU request/limit when the parent Resources
+                                is merged into a PodTemplate. A nil value means "do not override": any CPU
+                                value already set on the main container in the PodTemplate is passed through
+                                unchanged. Setting this field to nil does not unset a CPU value present in
+                                the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                                A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            memory:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: |-
+                                Memory overrides the main container's memory request/limit when the parent
+                                Resources is merged into a PodTemplate. A nil value means "do not override":
+                                any memory value already set on the main container in the PodTemplate is
+                                passed through unchanged. Setting this field to nil does not unset a memory
+                                value present in the PodTemplate; to remove it, edit the PodTemplate's
+                                container resources.
+                                A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                          type: object
+                        requests:
+                          description: Requests is the shorthand for the main container's
+                            CPU and memory requests.
+                          properties:
+                            cpu:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: |-
+                                CPU overrides the main container's CPU request/limit when the parent Resources
+                                is merged into a PodTemplate. A nil value means "do not override": any CPU
+                                value already set on the main container in the PodTemplate is passed through
+                                unchanged. Setting this field to nil does not unset a CPU value present in
+                                the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                                A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            memory:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: |-
+                                Memory overrides the main container's memory request/limit when the parent
+                                Resources is merged into a PodTemplate. A nil value means "do not override":
+                                any memory value already set on the main container in the PodTemplate is
+                                passed through unchanged. Setting this field to nil does not unset a memory
+                                value present in the PodTemplate; to remove it, edit the PodTemplate's
+                                container resources.
+                                A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                          type: object
+                        storage:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          description: |-
+                            Storage overrides the storage request of this NodeSet's data volume claim: the claim named
+                            "elasticsearch-data" if present, otherwise the single claim when exactly one is declared. A
+                            nil value means "do not override", so any storage request already set in
+                            VolumeClaimTemplates is passed through unchanged. A non-nil value wins over the claim's own
+                            request.
+
+                            This is the field the autoscaling controller writes. Keeping it out of VolumeClaimTemplates
+                            leaves that list, and therefore the storage class and access modes, owned solely by whoever
+                            declares it.
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                      type: object
                     volumeClaimTemplates:
                       description: |-
                         VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.
@@ -4752,8 +5537,8 @@ spec:
                                   * An existing PVC (PersistentVolumeClaim)
                                   If the provisioner or an external controller can support the specified data source,
                                   it will create a new volume based on the contents of the specified data source.
-                                  When the AnyVolumeDataSource feature gate is enabled, dataSource contents will be copied to dataSourceRef,
-                                  and dataSourceRef contents will be copied to dataSource when dataSourceRef.namespace is not specified.
+                                  dataSource contents will be copied to dataSourceRef, and dataSourceRef contents will be
+                                  copied to dataSource when dataSourceRef.namespace is not specified.
                                   If the namespace is specified, then dataSourceRef will not be copied to dataSource.
                                 properties:
                                   apiGroup:
@@ -4798,7 +5583,6 @@ spec:
                                     specified.
                                   * While dataSource only allows local objects, dataSourceRef allows objects
                                     in any namespaces.
-                                  (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled.
                                   (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
                                 properties:
                                   apiGroup:
@@ -4936,11 +5720,33 @@ spec:
                             type: object
                         type: object
                       type: array
+                    zoneAwareness:
+                      description: ZoneAwareness enables automatic topology-aware
+                        scheduling and shard-awareness configuration.
+                      properties:
+                        topologyKey:
+                          description: |-
+                            TopologyKey is the key of node labels used for zone-aware placement.
+                            Defaults to "topology.kubernetes.io/zone".
+                          type: string
+                        zones:
+                          description: |-
+                            Zones optionally restrict scheduling to the listed topology values.
+                            If empty, Pods can be scheduled in any topology value for the selected topologyKey.
+                          items:
+                            type: string
+                          minItems: 1
+                          type: array
+                          x-kubernetes-list-type: set
+                      type: object
                   required:
                   - name
                   type: object
                 minItems: 1
                 type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               podDisruptionBudget:
                 description: |-
                   PodDisruptionBudget provides access to the default Pod disruption budget(s) for the Elasticsearch cluster.
@@ -4986,7 +5792,7 @@ spec:
                         - type: integer
                         - type: string
                         description: |-
-                          An eviction is allowed if at most "maxUnavailable" pods selected by
+                          maxUnavailable indicates that an eviction is allowed if at most "maxUnavailable" pods selected by
                           "selector" are unavailable after the eviction, i.e. even in absence of
                           the evicted pod. For example, one can prevent all voluntary evictions
                           by specifying 0. This is a mutually exclusive setting with "minAvailable".
@@ -4996,14 +5802,14 @@ spec:
                         - type: integer
                         - type: string
                         description: |-
-                          An eviction is allowed if at least "minAvailable" pods selected by
+                          minAvailable indicates that an eviction is allowed if at least "minAvailable" pods selected by
                           "selector" will still be available after the eviction, i.e. even in the
                           absence of the evicted pod.  So for example you can prevent all voluntary
                           evictions by specifying "100%".
                         x-kubernetes-int-or-string: true
                       selector:
                         description: |-
-                          Label query over pods whose evictions are managed by the disruption
+                          selector is a label query over pods whose evictions are managed by the disruption
                           budget.
                           A null selector will match no pods, while an empty ({}) selector will select
                           all pods within the namespace.
@@ -5053,7 +5859,7 @@ spec:
                         x-kubernetes-map-type: atomic
                       unhealthyPodEvictionPolicy:
                         description: |-
-                          UnhealthyPodEvictionPolicy defines the criteria for when unhealthy pods
+                          unhealthyPodEvictionPolicy defines the criteria for when unhealthy pods
                           should be considered for eviction. Current implementation considers healthy pods,
                           as pods that have status.conditions item with type="Ready",status="True".
 
@@ -5465,7 +6271,7 @@ spec:
                   properties:
                     apiKey:
                       description: 'APIKey can be used to enable remote cluster access
-                        using Cross-Cluster API keys: https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html'
+                        using Cross-Cluster API keys: https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-security-create-cross-cluster-api-key'
                       properties:
                         access:
                           description: Access is the name of the API Key. It is automatically
@@ -5982,6 +6788,7 @@ spec:
                           trusted authorities in PEM format. The certificates need to be in a file called `ca.crt`.
                         properties:
                           configMapName:
+                            description: ConfigMapName is the name of the config map.
                             type: string
                         type: object
                       otherNameSuffix:
@@ -6066,11 +6873,15 @@ spec:
               conditions:
                 description: |-
                   Conditions holds the current service state of an Elasticsearch cluster.
-                  **This API is in technical preview and may be changed or removed in a future release.**
+                  ResourcesAwareManagement reports whether the operator could compute CPU, memory, and storage
+                  for the Elasticsearch Desired Nodes API. Present only for Elasticsearch 8.3 and later.
+                  True means resources were calculated and the operator will attempt to publish Desired Nodes when
+                  Elasticsearch is reachable. False means calculation failed for at least one NodeSet; the operator
+                  then attempts to clear Desired Nodes when Elasticsearch is reachable. The condition reflects
+                  resource calculation, not whether a Desired Nodes API call has already succeeded. The Elasticsearch
+                  resource is still reconciled.
                 items:
-                  description: |-
-                    Condition represents Elasticsearch resource's condition.
-                    **This API is in technical preview and may be changed or removed in a future release.**
+                  description: Condition represents the ECK resource's condition.
                   properties:
                     lastTransitionTime:
                       format: date-time
@@ -6080,8 +6891,7 @@ spec:
                     status:
                       type: string
                     type:
-                      description: ConditionType defines the condition of an Elasticsearch
-                        resource.
+                      description: ConditionType defines the condition of a resource.
                       type: string
                   required:
                   - status
@@ -6729,7 +7539,7 @@ spec:
                       pattern: '[a-zA-Z0-9-]+'
                       type: string
                     podTemplate:
-                      description: PodTemplate provides customisation options (labels,
+                      description: PodTemplate provides customization options (labels,
                         annotations, affinity rules, resource requests, and so on)
                         for the Pods belonging to this NodeSet.
                       type: object
@@ -6799,8 +7609,8 @@ spec:
                                   * An existing PVC (PersistentVolumeClaim)
                                   If the provisioner or an external controller can support the specified data source,
                                   it will create a new volume based on the contents of the specified data source.
-                                  When the AnyVolumeDataSource feature gate is enabled, dataSource contents will be copied to dataSourceRef,
-                                  and dataSourceRef contents will be copied to dataSource when dataSourceRef.namespace is not specified.
+                                  dataSource contents will be copied to dataSourceRef, and dataSourceRef contents will be
+                                  copied to dataSource when dataSourceRef.namespace is not specified.
                                   If the namespace is specified, then dataSourceRef will not be copied to dataSource.
                                 properties:
                                   apiGroup:
@@ -6845,7 +7655,6 @@ spec:
                                     specified.
                                   * While dataSource only allows local objects, dataSourceRef allows objects
                                     in any namespaces.
-                                  (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled.
                                   (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
                                 properties:
                                   apiGroup:
@@ -7025,7 +7834,7 @@ spec:
                         - type: integer
                         - type: string
                         description: |-
-                          An eviction is allowed if at most "maxUnavailable" pods selected by
+                          maxUnavailable indicates that an eviction is allowed if at most "maxUnavailable" pods selected by
                           "selector" are unavailable after the eviction, i.e. even in absence of
                           the evicted pod. For example, one can prevent all voluntary evictions
                           by specifying 0. This is a mutually exclusive setting with "minAvailable".
@@ -7035,14 +7844,14 @@ spec:
                         - type: integer
                         - type: string
                         description: |-
-                          An eviction is allowed if at least "minAvailable" pods selected by
+                          minAvailable indicates that an eviction is allowed if at least "minAvailable" pods selected by
                           "selector" will still be available after the eviction, i.e. even in the
                           absence of the evicted pod.  So for example you can prevent all voluntary
                           evictions by specifying "100%".
                         x-kubernetes-int-or-string: true
                       selector:
                         description: |-
-                          Label query over pods whose evictions are managed by the disruption
+                          selector is a label query over pods whose evictions are managed by the disruption
                           budget.
                           A null selector selects no pods.
                           An empty selector ({}) also selects no pods, which differs from standard behavior of selecting all pods.
@@ -7093,7 +7902,7 @@ spec:
                         x-kubernetes-map-type: atomic
                       unhealthyPodEvictionPolicy:
                         description: |-
-                          UnhealthyPodEvictionPolicy defines the criteria for when unhealthy pods
+                          unhealthyPodEvictionPolicy defines the criteria for when unhealthy pods
                           should be considered for eviction. Current implementation considers healthy pods,
                           as pods that have status.conditions item with type="Ready",status="True".
 
@@ -7216,7 +8025,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.23.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -7301,6 +8110,27 @@ spec:
                 description: ElasticsearchRef is a reference to the Elasticsearch
                   cluster running in the same Kubernetes cluster.
                 properties:
+                  authenticationMode:
+                    description: |-
+                      AuthenticationMode controls how this component authenticates to Elasticsearch.
+                      Credentials uses a service account token or a username and password. This is used when the field is omitted.
+                      PKI uses the TLS client certificate instead, and requires Elasticsearch 9.6.0+ with
+                      spec.http.tls.client.authentication and spec.auth.pki.enabled. Otherwise the association remains Pending.
+                      PKI is rejected for Enterprise Search and for Fleet-managed Elastic Agents and Fleet Server, and requires
+                      Elastic Maps Server 9.6.0+.
+                    enum:
+                    - Credentials
+                    - PKI
+                    type: string
+                  clientCertificateSecretName:
+                    description: |-
+                      ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                      (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                      This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.
+                      If not specified and the referenced resource requires client authentication, ECK will auto-generate a
+                      client certificate. When authenticationMode is PKI, ECK binds the Elasticsearch role mapping to the
+                      public key of this certificate.
+                    type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
                       to an Elastic resource managed by ECK.
@@ -7718,6 +8548,19 @@ spec:
                             description: SecretName is the name of the secret.
                             type: string
                         type: object
+                      certificateAuthorities:
+                        description: |-
+                          CertificateAuthorities is a reference to a config map with a `ca.crt` file that contains one or more
+                          x509 certificates for trusted authorities in PEM format. The operator appends them to the CA bundle it
+                          hands out to clients of this resource, such as associated resources and Stack Monitoring Beats.
+                          Use it if the CA that issued the certificate in `certificate` is not part of `ca.crt` in that secret.
+                          Clients trust only the resulting bundle. Changes to it restart associated resources that trust it.
+                          Only certificates are used, other PEM blocks are ignored.
+                        properties:
+                          configMapName:
+                            description: ConfigMapName is the name of the config map.
+                            type: string
+                        type: object
                       selfSignedCertificate:
                         description: SelfSignedCertificate allows configuring the
                           self-signed certificate generated by the operator.
@@ -7749,10 +8592,81 @@ spec:
                 type: string
               podTemplate:
                 description: |-
-                  PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on)
+                  PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on)
                   for the Enterprise Search pods.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              resources:
+                description: |-
+                  Resources provides a shorthand to set CPU and Memory resources on the Enterprise Search container. When set,
+                  these values override any CPU or memory resource settings specified in the PodTemplate for the primary
+                  Enterprise Search container. To set resources on other containers, use the PodTemplate.
+                properties:
+                  limits:
+                    description: Limits is the shorthand for the main container's
+                      CPU and memory limits.
+                    properties:
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                  requests:
+                    description: Requests is the shorthand for the main container's
+                      CPU and memory requests.
+                    properties:
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                type: object
               revisionHistoryLimit:
                 description: RevisionHistoryLimit is the number of revisions to retain
                   to allow rollback in the underlying Deployment.
@@ -7779,6 +8693,26 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the deployment.
+                items:
+                  description: Condition represents the ECK resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of a resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               count:
                 description: Count corresponds to Scale.Status.Replicas, which is
                   the actual number of observed instances of the scaled object.
@@ -8297,6 +9231,19 @@ spec:
                             description: SecretName is the name of the secret.
                             type: string
                         type: object
+                      certificateAuthorities:
+                        description: |-
+                          CertificateAuthorities is a reference to a config map with a `ca.crt` file that contains one or more
+                          x509 certificates for trusted authorities in PEM format. The operator appends them to the CA bundle it
+                          hands out to clients of this resource, such as associated resources and Stack Monitoring Beats.
+                          Use it if the CA that issued the certificate in `certificate` is not part of `ca.crt` in that secret.
+                          Clients trust only the resulting bundle. Changes to it restart associated resources that trust it.
+                          Only certificates are used, other PEM blocks are ignored.
+                        properties:
+                          configMapName:
+                            description: ConfigMapName is the name of the config map.
+                            type: string
+                        type: object
                       selfSignedCertificate:
                         description: SelfSignedCertificate allows configuring the
                           self-signed certificate generated by the operator.
@@ -8328,7 +9275,7 @@ spec:
                 type: string
               podTemplate:
                 description: |-
-                  PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on)
+                  PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on)
                   for the Enterprise Search pods.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -8353,6 +9300,26 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the deployment.
+                items:
+                  description: Condition represents the ECK resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of a resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               count:
                 description: Count corresponds to Scale.Status.Replicas, which is
                   the actual number of observed instances of the scaled object.
@@ -8384,7 +9351,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.23.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -8446,8 +9413,107 @@ spec:
           spec:
             description: KibanaSpec holds the specification of a Kibana instance.
             properties:
+              backgroundTasks:
+                description: |-
+                  BackgroundTasks, when set, runs background task execution (node.roles: ["background_tasks"])
+                  in a dedicated Deployment and pins the primary Deployment to node.roles: ["ui"].
+                  When nil, Kibana runs a single Deployment with all roles.
+                  Requires Kibana >= 8.16.0 and an Enterprise license.
+                properties:
+                  config:
+                    description: |-
+                      Config holds Kibana configuration specific to the background tasks pool.
+                      The node.roles setting is managed by ECK and must not be set here.
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  count:
+                    description: |-
+                      Count of background task Kibana instances. When nil, ECK does not manage the replica count
+                      of the Deployment, allowing an HPA to target it directly.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  podTemplate:
+                    description: |-
+                      PodTemplate provides customization options for the background tasks pool pods.
+                      It is applied as a strategic-merge overlay on top of spec.podTemplate.
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  resources:
+                    description: |-
+                      Resources provides a shorthand to set CPU and Memory resources on the Kibana container in the
+                      background tasks pool. When set, these values override any CPU or memory resource settings
+                      specified in PodTemplate for the primary Kibana container. To set resources on other containers,
+                      use PodTemplate.
+                    properties:
+                      limits:
+                        description: Limits is the shorthand for the main container's
+                          CPU and memory limits.
+                        properties:
+                          cpu:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            description: |-
+                              CPU overrides the main container's CPU request/limit when the parent Resources
+                              is merged into a PodTemplate. A nil value means "do not override": any CPU
+                              value already set on the main container in the PodTemplate is passed through
+                              unchanged. Setting this field to nil does not unset a CPU value present in
+                              the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                              A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          memory:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            description: |-
+                              Memory overrides the main container's memory request/limit when the parent
+                              Resources is merged into a PodTemplate. A nil value means "do not override":
+                              any memory value already set on the main container in the PodTemplate is
+                              passed through unchanged. Setting this field to nil does not unset a memory
+                              value present in the PodTemplate; to remove it, edit the PodTemplate's
+                              container resources.
+                              A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                        type: object
+                      requests:
+                        description: Requests is the shorthand for the main container's
+                          CPU and memory requests.
+                        properties:
+                          cpu:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            description: |-
+                              CPU overrides the main container's CPU request/limit when the parent Resources
+                              is merged into a PodTemplate. A nil value means "do not override": any CPU
+                              value already set on the main container in the PodTemplate is passed through
+                              unchanged. Setting this field to nil does not unset a CPU value present in
+                              the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                              A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          memory:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            description: |-
+                              Memory overrides the main container's memory request/limit when the parent
+                              Resources is merged into a PodTemplate. A nil value means "do not override":
+                              any memory value already set on the main container in the PodTemplate is
+                              passed through unchanged. Setting this field to nil does not unset a memory
+                              value present in the PodTemplate; to remove it, edit the PodTemplate's
+                              container resources.
+                              A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                        type: object
+                    type: object
+                type: object
               config:
-                description: 'Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html'
+                description: 'Config holds the Kibana configuration. See: https://www.elastic.co/docs/reference/kibana/configuration-reference'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               count:
@@ -8458,6 +9524,27 @@ spec:
                 description: ElasticsearchRef is a reference to an Elasticsearch cluster
                   running in the same Kubernetes cluster.
                 properties:
+                  authenticationMode:
+                    description: |-
+                      AuthenticationMode controls how this component authenticates to Elasticsearch.
+                      Credentials uses a service account token or a username and password. This is used when the field is omitted.
+                      PKI uses the TLS client certificate instead, and requires Elasticsearch 9.6.0+ with
+                      spec.http.tls.client.authentication and spec.auth.pki.enabled. Otherwise the association remains Pending.
+                      PKI is rejected for Enterprise Search and for Fleet-managed Elastic Agents and Fleet Server, and requires
+                      Elastic Maps Server 9.6.0+.
+                    enum:
+                    - Credentials
+                    - PKI
+                    type: string
+                  clientCertificateSecretName:
+                    description: |-
+                      ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                      (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                      This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.
+                      If not specified and the referenced resource requires client authentication, ECK will auto-generate a
+                      client certificate. When authenticationMode is PKI, ECK binds the Elasticsearch role mapping to the
+                      public key of this certificate.
+                    type: string
                   name:
                     description: Name of an existing Kubernetes object corresponding
                       to an Elastic resource managed by ECK.
@@ -8906,6 +9993,19 @@ spec:
                             description: SecretName is the name of the secret.
                             type: string
                         type: object
+                      certificateAuthorities:
+                        description: |-
+                          CertificateAuthorities is a reference to a config map with a `ca.crt` file that contains one or more
+                          x509 certificates for trusted authorities in PEM format. The operator appends them to the CA bundle it
+                          hands out to clients of this resource, such as associated resources and Stack Monitoring Beats.
+                          Use it if the CA that issued the certificate in `certificate` is not part of `ca.crt` in that secret.
+                          Clients trust only the resulting bundle. Changes to it restart associated resources that trust it.
+                          Only certificates are used, other PEM blocks are ignored.
+                        properties:
+                          configMapName:
+                            description: ConfigMapName is the name of the config map.
+                            type: string
+                        type: object
                       selfSignedCertificate:
                         description: SelfSignedCertificate allows configuring the
                           self-signed certificate generated by the operator.
@@ -8938,7 +10038,7 @@ spec:
               monitoring:
                 description: |-
                   Monitoring enables you to collect and ship log and monitoring data of this Kibana.
-                  See https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html.
+                  See https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring.
                   Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
                   Elasticsearch monitoring clusters running in the same Kubernetes cluster.
                 properties:
@@ -9039,18 +10139,6 @@ spec:
                     description: Namespace of the Kubernetes object. If empty, defaults
                       to the current namespace.
                     type: string
-                  secretName:
-                    description: |-
-                      SecretName is the name of an existing Kubernetes secret that contains connection information for associating an
-                      Elastic resource not managed by the operator.
-                      The referenced secret must contain the following:
-                      - `url`: the URL to reach the Elastic resource
-                      - `username`: the username of the user to be authenticated to the Elastic resource
-                      - `password`: the password of the user to be authenticated to the Elastic resource
-                      - `ca.crt`: the CA certificate in PEM format (optional)
-                      - `api-key`: the key to authenticate against the Elastic resource instead of a username and password (supported only for `elasticsearchRefs` in AgentSpec and in BeatSpec)
-                      This field cannot be used in combination with the other fields name, namespace or serviceName.
-                    type: string
                   serviceName:
                     description: |-
                       ServiceName is the name of an existing Kubernetes service which is used to make requests to the referenced
@@ -9059,10 +10147,81 @@ spec:
                     type: string
                 type: object
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Kibana pods
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              resources:
+                description: |-
+                  Resources provides a shorthand to set CPU and Memory resources on the Kibana container. When set, these
+                  values override any CPU or memory resource settings specified in the PodTemplate for the primary Kibana
+                  container. To set resources on other containers, use the PodTemplate.
+                properties:
+                  limits:
+                    description: Limits is the shorthand for the main container's
+                      CPU and memory limits.
+                    properties:
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                  requests:
+                    description: Requests is the shorthand for the main container's
+                      CPU and memory requests.
+                    properties:
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                type: object
               revisionHistoryLimit:
                 description: RevisionHistoryLimit is the number of revisions to retain
                   to allow rollback in the underlying Deployment.
@@ -9127,6 +10286,26 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the deployment.
+                items:
+                  description: Condition represents the ECK resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of a resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               count:
                 description: Count corresponds to Scale.Status.Replicas, which is
                   the actual number of observed instances of the scaled object.
@@ -9162,6 +10341,114 @@ spec:
                 description: PackageRegistryAssociationStatus is the status of any
                   auto-linking to Elastic Package Registry.
                 type: string
+              pools:
+                description: |-
+                  Pools reports the state of the background tasks and primary Deployments.
+                  The background tasks pool status is only set when spec.backgroundTasks is configured.
+                properties:
+                  backgroundTasks:
+                    description: |-
+                      BackgroundTasks reports the state of the background tasks Deployment.
+                      Only set when spec.backgroundTasks is configured.
+                    properties:
+                      availableNodes:
+                        description: AvailableNodes is the number of available replicas
+                          in the deployment.
+                        format: int32
+                        type: integer
+                      conditions:
+                        description: Conditions holds the current service state of
+                          the deployment.
+                        items:
+                          description: Condition represents the ECK resource's condition.
+                          properties:
+                            lastTransitionTime:
+                              format: date-time
+                              type: string
+                            message:
+                              type: string
+                            status:
+                              type: string
+                            type:
+                              description: ConditionType defines the condition of
+                                a resource.
+                              type: string
+                          required:
+                          - status
+                          - type
+                          type: object
+                        type: array
+                      count:
+                        description: Count corresponds to Scale.Status.Replicas, which
+                          is the actual number of observed instances of the scaled
+                          object.
+                        format: int32
+                        type: integer
+                      health:
+                        description: Health of the deployment.
+                        type: string
+                      selector:
+                        description: Selector is the label selector used to find all
+                          pods.
+                        type: string
+                      version:
+                        description: |-
+                          Version of the stack resource currently running. During version upgrades, multiple versions may run
+                          in parallel: this value specifies the lowest version currently running.
+                        type: string
+                    type: object
+                  primary:
+                    description: |-
+                      Primary reports the state of the primary Deployment.
+                      Always set, also when spec.backgroundTasks is not configured.
+                    properties:
+                      availableNodes:
+                        description: AvailableNodes is the number of available replicas
+                          in the deployment.
+                        format: int32
+                        type: integer
+                      conditions:
+                        description: Conditions holds the current service state of
+                          the deployment.
+                        items:
+                          description: Condition represents the ECK resource's condition.
+                          properties:
+                            lastTransitionTime:
+                              format: date-time
+                              type: string
+                            message:
+                              type: string
+                            status:
+                              type: string
+                            type:
+                              description: ConditionType defines the condition of
+                                a resource.
+                              type: string
+                          required:
+                          - status
+                          - type
+                          type: object
+                        type: array
+                      count:
+                        description: Count corresponds to Scale.Status.Replicas, which
+                          is the actual number of observed instances of the scaled
+                          object.
+                        format: int32
+                        type: integer
+                      health:
+                        description: Health of the deployment.
+                        type: string
+                      selector:
+                        description: Selector is the label selector used to find all
+                          pods.
+                        type: string
+                      version:
+                        description: |-
+                          Version of the stack resource currently running. During version upgrades, multiple versions may run
+                          in parallel: this value specifies the lowest version currently running.
+                        type: string
+                    type: object
+                type: object
               selector:
                 description: Selector is the label selector used to find all pods.
                 type: string
@@ -9176,9 +10463,9 @@ spec:
     storage: true
     subresources:
       scale:
-        labelSelectorPath: .status.selector
+        labelSelectorPath: .status.pools.primary.selector
         specReplicasPath: .spec.count
-        statusReplicasPath: .status.count
+        statusReplicasPath: .status.pools.primary.count
       status: {}
   - additionalPrinterColumns:
     - jsonPath: .status.health
@@ -9221,7 +10508,7 @@ spec:
             description: KibanaSpec holds the specification of a Kibana instance.
             properties:
               config:
-                description: 'Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html'
+                description: 'Config holds the Kibana configuration. See: https://www.elastic.co/docs/reference/kibana/configuration-reference'
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               count:
@@ -9661,7 +10948,7 @@ spec:
                 description: Image is the Kibana Docker image to deploy.
                 type: string
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Kibana pods
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
@@ -9735,7 +11022,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.23.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -9827,6 +11114,27 @@ spec:
                   description: ElasticsearchCluster is a named reference to an Elasticsearch
                     cluster which can be used in a Logstash pipeline.
                   properties:
+                    authenticationMode:
+                      description: |-
+                        AuthenticationMode controls how this component authenticates to Elasticsearch.
+                        Credentials uses a service account token or a username and password. This is used when the field is omitted.
+                        PKI uses the TLS client certificate instead, and requires Elasticsearch 9.6.0+ with
+                        spec.http.tls.client.authentication and spec.auth.pki.enabled. Otherwise the association remains Pending.
+                        PKI is rejected for Enterprise Search and for Fleet-managed Elastic Agents and Fleet Server, and requires
+                        Elastic Maps Server 9.6.0+.
+                      enum:
+                      - Credentials
+                      - PKI
+                      type: string
+                    clientCertificateSecretName:
+                      description: |-
+                        ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+                        (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+                        This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.
+                        If not specified and the referenced resource requires client authentication, ECK will auto-generate a
+                        client certificate. When authenticationMode is PKI, ECK binds the Elasticsearch role mapping to the
+                        public key of this certificate.
+                      type: string
                     clusterName:
                       description: |-
                         ClusterName is an alias for the cluster to be used to refer to the Elasticsearch cluster in Logstash
@@ -9967,19 +11275,93 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               pipelinesRef:
                 description: |-
-                  PipelinesRef contains a reference to an existing Kubernetes Secret holding the Logstash Pipelines.
+                  PipelinesRef contains a reference to an existing Kubernetes Secret or ConfigMap holding the Logstash Pipelines.
                   Logstash pipelines must be specified as yaml, under a single "pipelines.yml" entry. At most one of [`Pipelines`, `PipelinesRef`]
-                  can be specified.
+                  can be specified. Within PipelinesRef, at most one of [`secretName`, `configMapName`] can be set.
                 properties:
+                  configMapName:
+                    description: ConfigMapName is the name of the config map.
+                    type: string
                   secretName:
                     description: SecretName is the name of the secret.
                     type: string
                 type: object
               podTemplate:
-                description: PodTemplate provides customisation options for the Logstash
+                description: PodTemplate provides customization options for the Logstash
                   pods.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              resources:
+                description: |-
+                  Resources provides a shorthand to set CPU and Memory resources on the Logstash container. When set, these
+                  values override any CPU or memory resource settings specified in the PodTemplate for the primary Logstash
+                  container. To set resources on other containers, use the PodTemplate.
+                properties:
+                  limits:
+                    description: Limits is the shorthand for the main container's
+                      CPU and memory limits.
+                    properties:
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                  requests:
+                    description: Requests is the shorthand for the main container's
+                      CPU and memory requests.
+                    properties:
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                type: object
               revisionHistoryLimit:
                 description: RevisionHistoryLimit is the number of revisions to retain
                   to allow rollback in the underlying StatefulSet.
@@ -10422,6 +11804,20 @@ spec:
                               description: SecretName is the name of the secret.
                               type: string
                           type: object
+                        certificateAuthorities:
+                          description: |-
+                            CertificateAuthorities is a reference to a config map with a `ca.crt` file that contains one or more
+                            x509 certificates for trusted authorities in PEM format. The operator appends them to the CA bundle it
+                            hands out to clients of this resource, such as associated resources and Stack Monitoring Beats.
+                            Use it if the CA that issued the certificate in `certificate` is not part of `ca.crt` in that secret.
+                            Clients trust only the resulting bundle. Changes to it restart associated resources that trust it.
+                            Only certificates are used, other PEM blocks are ignored.
+                          properties:
+                            configMapName:
+                              description: ConfigMapName is the name of the config
+                                map.
+                              type: string
+                          type: object
                         selfSignedCertificate:
                           description: SelfSignedCertificate allows configuring the
                             self-signed certificate generated by the operator.
@@ -10554,8 +11950,8 @@ spec:
                             * An existing PVC (PersistentVolumeClaim)
                             If the provisioner or an external controller can support the specified data source,
                             it will create a new volume based on the contents of the specified data source.
-                            When the AnyVolumeDataSource feature gate is enabled, dataSource contents will be copied to dataSourceRef,
-                            and dataSourceRef contents will be copied to dataSource when dataSourceRef.namespace is not specified.
+                            dataSource contents will be copied to dataSourceRef, and dataSourceRef contents will be
+                            copied to dataSource when dataSourceRef.namespace is not specified.
                             If the namespace is specified, then dataSourceRef will not be copied to dataSource.
                           properties:
                             apiGroup:
@@ -10598,7 +11994,6 @@ spec:
                               specified.
                             * While dataSource only allows local objects, dataSourceRef allows objects
                               in any namespaces.
-                            (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled.
                             (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
                           properties:
                             apiGroup:
@@ -10879,6 +12274,61 @@ spec:
                             currentVolumeAttributesClassName is the current name of the VolumeAttributesClass the PVC is using.
                             When unset, there is no VolumeAttributeClass applied to this PersistentVolumeClaim
                           type: string
+                        healthStatus:
+                          description: |-
+                            healthStatus contains the latest controller-reported health information
+                            for the volume bound to this claim.
+                          properties:
+                            healthConditions:
+                              description: |-
+                                conditions is the set of adverse conditions reported by
+                                the CSI controller plugin. An empty list means no adverse condition.
+                                At most 16 conditions may be reported.
+                              items:
+                                description: VolumeHealthCondition represents an adverse
+                                  health condition reported for a volume.
+                                properties:
+                                  message:
+                                    description: |-
+                                      message is a human-readable description.
+                                      Maximum permitted length of a message is 1024 bytes.
+                                    type: string
+                                  reason:
+                                    description: |-
+                                      reason is a brief CamelCase machine-parseable reason.
+                                      Together with status it forms the unique identity of a condition entry.
+                                      Maximum permitted length of a reason is 256 bytes.
+                                    minLength: 1
+                                    type: string
+                                  status:
+                                    description: |-
+                                      status is the machine-parseable health category.
+                                      Possible values:
+                                      - "Inaccessible": the volume cannot be accessed.
+                                      - "DataLoss": data loss has been detected on the volume.
+                                      - "Degraded": the volume is functioning with reduced capability.
+                                    enum:
+                                    - DataLoss
+                                    - Degraded
+                                    - Inaccessible
+                                    minLength: 1
+                                    type: string
+                                required:
+                                - reason
+                                - status
+                                type: object
+                              maxItems: 16
+                              type: array
+                              x-kubernetes-list-map-keys:
+                              - status
+                              - reason
+                              x-kubernetes-list-type: map
+                            lastTransitionTime:
+                              description: lastTransitionTime is when the current
+                                set of conditions first appeared.
+                              format: date-time
+                              type: string
+                          type: object
                         modifyVolumeStatus:
                           description: |-
                             ModifyVolumeStatus represents the status object of ControllerModifyVolume operation.
@@ -10921,6 +12371,26 @@ spec:
               availableNodes:
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the Logstash.
+                items:
+                  description: Condition represents the ECK resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of a resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               elasticsearchAssociationsStatus:
                 additionalProperties:
                   description: AssociationStatus is the status of an association resource.
@@ -10972,7 +12442,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.23.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -11444,6 +12914,19 @@ spec:
                             description: SecretName is the name of the secret.
                             type: string
                         type: object
+                      certificateAuthorities:
+                        description: |-
+                          CertificateAuthorities is a reference to a config map with a `ca.crt` file that contains one or more
+                          x509 certificates for trusted authorities in PEM format. The operator appends them to the CA bundle it
+                          hands out to clients of this resource, such as associated resources and Stack Monitoring Beats.
+                          Use it if the CA that issued the certificate in `certificate` is not part of `ca.crt` in that secret.
+                          Clients trust only the resulting bundle. Changes to it restart associated resources that trust it.
+                          Only certificates are used, other PEM blocks are ignored.
+                        properties:
+                          configMapName:
+                            description: ConfigMapName is the name of the config map.
+                            type: string
+                        type: object
                       selfSignedCertificate:
                         description: SelfSignedCertificate allows configuring the
                           self-signed certificate generated by the operator.
@@ -11475,11 +12958,82 @@ spec:
                   deploy.
                 type: string
               podTemplate:
-                description: PodTemplate provides customisation options (labels, annotations,
+                description: PodTemplate provides customization options (labels, annotations,
                   affinity rules, resource requests, and so on) for the Elastic Package
                   Registry pods
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              resources:
+                description: |-
+                  Resources provides a shorthand to set CPU and Memory resources on the Elastic Package Registry container.
+                  When set, these values override any CPU or memory resource settings specified in the PodTemplate for the
+                  primary Elastic Package Registry container. To set resources on other containers, use the PodTemplate.
+                properties:
+                  limits:
+                    description: Limits is the shorthand for the main container's
+                      CPU and memory limits.
+                    properties:
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                  requests:
+                    description: Requests is the shorthand for the main container's
+                      CPU and memory requests.
+                    properties:
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          CPU overrides the main container's CPU request/limit when the parent Resources
+                          is merged into a PodTemplate. A nil value means "do not override": any CPU
+                          value already set on the main container in the PodTemplate is passed through
+                          unchanged. Setting this field to nil does not unset a CPU value present in
+                          the PodTemplate; to remove it, edit the PodTemplate's container resources.
+                          A non-nil value wins over the PodTemplate's CPU, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          Memory overrides the main container's memory request/limit when the parent
+                          Resources is merged into a PodTemplate. A nil value means "do not override":
+                          any memory value already set on the main container in the PodTemplate is
+                          passed through unchanged. Setting this field to nil does not unset a memory
+                          value present in the PodTemplate; to remove it, edit the PodTemplate's
+                          container resources.
+                          A non-nil value wins over the PodTemplate's memory, including an explicit zero quantity.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                type: object
               revisionHistoryLimit:
                 description: RevisionHistoryLimit is the number of revisions to retain
                   to allow rollback in the underlying Deployment.
@@ -11500,6 +13054,26 @@ spec:
                   the deployment.
                 format: int32
                 type: integer
+              conditions:
+                description: Conditions holds the current service state of the deployment.
+                items:
+                  description: Condition represents the ECK resource's condition.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      description: ConditionType defines the condition of a resource.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
               count:
                 description: Count corresponds to Scale.Status.Replicas, which is
                   the actual number of observed instances of the scaled object.
@@ -11539,7 +13113,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.23.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/instance: '{{ .Release.Name }}'
@@ -11696,6 +13270,12 @@ spec:
                       (/_security/role_mapping)
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  securityRoles:
+                    description: |-
+                      SecurityRoles holds the Role definitions (/_security/role).
+                      Roles defined here are merged into the roles.yml file mounted into Elasticsearch pods.
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   snapshotLifecyclePolicies:
                     description: SnapshotLifecyclePolicies holds the Snapshot Lifecycle
                       Policies settings (/_slm/policy)
@@ -11832,6 +13412,54 @@ spec:
                       type: string
                   required:
                   - secretName
+                  type: object
+                type: array
+              variablesFrom:
+                description: |-
+                  VariablesFrom references ConfigMaps or Secrets from which substitution variables are loaded.
+                  Each source's keys become variables that can be referenced as ${VAR} in the Elasticsearch and Kibana spec fields.
+                  Sources without a namespace default to the policy's namespace; cross-namespace sources are only
+                  permitted for policies deployed in the operator namespace.
+                  Later entries take precedence over earlier ones on key conflicts.
+                  If no sources are specified, no variable substitution is performed and ${VAR} expressions are left as-is.
+                  Only keys present in a source are substituted; any other ${...} expression (including native
+                  ES references such as ${ENV} or ${foo.bar}) is left verbatim so it can be resolved by
+                  Elasticsearch at runtime. Use ${VAR:-default} to supply a fallback for an optional key.
+                  Values from sources are JSON-escaped before substitution and are limited to string-typed
+                  fields: numeric, boolean, and object fields cannot be templated because ConfigMap and Secret
+                  values are always strings and the intended target type cannot be inferred.
+                items:
+                  description: VariableSource references a ConfigMap or Secret from
+                    which variables are loaded for substitution.
+                  properties:
+                    kind:
+                      description: Kind is the type of the source, either ConfigMap
+                        or Secret.
+                      enum:
+                      - ConfigMap
+                      - Secret
+                      type: string
+                    name:
+                      description: Name is the name of the ConfigMap or Secret.
+                      minLength: 1
+                      type: string
+                    namespace:
+                      description: |-
+                        Namespace is the namespace of the ConfigMap or Secret.
+                        When empty, the StackConfigPolicy's own namespace is used.
+                        Cross-namespace references are only permitted for policies
+                        deployed in the operator namespace; all other policies must
+                        reference sources in their own namespace.
+                      type: string
+                    optional:
+                      description: |-
+                        Optional indicates whether the source is optional. When true,
+                        a missing ConfigMap or Secret is silently ignored instead of
+                        causing a reconciliation error.
+                      type: boolean
+                  required:
+                  - kind
+                  - name
                   type: object
                 type: array
               weight:

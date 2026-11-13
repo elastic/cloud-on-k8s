@@ -11,11 +11,10 @@ import (
 	"fmt"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/types"
-
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	autoscalingv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoscaling/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
@@ -24,13 +23,17 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
 
-var _ test.Builder = &AutoscalingBuilder{}
+var _ test.Builder = (*AutoscalingBuilder)(nil)
 
 // AutoscalingBuilder helps to build and update autoscaling policies.
 type AutoscalingBuilder struct {
 	t        *testing.T
 	policies map[string]v1alpha1.AutoscalingPolicySpec
 	es       types.NamespacedName
+}
+
+func (ab *AutoscalingBuilder) ResourceName() string {
+	return ab.es.Name
 }
 
 func (ab *AutoscalingBuilder) InitTestSteps(k *test.K8sClient) test.StepList {

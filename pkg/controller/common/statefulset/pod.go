@@ -69,10 +69,10 @@ func PodReconciliationDone(ctx context.Context, c k8s.Client, statefulSet appsv1
 
 		var reason strings.Builder
 		if len(pendingCreations) > 0 {
-			reason.WriteString(fmt.Sprintf(", creations: %s", pendingCreations))
+			fmt.Fprintf(&reason, ", creations: %s", pendingCreations)
 		}
 		if len(pendingDeletions) > 0 {
-			reason.WriteString(fmt.Sprintf(", deletions: %s", pendingDeletions))
+			fmt.Fprintf(&reason, ", deletions: %s", pendingDeletions)
 		}
 
 		return false, reason.String(), nil

@@ -35,8 +35,8 @@ func NewChangeBudgetWatcher(from esv1.ElasticsearchSpec, to esv1.Elasticsearch) 
 			}
 			podsReady := reconcile.AvailableElasticsearchNodes(pods)
 
-			PodCounts = append(PodCounts, int32(len(pods)))
-			ReadyPodCounts = append(ReadyPodCounts, int32(len(podsReady)))
+			PodCounts = append(PodCounts, int32(len(pods)))                //nolint:gosec // G115: pod count cannot realistically overflow int32
+			ReadyPodCounts = append(ReadyPodCounts, int32(len(podsReady))) //nolint:gosec // G115: pod count cannot realistically overflow int32
 		},
 		func(k *test.K8sClient, t *testing.T) {
 			desired := es.NodeCount()

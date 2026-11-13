@@ -8,10 +8,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
@@ -22,12 +22,10 @@ import (
 
 func TestWithTemplateHash(t *testing.T) {
 	d := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "stat",
-			Namespace: "ns",
-		},
+		Name:      "stat",
+		Namespace: "ns",
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: ptr.To[int32](2),
+			Replicas: new(int32(2)),
 		},
 	}
 
@@ -37,12 +35,16 @@ func TestWithTemplateHash(t *testing.T) {
 	// original object should be kept unmodified
 	require.Empty(t, d.Labels)
 
-	// label should stay the same if no spec change
+	// label should be consistent
 	withSameHash := WithTemplateHash(d)
 	require.Equal(t, withHash.Labels[hash.TemplateHashLabelName], withSameHash.Labels[hash.TemplateHashLabelName])
 
+	// label should be the same if no spec changed
+	withSameHash = WithTemplateHash(withSameHash)
+	require.Equal(t, withHash.Labels[hash.TemplateHashLabelName], withSameHash.Labels[hash.TemplateHashLabelName])
+
 	// label should be different if the spec changed
-	d.Spec.Replicas = ptr.To[int32](3)
+	d.Spec.Replicas = new(int32(3))
 	withDifferentHash := WithTemplateHash(d)
 	require.NotEmpty(t, withDifferentHash.Labels[hash.TemplateHashLabelName])
 	require.NotEqual(t, withHash.Labels[hash.TemplateHashLabelName], withDifferentHash.Labels[hash.TemplateHashLabelName])
@@ -52,15 +54,13 @@ func TestReconcile(t *testing.T) {
 	controllerscheme.SetupScheme()
 	k8sClient := k8s.NewFakeClient()
 	expected := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "stat",
-			Namespace: "ns",
-			Labels: map[string]string{
-				"a": "b",
-			},
+		Name:      "stat",
+		Namespace: "ns",
+		Labels: map[string]string{
+			"a": "b",
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: ptr.To[int32](2),
+			Replicas: new(int32(2)),
 		},
 	}
 	owner := esv1.Elasticsearch{} // can be any type
@@ -69,7 +69,7 @@ func TestReconcile(t *testing.T) {
 	reconciled, err := Reconcile(context.Background(), k8sClient, expected, &owner)
 	require.NoError(t, err)
 	// reconciled should match expected spec, and have the hash label set
-	require.Equal(t, ptr.To[int32](2), reconciled.Spec.Replicas)
+	require.Equal(t, new(int32(2)), reconciled.Spec.Replicas)
 	require.Equal(t, "b", reconciled.Labels["a"])
 	require.NotEmpty(t, reconciled.Labels[hash.TemplateHashLabelName])
 	// resource should exist in the apiserver
@@ -89,7 +89,7 @@ func TestReconcile(t *testing.T) {
 	comparison.RequireEqual(t, &withStatusUpdate, &reconciledAgain)
 
 	// update with a new spec
-	expected.Spec.Replicas = ptr.To[int32](3)
+	expected.Spec.Replicas = new(int32(3))
 	reconciled, err = Reconcile(context.Background(), k8sClient, expected, &owner)
 	require.NoError(t, err)
 	// both returned and retrieved should match that new spec
@@ -100,4 +100,125 @@ func TestReconcile(t *testing.T) {
 	err = k8sClient.Get(context.Background(), k8s.ExtractNamespacedName(&expected), &retrieved)
 	require.NoError(t, err)
 	comparison.RequireEqual(t, &reconciled, &retrieved)
+}
+
+func TestIsSteady(t *testing.T) {
+	tests := []struct {
+		name     string
+		sset     appsv1.StatefulSet
+		expected bool
+	}{
+		{
+			name: "steady statefulset returns true",
+			sset: appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Generation: 1,
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: new(int32(2)),
+				},
+				Status: appsv1.StatefulSetStatus{
+					ReadyReplicas:      2,
+					ObservedGeneration: 1,
+					CurrentRevision:    "updated",
+					UpdateRevision:     "updated",
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "steady statefulset with nil Spec.Replicas returns true",
+			sset: appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Generation: 1,
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: nil,
+				},
+				Status: appsv1.StatefulSetStatus{
+					ReadyReplicas:      1,
+					ObservedGeneration: 1,
+					CurrentRevision:    "updated",
+					UpdateRevision:     "updated",
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "steady statefulset with empty Spec returns true",
+			sset: appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Generation: 1,
+				},
+				Status: appsv1.StatefulSetStatus{
+					ReadyReplicas:      1,
+					ObservedGeneration: 1,
+					CurrentRevision:    "updated",
+					UpdateRevision:     "updated",
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "observed generation differs from generation returns false",
+			sset: appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Generation: 2,
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: new(int32(2)),
+				},
+				Status: appsv1.StatefulSetStatus{
+					ReadyReplicas:      2,
+					ObservedGeneration: 1,
+					CurrentRevision:    "updated",
+					UpdateRevision:     "updated",
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "current revision differs from revision returns false",
+			sset: appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Generation: 1,
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: new(int32(2)),
+				},
+				Status: appsv1.StatefulSetStatus{
+					ReadyReplicas:      2,
+					ObservedGeneration: 1,
+					CurrentRevision:    "current",
+					UpdateRevision:     "updated",
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "ready replicas differs from expected replicas returns false",
+			sset: appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Generation: 1,
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: new(int32(2)),
+				},
+				Status: appsv1.StatefulSetStatus{
+					ReadyReplicas:      1,
+					ObservedGeneration: 1,
+					CurrentRevision:    "updated",
+					UpdateRevision:     "updated",
+				},
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output := IsSteady(tt.sset)
+			assert.Equal(t, tt.expected, output)
+		})
+	}
 }

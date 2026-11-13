@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_getVolumesFromAssociations(t *testing.T) {
@@ -32,12 +31,12 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 				Spec: logstashv1alpha1.LogstashSpec{
 					ElasticsearchRefs: []logstashv1alpha1.ElasticsearchCluster{
 						{
-							ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch"},
-							ClusterName:    "production",
+							Name:        "elasticsearch",
+							ClusterName: "production",
 						},
 						{
-							ObjectSelector: commonv1.ObjectSelector{Name: "elasticsearch2"},
-							ClusterName:    "production2",
+							Name:        "elasticsearch2",
+							ClusterName: "production2",
 						},
 					},
 				},
@@ -53,17 +52,37 @@ func Test_getVolumesFromAssociations(t *testing.T) {
 			wantAssociationsLength: 2,
 		},
 		{
+			name: "es ref with ca and client cert",
+			logstash: logstashv1alpha1.Logstash{
+				Spec: logstashv1alpha1.LogstashSpec{
+					ElasticsearchRefs: []logstashv1alpha1.ElasticsearchCluster{
+						{
+							Name:        "elasticsearch",
+							ClusterName: "production",
+						},
+					},
+				},
+			},
+			setAssocConfs: func(assocs []commonv1.Association) {
+				assocs[0].SetAssociationConf(&commonv1.AssociationConf{
+					CASecretName:         "elasticsearch-es-ca",
+					ClientCertSecretName: "elasticsearch-client-cert",
+				})
+			},
+			wantAssociationsLength: 2, // one CA volume + one client cert volume
+		},
+		{
 			name: "one es ref with ca, another no ca",
 			logstash: logstashv1alpha1.Logstash{
 				Spec: logstashv1alpha1.LogstashSpec{
 					ElasticsearchRefs: []logstashv1alpha1.ElasticsearchCluster{
 						{
-							ObjectSelector: commonv1.ObjectSelector{Name: "uat"},
-							ClusterName:    "uat",
+							Name:        "uat",
+							ClusterName: "uat",
 						},
 						{
-							ObjectSelector: commonv1.ObjectSelector{Name: "production"},
-							ClusterName:    "production",
+							Name:        "production",
+							ClusterName: "production",
 						},
 					},
 				},
@@ -117,9 +136,7 @@ func Test_BuildVolumesAndMounts(t *testing.T) {
 				Spec: logstashv1alpha1.LogstashSpec{
 					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "logstash-data",
-							},
+							Name: "logstash-data",
 							Spec: corev1.PersistentVolumeClaimSpec{
 								AccessModes: []corev1.PersistentVolumeAccessMode{
 									corev1.ReadWriteOnce,
@@ -141,9 +158,7 @@ func Test_BuildVolumesAndMounts(t *testing.T) {
 				Spec: logstashv1alpha1.LogstashSpec{
 					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "pq",
-							},
+							Name: "pq",
 							Spec: corev1.PersistentVolumeClaimSpec{
 								AccessModes: []corev1.PersistentVolumeAccessMode{
 									corev1.ReadWriteOnce,
@@ -165,9 +180,7 @@ func Test_BuildVolumesAndMounts(t *testing.T) {
 				Spec: logstashv1alpha1.LogstashSpec{
 					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "pq",
-							},
+							Name: "pq",
 							Spec: corev1.PersistentVolumeClaimSpec{
 								AccessModes: []corev1.PersistentVolumeAccessMode{
 									corev1.ReadWriteOnce,
@@ -180,9 +193,7 @@ func Test_BuildVolumesAndMounts(t *testing.T) {
 							},
 						},
 						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "logstash-data",
-							},
+							Name: "logstash-data",
 							Spec: corev1.PersistentVolumeClaimSpec{
 								AccessModes: []corev1.PersistentVolumeAccessMode{
 									corev1.ReadWriteOnce,
@@ -205,10 +216,8 @@ func Test_BuildVolumesAndMounts(t *testing.T) {
 					PodTemplate: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
 							Volumes: []corev1.Volume{{
-								Name: "logstash-data",
-								VolumeSource: corev1.VolumeSource{
-									EmptyDir: &corev1.EmptyDirVolumeSource{},
-								}},
+								Name:     "logstash-data",
+								EmptyDir: &corev1.EmptyDirVolumeSource{}},
 							},
 						},
 					},
@@ -225,11 +234,9 @@ func Test_BuildVolumesAndMounts(t *testing.T) {
 						Spec: corev1.PodSpec{
 							Volumes: []corev1.Volume{{
 								Name: "logstash-data",
-								VolumeSource: corev1.VolumeSource{
-									HostPath: &corev1.HostPathVolumeSource{
-										Path: "/mnt/data",
-										Type: &hostPathType,
-									},
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: "/mnt/data",
+									Type: &hostPathType,
 								},
 							}},
 						},

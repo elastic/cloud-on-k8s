@@ -16,7 +16,7 @@ import (
 
 const (
 	EnterpriseSearchContainerName = "enterprise-search"
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "EnterpriseSearch"
 )
@@ -48,9 +48,15 @@ type EnterpriseSearchSpec struct {
 	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
 
 	// ElasticsearchRef is a reference to the Elasticsearch cluster running in the same Kubernetes cluster.
-	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
+	ElasticsearchRef commonv1.ElasticsearchSelector `json:"elasticsearchRef,omitempty"`
 
-	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on)
+	// Resources provides a shorthand to set CPU and Memory resources on the Enterprise Search container. When set,
+	// these values override any CPU or memory resource settings specified in the PodTemplate for the primary
+	// Enterprise Search container. To set resources on other containers, use the PodTemplate.
+	// +kubebuilder:validation:Optional
+	Resources commonv1.Resources `json:"resources,omitzero"`
+
+	// PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on)
 	// for the Enterprise Search pods.
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -107,7 +113,7 @@ func (ent *EnterpriseSearch) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
-func (ent *EnterpriseSearch) AssociationRef() commonv1.ObjectSelector {
+func (ent *EnterpriseSearch) AssociationRef() commonv1.AssociationRef {
 	return ent.Spec.ElasticsearchRef.WithDefaultNamespace(ent.Namespace)
 }
 
@@ -120,7 +126,7 @@ func (ent *EnterpriseSearch) SetAssociationConf(assocConf *commonv1.AssociationC
 }
 
 func (ent *EnterpriseSearch) RequiresAssociation() bool {
-	return ent.Spec.ElasticsearchRef.IsDefined()
+	return ent.Spec.ElasticsearchRef.IsSet()
 }
 
 func (ent *EnterpriseSearch) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
@@ -129,7 +135,7 @@ func (ent *EnterpriseSearch) ElasticServiceAccount() (commonv1.ServiceAccountNam
 
 func (ent *EnterpriseSearch) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
-	if ent.Spec.ElasticsearchRef.IsDefined() {
+	if ent.Spec.ElasticsearchRef.IsSet() {
 		associations = append(associations, ent)
 	}
 	return associations
@@ -158,19 +164,29 @@ func (ent *EnterpriseSearch) SetAssociationStatusMap(typ commonv1.AssociationTyp
 }
 
 func (ent *EnterpriseSearch) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
-	if typ == commonv1.ElasticsearchAssociationType && ent.Spec.ElasticsearchRef.IsDefined() {
+	if typ == commonv1.ElasticsearchAssociationType && ent.Spec.ElasticsearchRef.IsSet() {
 		return commonv1.NewSingleAssociationStatusMap(ent.Status.Association)
 	}
 
 	return commonv1.AssociationStatusMap{}
 }
 
-var _ commonv1.Associated = &EnterpriseSearch{}
-var _ commonv1.Association = &EnterpriseSearch{}
+var _ commonv1.Associated = (*EnterpriseSearch)(nil)
+var _ commonv1.Association = (*EnterpriseSearch)(nil)
 
 // GetObservedGeneration will return the observedGeneration from the EnterpriseSearch's status.
 func (ent *EnterpriseSearch) GetObservedGeneration() int64 {
 	return ent.Status.ObservedGeneration
+}
+
+// MergeConditions provides a nil-safe way to merge the EnterpriseSearchStatus's Conditions with the new Condition(s).
+func (ent *EnterpriseSearch) MergeConditions(conditions ...commonv1.Condition) {
+	ent.Status.Conditions = ent.Status.Conditions.MergeWith(conditions...)
+}
+
+// Conditions returns this EnterpriseSearch's EnterpriseSearchStatus Conditions.
+func (ent *EnterpriseSearch) Conditions() commonv1.Conditions {
+	return ent.Status.Conditions
 }
 
 // +kubebuilder:object:root=true
@@ -200,8 +216,4 @@ type EnterpriseSearchList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []EnterpriseSearch `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&EnterpriseSearch{}, &EnterpriseSearchList{})
 }

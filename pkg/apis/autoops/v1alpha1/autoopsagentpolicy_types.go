@@ -7,23 +7,25 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
 const (
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "AutoOpsAgentPolicy"
+	// AutoOpsAgentContainerName is the name of the main AutoOps Agent container in the pod.
+	AutoOpsAgentContainerName = "autoops-agent"
+	// ConfigFileName is the key used in the Secret referenced by ConfigRef.
+	ConfigFileName = "autoops_es.yml"
 )
-
-func init() {
-	SchemeBuilder.Register(&AutoOpsAgentPolicy{}, &AutoOpsAgentPolicyList{})
-}
 
 // +kubebuilder:object:root=true
 
 // AutoOpsAgentPolicy represents an Elastic AutoOps Policy resource in a Kubernetes cluster.
 // +kubebuilder:resource:categories=elastic,shortName=aop
-// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.ready",description="Ready resources"
+// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.readyCount",description="Ready resources"
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:subresource:status
@@ -64,7 +66,13 @@ type AutoOpsAgentPolicySpec struct {
 	// Image is the AutoOps Agent Docker image to deploy.
 	Image string `json:"image,omitempty"`
 
-	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Agent pods
+	// Resources provides a shorthand to set CPU and Memory resources on the AutoOps Agent container.
+	// When set, these values override any CPU or memory resource settings specified in the PodTemplate for
+	// the primary AutoOps Agent container. To set resources on other containers, use the PodTemplate.
+	// +kubebuilder:validation:Optional
+	Resources commonv1.Resources `json:"resources,omitzero"`
+
+	// PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on) for the Agent pods
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
@@ -78,6 +86,26 @@ type AutoOpsAgentPolicySpec struct {
 	// in the target namespaces.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	// Config holds additional OpenTelemetry collector configuration for the AutoOps agent.
+	// User-supplied settings are merged between the operator baseline defaults and the
+	// operator-owned mandatory settings, which always take final precedence. This allows
+	// tuning knobs such as the sending_queue sizing, appending custom metricbeat modules,
+	// or defining additional exporters and pipelines. Supplying at least one autoops_es
+	// module replaces the operator's built-in modules entirely, giving full control over
+	// which metricsets are collected and at what period. Elasticsearch connection details
+	// (hosts, SSL), OTLP endpoint and authorization, and the healthcheck extension are
+	// always injected by the operator and cannot be overridden.
+	// At most one of [`config`, `configRef`] can be specified.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Config *commonv1.Config `json:"config,omitempty"`
+
+	// ConfigRef references a Kubernetes Secret holding the AutoOps agent configuration
+	// under the `autoops_es.yml` key. Applies the same merge semantics as `config`.
+	// At most one of [`config`, `configRef`] can be specified.
+	// +kubebuilder:validation:Optional
+	ConfigRef *commonv1.ConfigSource `json:"configRef,omitempty"`
 }
 
 // AutoOpsRef defines a reference to a secret containing connection details for AutoOps via Cloud Connect.
@@ -86,7 +114,6 @@ type AutoOpsRef struct {
 	// Required when connecting via Cloud Connect. The secret must contain:
 	// - `cloud-connected-mode-api-key`: Cloud Connected Mode API key
 	// - `autoops-otel-url`: AutoOps OpenTelemetry endpoint URL
-	// - `autoops-token`: AutoOps authentication token
 	// - `cloud-connected-mode-api-url`: (optional) Cloud Connected Mode API URL
 	// This field cannot be used in combination with `name`.
 	// +optional
@@ -100,10 +127,40 @@ type AutoOpsAgentPolicyStatus struct {
 	Ready int `json:"ready"`
 	// Errors is the number of resources that are in an error state.
 	Errors int `json:"errors"`
+	// Skipped is the number of resources that are skipped from monitoring due to rbac permissions.
+	Skipped int `json:"skipped,omitempty"`
+	// ReadyCount is a human readable string of ready monitored resources vs all monitored resources, Ready/Resources.
+	ReadyCount string `json:"readyCount,omitempty"`
+
 	// Phase is the phase of the AutoOpsAgentPolicy.
 	Phase PolicyPhase `json:"phase,omitempty"`
 	// ObservedGeneration is the most recent generation observed for this AutoOpsAgentPolicy.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+	// Conditions holds the current service state of the deployment.
+	// +optional
+	Conditions commonv1.Conditions `json:"conditions"`
+
+	// Details contains lightweight per-resource details.
+	Details map[string]AutoOpsResourceStatus `json:"details,omitempty"`
+}
+
+// AutoOpsResourceStatus represents the status of an individual Elasticsearch resource
+// monitored by an AutoOpsAgentPolicy. It is used in the Details map of AutoOpsAgentPolicyStatus
+// to provide lightweight per-resource status information. Only resources that are not in a
+// ready state are included in the Details map; ready resources, and resources that were skipped by resource selector and namespace selector,
+// are omitted to reduce status size.
+type AutoOpsResourceStatus struct {
+	// Phase indicates the current state of the monitored resource.
+	// Possible values are "Error" (resource encountered an error) or "Skipped"
+	// (resource was skipped due to RBAC permissions).
+	Phase ResourcePhase `json:"phase"`
+	// Message provides a human-readable explanation of the current phase.
+	// Only populated for non-ready states to provide context about why
+	// the resource is not ready.
+	Message string `json:"message,omitempty"`
+	// Error contains the error message when the resource is in an error state.
+	// Only populated when Phase is "Error".
+	Error string `json:"error,omitempty"`
 }
 
 // PolicyPhase represents the current lifecycle phase of an AutoOpsAgentPolicy.
@@ -136,6 +193,21 @@ func (p PolicyPhase) NeedsRequeue() bool {
 	}
 }
 
+// MergeConditions provides a nil-safe way to merge the AutoOpsAgentPolicyStatus's Conditions with the new Condition(s).
+func (p *AutoOpsAgentPolicy) MergeConditions(conditions ...commonv1.Condition) {
+	p.Status.Conditions = p.Status.Conditions.MergeWith(conditions...)
+}
+
+// Conditions returns this AutoOpsAgentPolicy's AutoOpsAgentPolicyStatus Conditions.
+func (p *AutoOpsAgentPolicy) Conditions() commonv1.Conditions {
+	return p.Status.Conditions
+}
+
+// GetObservedGeneration returns the observed generation from the AutoOpsAgentPolicy status.
+func (p *AutoOpsAgentPolicy) GetObservedGeneration() int64 {
+	return p.Status.ObservedGeneration
+}
+
 func (p PolicyPhase) Priority() int {
 	switch p {
 	case ApplyingChangesPhase, ReadyPhase:
@@ -157,3 +229,15 @@ func (p PolicyPhase) Priority() int {
 func (p *AutoOpsAgentPolicy) IsMarkedForDeletion() bool {
 	return !p.DeletionTimestamp.IsZero()
 }
+
+// ResourcePhase represents the current state of an individual Elasticsearch resource
+// monitored by an AutoOpsAgentPolicy. It is used in [AutoOpsResourceStatus] to indicate
+// why a resource appears in the Details map.
+type ResourcePhase string
+
+const (
+	// ErrorResourcePhase indicates that the resource encountered an error during monitoring setup or operation.
+	ErrorResourcePhase ResourcePhase = "Error"
+	// SkippedResourcePhase indicates that the resource was skipped due to insufficient RBAC permissions.
+	SkippedResourcePhase ResourcePhase = "Skipped"
+)

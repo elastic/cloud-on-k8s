@@ -43,9 +43,7 @@ func TestIsTooYoungForGC(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			obj := corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					CreationTimestamp: metav1.NewTime(tt.objectCreationTime),
-				},
+				CreationTimestamp: metav1.NewTime(tt.objectCreationTime),
 			}
 			if got := IsTooYoungForGC(&obj); got != tt.want {
 				t.Errorf("IsTooYoungForGC() = %v, want %v", got, tt.want)
@@ -56,15 +54,13 @@ func TestIsTooYoungForGC(t *testing.T) {
 
 func secret(name string, clusterName string, podRef string, creationTime time.Time) *corev1.Secret {
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns1",
-			Name:      name,
-			Labels: map[string]string{
-				label.ClusterNameLabelName: clusterName,
-				label.PodNameLabelName:     podRef,
-			},
-			CreationTimestamp: metav1.NewTime(creationTime),
+		Namespace: "ns1",
+		Name:      name,
+		Labels: map[string]string{
+			label.ClusterNameLabelName: clusterName,
+			label.PodNameLabelName:     podRef,
 		},
+		CreationTimestamp: metav1.NewTime(creationTime),
 	}
 }
 
@@ -73,18 +69,14 @@ func TestDeleteOrphanedSecrets(t *testing.T) {
 	whileAgo := time.Now().Add(-DeleteAfter).Add(-1 * time.Minute)
 
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns1",
-			Name:      "es1",
-		},
+		Namespace: "ns1",
+		Name:      "es1",
 	}
 	pod := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns1",
-			Name:      "pod1",
-			Labels: map[string]string{
-				label.ClusterNameLabelName: es.Name,
-			},
+		Namespace: "ns1",
+		Name:      "pod1",
+		Labels: map[string]string{
+			label.ClusterNameLabelName: es.Name,
 		},
 	}
 

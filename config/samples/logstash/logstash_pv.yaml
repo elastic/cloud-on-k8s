@@ -1,10 +1,10 @@
 apiVersion: logstash.k8s.elastic.co/v1alpha1
 kind: Logstash
 metadata:
-  name: d
+  name: logstash-sample
 spec:
   count: 1
-  version: 9.3.0
+  version: 9.5.1
   config:
     queue.type: persisted
   pipelines:

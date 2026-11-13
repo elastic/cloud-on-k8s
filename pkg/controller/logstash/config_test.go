@@ -6,17 +6,19 @@ package logstash
 
 import (
 	"context"
+	"hash/fnv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/configs"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -37,8 +39,296 @@ func Test_newConfig(t *testing.T) {
 			name: "no user config",
 			args: args{
 				runtimeObjs: nil,
-				logstash:    v1alpha1.Logstash{},
+				logstash:    v1alpha1.Logstash{Spec: v1alpha1.LogstashSpec{Version: "9.4.0"}},
 			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic enabled for Logstash 9.5.0",
+			args: args{
+				runtimeObjs: nil,
+				logstash:    v1alpha1.Logstash{Spec: v1alpha1.LogstashSpec{Version: "9.5.0"}},
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
+ssl:
+    reload:
+        automatic: true
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic enabled for Logstash 9.5.0-SNAPSHOT",
+			args: args{
+				runtimeObjs: nil,
+				logstash:    v1alpha1.Logstash{Spec: v1alpha1.LogstashSpec{Version: "9.5.0-SNAPSHOT"}},
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
+ssl:
+    reload:
+        automatic: true
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic not set when user sets config.reload.automatic=false",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.5.0",
+						Config: &commonv1.Config{Data: map[string]any{
+							"config.reload.automatic": false,
+						}},
+					},
+				},
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: false
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic not set when config.reload.automatic is an env-var reference",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.5.0",
+						Config: &commonv1.Config{Data: map[string]any{
+							"config.reload.automatic": "${CONFIG_RELOAD_AUTOMATIC:false}",
+						}},
+					},
+				},
+			},
+			// ECK cannot resolve env-var references; to avoid a Logstash BootstrapCheckError
+			// we leave ssl.reload.automatic unset rather than risking the fatal combination.
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: ${CONFIG_RELOAD_AUTOMATIC:false}
+`,
+			wantErr: false,
+		},
+		{
+			name: "explicit user ssl.reload.automatic=true on Logstash < 9.5.0 is passed through untouched",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.4.0",
+						Config: &commonv1.Config{Data: map[string]any{
+							"ssl.reload.automatic": true,
+						}},
+					},
+				},
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
+ssl:
+    reload:
+        automatic: true
+`,
+			wantErr: false,
+		},
+		{
+			name: "explicit user ssl.reload.automatic=false is preserved",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.5.0",
+						Config: &commonv1.Config{Data: map[string]any{
+							"ssl.reload.automatic": false,
+						}},
+					},
+				},
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
+ssl:
+    reload:
+        automatic: false
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic not set when user sets xpack.management.enabled=true",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.5.0",
+						Config: &commonv1.Config{Data: map[string]any{
+							"config.reload.automatic":  false,
+							"xpack.management.enabled": true,
+						}},
+					},
+				},
+			},
+			// xpack.management.enabled is a user-owned setting; ECK does not inject ssl.reload.automatic.
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: false
+xpack:
+    management:
+        enabled: true
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic not set when CONFIG_RELOAD_AUTOMATIC env var is present",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.5.0",
+						PodTemplate: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{{
+									Name: v1alpha1.LogstashContainerName,
+									Env:  []corev1.EnvVar{{Name: "CONFIG_RELOAD_AUTOMATIC", Value: "false"}},
+								}},
+							},
+						},
+					},
+				},
+			},
+			// env2yaml would rewrite config.reload.automatic to ${CONFIG_RELOAD_AUTOMATIC} at
+			// startup; if that resolves to false, Logstash's BootstrapCheck::SslReload raises.
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic not set when SSL_RELOAD_AUTOMATIC env var is present",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.5.0",
+						PodTemplate: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{{
+									Name: v1alpha1.LogstashContainerName,
+									Env:  []corev1.EnvVar{{Name: "SSL_RELOAD_AUTOMATIC", Value: "false"}},
+								}},
+							},
+						},
+					},
+				},
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: true
+`,
+			wantErr: false,
+		},
+		{
+			name: "ssl.reload.automatic not set when user explicitly sets config.reload.automatic=true",
+			args: args{
+				runtimeObjs: nil,
+				logstash: v1alpha1.Logstash{
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.5.0",
+						Config: &commonv1.Config{Data: map[string]any{
+							"config.reload.automatic": true,
+						}},
+					},
+				},
+			},
+			// The user explicitly owns config.reload.automatic; ECK does not inject ssl.reload.automatic.
 			want: `api:
     http:
         host: 0.0.0.0
@@ -58,10 +348,13 @@ config:
 			args: args{
 				runtimeObjs: nil,
 				logstash: v1alpha1.Logstash{
-					Spec: v1alpha1.LogstashSpec{Config: &commonv1.Config{Data: map[string]any{
-						"log.level":                 "debug",
-						"api.ssl.keystore.password": "Str0ngP@ssw0rd",
-					}}},
+					Spec: v1alpha1.LogstashSpec{
+						Version: "9.4.0",
+						Config: &commonv1.Config{Data: map[string]any{
+							"log.level":                 "debug",
+							"api.ssl.keystore.password": "Str0ngP@ssw0rd",
+						}},
+					},
 				},
 			},
 			want: `api:
@@ -84,7 +377,7 @@ log:
 			name: "with configRef",
 			args: args{
 				runtimeObjs: []client.Object{secretWithConfig("cfg", []byte("log.level: debug"))},
-				logstash:    logstashWithConfigRef("cfg", nil),
+				logstash:    logstashWithConfigRef("cfg", nil, "9.4.0"),
 			},
 			want: `api:
     http:
@@ -103,12 +396,32 @@ log:
 			wantErr: false,
 		},
 		{
+			name: "ssl.reload.automatic not set when config.reload.automatic=false supplied via configRef",
+			args: args{
+				runtimeObjs: []client.Object{secretWithConfig("cfg", []byte("config.reload.automatic: false"))},
+				logstash:    logstashWithConfigRef("cfg", nil, "9.5.0"),
+			},
+			want: `api:
+    http:
+        host: 0.0.0.0
+    ssl:
+        enabled: true
+        keystore:
+            password: changeit
+            path: /usr/share/logstash/config/api_keystore.p12
+config:
+    reload:
+        automatic: false
+`,
+			wantErr: false,
+		},
+		{
 			name: "config takes precedence",
 			args: args{
 				runtimeObjs: []client.Object{secretWithConfig("cfg", []byte("log.level: debug"))},
 				logstash: logstashWithConfigRef("cfg", &commonv1.Config{Data: map[string]any{
 					"log.level": "warn",
-				}}),
+				}}, "9.4.0"),
 			},
 			want: `api:
     http:
@@ -129,7 +442,7 @@ log:
 		{
 			name: "non existing configRef",
 			args: args{
-				logstash: logstashWithConfigRef("cfg", nil),
+				logstash: logstashWithConfigRef("cfg", nil, "9.4.0"),
 			},
 			wantErr: true,
 		},
@@ -139,6 +452,7 @@ log:
 				runtimeObjs: nil,
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
+						Version: "9.4.0",
 						Config: &commonv1.Config{Data: map[string]any{
 							"api.ssl.enabled": "false",
 						}},
@@ -166,12 +480,15 @@ config:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			v, err := version.Parse(tt.args.logstash.Spec.Version)
+			require.NoError(t, err)
 			params := Params{
 				Context:       context.Background(),
 				Client:        k8s.NewFakeClient(tt.args.runtimeObjs...),
-				EventRecorder: record.NewFakeRecorder(10),
+				EventRecorder: toolsevents.NewFakeRecorder(10),
 				Watches:       watches.NewDynamicWatches(),
 				Logstash:      tt.args.logstash,
+				Version:       v,
 			}
 
 			got, err := buildConfig(params, tt.args.logstash.APIServerTLSOptions().Enabled())
@@ -196,25 +513,23 @@ config:
 
 func secretWithConfig(name string, cfg []byte) *corev1.Secret {
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      name,
-		},
+		Namespace: "ns",
+		Name:      name,
 		Data: map[string][]byte{
 			ConfigFileName: cfg,
 		},
 	}
 }
 
-func logstashWithConfigRef(name string, cfg *commonv1.Config) v1alpha1.Logstash {
+func logstashWithConfigRef(name string, cfg *commonv1.Config, ver string) v1alpha1.Logstash {
 	return v1alpha1.Logstash{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "ls",
-			Namespace: "ns",
-		},
+		Name:      "ls",
+		Namespace: "ns",
 		Spec: v1alpha1.LogstashSpec{
+			Version:   ver,
 			Config:    cfg,
-			ConfigRef: &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: name}}},
+			ConfigRef: &commonv1.ConfigSource{SecretName: name},
+		},
 	}
 }
 
@@ -289,7 +604,7 @@ func Test_checkTLSConfig(t *testing.T) {
 func Test_resolveAPIServerConfig(t *testing.T) {
 	secureSecretName := "logstash-secure-settings"
 	secureSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: secureSecretName},
+		Name: secureSecretName,
 		Data: map[string][]byte{
 			"SSL_ENABLED":           []byte("true"),
 			"SSL_KEYSTORE_PASSWORD": []byte("whatever"),
@@ -301,7 +616,7 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 
 	envFromSecretName := "logstash-env-secret" // #nosec G101
 	envFromSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: envFromSecretName},
+		Name: envFromSecretName,
 		Data: map[string][]byte{
 			"SSL_ENABLED":           []byte("true"),
 			"SSL_KEYSTORE_PASSWORD": []byte("whatever?"),
@@ -313,7 +628,7 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 
 	envFromConfigMapName := "logstash-env-configmap"
 	envFromConfigMap := corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: envFromConfigMapName},
+		Name: envFromConfigMapName,
 		Data: map[string]string{
 			"SSL_ENABLED":           "true",
 			"SSL_KEYSTORE_PASSWORD": "whatever!",
@@ -347,7 +662,8 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				runtimeObjs: nil,
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
-						Config: &commonv1.Config{Data: map[string]any{}},
+						Version: "9.4.0",
+						Config:  &commonv1.Config{Data: map[string]any{}},
 					},
 				},
 			},
@@ -366,7 +682,8 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				runtimeObjs: nil,
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
-						Config: config,
+						Version: "9.4.0",
+						Config:  config,
 						PodTemplate: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
@@ -416,7 +733,8 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				runtimeObjs: []client.Object{&secureSecret, &envFromSecret, &envFromConfigMap},
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
-						Config: config,
+						Version: "9.4.0",
+						Config:  config,
 						SecureSettings: []commonv1.SecretSource{
 							{
 								SecretName: secureSecretName,
@@ -459,7 +777,8 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				runtimeObjs: []client.Object{&secureSecret, &envFromSecret, &envFromConfigMap},
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
-						Config: config,
+						Version: "9.4.0",
+						Config:  config,
 						PodTemplate: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
@@ -468,9 +787,7 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 										EnvFrom: []corev1.EnvFromSource{
 											{
 												ConfigMapRef: &corev1.ConfigMapEnvSource{
-													LocalObjectReference: corev1.LocalObjectReference{
-														Name: envFromConfigMapName,
-													},
+													Name: envFromConfigMapName,
 												},
 											},
 										},
@@ -496,7 +813,8 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				runtimeObjs: []client.Object{&secureSecret, &envFromSecret, &envFromConfigMap},
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
-						Config: config,
+						Version: "9.4.0",
+						Config:  config,
 						PodTemplate: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
@@ -505,9 +823,7 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 										EnvFrom: []corev1.EnvFromSource{
 											{
 												SecretRef: &corev1.SecretEnvSource{
-													LocalObjectReference: corev1.LocalObjectReference{
-														Name: envFromSecretName,
-													},
+													Name: envFromSecretName,
 												},
 											},
 										},
@@ -533,7 +849,8 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 				runtimeObjs: []client.Object{&secureSecret, &envFromSecret, &envFromConfigMap},
 				logstash: v1alpha1.Logstash{
 					Spec: v1alpha1.LogstashSpec{
-						Config: config,
+						Version: "9.4.0",
+						Config:  config,
 						PodTemplate: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{{Name: "logstash"}},
@@ -556,7 +873,7 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 			params := Params{
 				Context:       context.Background(),
 				Client:        k8s.NewFakeClient(tt.args.runtimeObjs...),
-				EventRecorder: record.NewFakeRecorder(10),
+				EventRecorder: toolsevents.NewFakeRecorder(10),
 				Watches:       watches.NewDynamicWatches(),
 				Logstash:      tt.args.logstash,
 			}
@@ -583,6 +900,90 @@ func Test_resolveAPIServerConfig(t *testing.T) {
 			assert.Equal(t, tt.want.AuthType, got.AuthType)
 			assert.Equal(t, tt.want.Username, got.Username)
 			assert.Equal(t, tt.want.Password, got.Password)
+		})
+	}
+}
+
+// Test_reconcileConfig_credentialHash verifies that reconcileConfig includes the resolved
+// credentials in the config hash so pods roll on credential rotation. Credentials are
+// injected via pod env vars so they appear as ${VAR} in cfgBytes — the hash difference
+// comes solely from the credential-hashing block, not from the raw config bytes.
+func Test_reconcileConfig_credentialHash(t *testing.T) {
+	buildHash := func(t *testing.T, username, password string) uint32 {
+		t.Helper()
+		h := fnv.New32a()
+		params := Params{
+			Context:       context.Background(),
+			Client:        k8s.NewFakeClient(),
+			EventRecorder: toolsevents.NewFakeRecorder(10),
+			Watches:       watches.NewDynamicWatches(),
+			Logstash: v1alpha1.Logstash{
+				ObjectMeta: metav1.ObjectMeta{Name: "ls", Namespace: "ns"},
+				Spec: v1alpha1.LogstashSpec{
+					Config: &commonv1.Config{Data: map[string]any{
+						"api.auth.type":           "basic",
+						"api.auth.basic.username": "${API_USERNAME}",
+						"api.auth.basic.password": "${API_PASSWORD}",
+					}},
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{{
+								Name: "logstash",
+								Env: []corev1.EnvVar{
+									{Name: "API_USERNAME", Value: username},
+									{Name: "API_PASSWORD", Value: password},
+								},
+							}},
+						},
+					},
+				},
+			},
+		}
+		_, err := reconcileConfig(params, false, h)
+		require.NoError(t, err)
+		return h.Sum32()
+	}
+
+	tests := []struct {
+		name      string
+		username1 string
+		password1 string
+		username2 string
+		password2 string
+		wantEqual bool
+	}{
+		{
+			name:      "same credentials produce the same hash",
+			username1: "user", password1: "pass",
+			username2: "user", password2: "pass",
+			wantEqual: true,
+		},
+		{
+			name:      "different password changes the hash",
+			username1: "user", password1: "pass1",
+			username2: "user", password2: "pass2",
+		},
+		{
+			name:      "different username changes the hash",
+			username1: "user1", password1: "pass",
+			username2: "user2", password2: "pass",
+		},
+		{
+			name:      "boundary collision is avoided: (a,bc) vs (ab,c)",
+			username1: "a", password1: "bc",
+			username2: "ab", password2: "c",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h1 := buildHash(t, tt.username1, tt.password1)
+			h2 := buildHash(t, tt.username2, tt.password2)
+			if tt.wantEqual {
+				assert.Equal(t, h1, h2)
+			} else {
+				assert.NotEqual(t, h1, h2)
+			}
 		})
 	}
 }

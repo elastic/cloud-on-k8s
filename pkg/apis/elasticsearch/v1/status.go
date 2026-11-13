@@ -10,7 +10,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
 )
 
 // ElasticsearchHealth is the health of the cluster as returned by the health API.
@@ -68,8 +67,14 @@ type ElasticsearchStatus struct {
 
 	// +optional
 	// Conditions holds the current service state of an Elasticsearch cluster.
-	// **This API is in technical preview and may be changed or removed in a future release.**
-	Conditions v1alpha1.Conditions `json:"conditions"`
+	// ResourcesAwareManagement reports whether the operator could compute CPU, memory, and storage
+	// for the Elasticsearch Desired Nodes API. Present only for Elasticsearch 8.3 and later.
+	// True means resources were calculated and the operator will attempt to publish Desired Nodes when
+	// Elasticsearch is reachable. False means calculation failed for at least one NodeSet; the operator
+	// then attempts to clear Desired Nodes when Elasticsearch is reachable. The condition reflects
+	// resource calculation, not whether a Desired Nodes API call has already succeeded. The Elasticsearch
+	// resource is still reconciled.
+	Conditions commonv1.Conditions `json:"conditions"`
 
 	// +optional
 	// InProgressOperations represents changes being applied by the operator to the Elasticsearch cluster.
@@ -106,10 +111,25 @@ func (es *Elasticsearch) SetAssociationStatusMap(typ commonv1.AssociationType, s
 }
 
 const (
-	ElasticsearchIsReachable v1alpha1.ConditionType = "ElasticsearchIsReachable"
-	ReconciliationComplete   v1alpha1.ConditionType = "ReconciliationComplete"
-	ResourcesAwareManagement v1alpha1.ConditionType = "ResourcesAwareManagement"
-	RunningDesiredVersion    v1alpha1.ConditionType = "RunningDesiredVersion"
+	ElasticsearchIsReachable commonv1.ConditionType = "ElasticsearchIsReachable"
+	ReconciliationComplete   commonv1.ConditionType = "ReconciliationComplete"
+	// ResourcesAwareManagement reports whether the operator could compute CPU, memory, and storage for every
+	// expected Elasticsearch node for use with the Desired Nodes API.
+	// Present only for Elasticsearch 8.3 and later; on earlier versions the condition is absent.
+	// True means those resources were calculated successfully; the operator then attempts to publish
+	// Desired Nodes when Elasticsearch is reachable.
+	// False means resources could not be determined for at least one NodeSet; the operator then attempts
+	// to clear Desired Nodes when Elasticsearch is reachable so an incomplete topology is not kept.
+	// The condition reflects resource calculation, not whether a Desired Nodes API call has already
+	// succeeded (publishing or clearing may be deferred if Elasticsearch is unreachable or the call fails).
+	// The Elasticsearch resource is still reconciled.
+	// Computing resources requires, for each NodeSet's elasticsearch container: a non-zero CPU request
+	// and/or limit; a non-zero memory limit (if a memory request is set it must equal the limit); and
+	// path.data as a single string path mounted by a volume that matches a PersistentVolumeClaim in the
+	// StatefulSet volumeClaimTemplates with a storage request (emptyDir or hostPath is not sufficient).
+	// Unknown when an unexpected error occurs while calculating resources.
+	ResourcesAwareManagement commonv1.ConditionType = "ResourcesAwareManagement"
+	RunningDesiredVersion    commonv1.ConditionType = "RunningDesiredVersion"
 )
 
 // NewNodeStatus provides details about the status of nodes which are expected to be created and added to the Elasticsearch cluster.

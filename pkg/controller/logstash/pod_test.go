@@ -6,9 +6,7 @@ package logstash
 
 import (
 	"context"
-	"encoding/base64"
 	"hash/fnv"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -21,6 +19,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/configs"
@@ -30,10 +29,8 @@ import (
 
 func TestNewPodTemplateSpec(t *testing.T) {
 	testHTTPCertsInternalSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "fake-ls-http-certs-internal",
-			Namespace: "default",
-		},
+		Name:      "fake-ls-http-certs-internal",
+		Namespace: "default",
 	}
 
 	meta := metav1.ObjectMeta{
@@ -42,10 +39,11 @@ func TestNewPodTemplateSpec(t *testing.T) {
 	}
 
 	tests := []struct {
-		name            string
-		logstash        logstashv1alpha1.Logstash
-		apiServerConfig configs.APIServer
-		assertions      func(pod corev1.PodTemplateSpec)
+		name                      string
+		logstash                  logstashv1alpha1.Logstash
+		apiServerConfig           configs.APIServer
+		setDefaultSecurityContext bool
+		assertions                func(pod corev1.PodTemplateSpec)
 	}{
 		{
 			name: "defaults",
@@ -160,7 +158,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				}},
 			apiServerConfig: GetDefaultAPIServer(),
 			assertions: func(pod corev1.PodTemplateSpec) {
-				labels := (&logstashv1alpha1.Logstash{ObjectMeta: metav1.ObjectMeta{Name: "logstash-name"}}).GetIdentityLabels()
+				labels := (&logstashv1alpha1.Logstash{Name: "logstash-name"}).GetIdentityLabels()
 				labels[VersionLabelName] = "8.6.1"
 				labels["label1"] = "value1"
 				labels["label2"] = "value2"
@@ -249,22 +247,22 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			},
 		},
 		{
-			name: "with basic auth set, readiness probe creates Authorization header",
+			name: "with basic auth (no TLS), readiness probe uses TCP socket",
 			logstash: logstashv1alpha1.Logstash{
 				ObjectMeta: meta,
 				Spec: logstashv1alpha1.LogstashSpec{
 					Version: "8.6.1",
 				}},
-			apiServerConfig: GetAPIServerWithAuth(),
+			apiServerConfig: GetAPIServerBasicAuthNoTLS(),
 			assertions: func(pod corev1.PodTemplateSpec) {
-				authHeader := GetLogstashContainer(pod.Spec).ReadinessProbe.HTTPGet.HTTPHeaders[0]
-				b, _ := base64.StdEncoding.DecodeString(strings.TrimPrefix(authHeader.Value, "Basic "))
-				assert.Equal(t, "Authorization", authHeader.Name)
-				assert.Equal(t, "logstash:whatever", string(b))
+				probe := GetLogstashContainer(pod.Spec).ReadinessProbe
+				assert.NotNil(t, probe.TCPSocket, "TCP socket probe must be set when basic auth is enabled")
+				assert.Nil(t, probe.HTTPGet, "HTTP probe must not be used when basic auth is enabled")
+				assert.Nil(t, probe.Exec, "exec probe must not be used when basic auth is enabled")
 			},
 		},
 		{
-			name: "with tls set, readiness probe use https protocol",
+			name: "with tls and basic auth set, readiness probe uses TCP socket",
 			logstash: logstashv1alpha1.Logstash{
 				ObjectMeta: meta,
 				Spec: logstashv1alpha1.LogstashSpec{
@@ -274,11 +272,38 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.NotNil(t, GetEnvByName(GetConfigInitContainer(pod.Spec).Env, UseTLSEnv))
 				assert.NotNil(t, GetEnvByName(GetConfigInitContainer(pod.Spec).Env, APIKeystorePassEnv))
-				assert.Equal(t, corev1.URISchemeHTTPS, GetLogstashContainer(pod.Spec).ReadinessProbe.HTTPGet.Scheme)
+				probe := GetLogstashContainer(pod.Spec).ReadinessProbe
+				assert.NotNil(t, probe.TCPSocket)
+				assert.Nil(t, probe.HTTPGet)
 			},
 		},
 		{
-			name: "with default service, readiness probe hits the correct port",
+			name: "with basic auth and custom service port, TCPSocket probe uses the custom port",
+			logstash: logstashv1alpha1.Logstash{
+				ObjectMeta: meta,
+				Spec: logstashv1alpha1.LogstashSpec{
+					Version: "8.6.1",
+					Services: []logstashv1alpha1.LogstashService{{
+						Name: LogstashAPIServiceName,
+						Service: commonv1.ServiceTemplate{
+							Spec: corev1.ServiceSpec{
+								Ports: []corev1.ServicePort{
+									{Name: "api", Protocol: "TCP", Port: 9200},
+								},
+							},
+						},
+					}},
+				}},
+			apiServerConfig: GetAPIServerWithAuth(),
+			assertions: func(pod corev1.PodTemplateSpec) {
+				probe := GetLogstashContainer(pod.Spec).ReadinessProbe
+				assert.NotNil(t, probe.TCPSocket)
+				assert.Equal(t, 9200, probe.TCPSocket.Port.IntValue())
+				assert.Nil(t, probe.HTTPGet)
+			},
+		},
+		{
+			name: "with default service, readiness probe hits the correct port with HTTPS",
 			logstash: logstashv1alpha1.Logstash{
 				ObjectMeta: meta,
 				Spec: logstashv1alpha1.LogstashSpec{
@@ -286,7 +311,9 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				}},
 			apiServerConfig: GetDefaultAPIServer(),
 			assertions: func(pod corev1.PodTemplateSpec) {
-				assert.Equal(t, 9600, GetLogstashContainer(pod.Spec).ReadinessProbe.HTTPGet.Port.IntValue())
+				probe := GetLogstashContainer(pod.Spec).ReadinessProbe
+				assert.Equal(t, 9600, probe.HTTPGet.Port.IntValue())
+				assert.Equal(t, corev1.URISchemeHTTPS, probe.HTTPGet.Scheme)
 			},
 		},
 
@@ -299,6 +326,30 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			apiServerConfig: GetDefaultAPIServer(),
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Equal(t, "my-custom-image:1.0.0", GetLogstashContainer(pod.Spec).Image)
+			},
+		},
+		{
+			name: "with SetDefaultSecurityContext=true, seccomp profile is set",
+			logstash: logstashv1alpha1.Logstash{ObjectMeta: meta, Spec: logstashv1alpha1.LogstashSpec{
+				Version: "8.6.1",
+			}},
+			apiServerConfig:           GetDefaultAPIServer(),
+			setDefaultSecurityContext: true,
+			assertions: func(pod corev1.PodTemplateSpec) {
+				require.NotNil(t, pod.Spec.SecurityContext)
+				require.NotNil(t, pod.Spec.SecurityContext.SeccompProfile)
+				assert.Equal(t, corev1.SeccompProfileTypeRuntimeDefault, pod.Spec.SecurityContext.SeccompProfile.Type)
+			},
+		},
+		{
+			name: "with SetDefaultSecurityContext=false, seccomp profile is not set",
+			logstash: logstashv1alpha1.Logstash{ObjectMeta: meta, Spec: logstashv1alpha1.LogstashSpec{
+				Version: "8.6.1",
+			}},
+			apiServerConfig:           GetDefaultAPIServer(),
+			setDefaultSecurityContext: false,
+			assertions: func(pod corev1.PodTemplateSpec) {
+				assert.Nil(t, pod.Spec.SecurityContext)
 			},
 		},
 		{
@@ -334,11 +385,15 @@ func TestNewPodTemplateSpec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			v, err := version.Parse(tt.logstash.Spec.Version)
+			require.NoError(t, err)
 			params := Params{
 				Context:         context.Background(),
 				Client:          k8s.NewFakeClient(&testHTTPCertsInternalSecret),
 				Logstash:        tt.logstash,
+				Version:         v,
 				APIServerConfig: tt.apiServerConfig,
+				OperatorParams:  operator.Parameters{SetDefaultSecurityContext: tt.setDefaultSecurityContext},
 			}
 			configHash := fnv.New32a()
 			got, err := buildPodTemplate(params, configHash)
@@ -384,5 +439,14 @@ func GetDefaultAPIServer() configs.APIServer {
 		AuthType:         "",
 		Username:         "",
 		Password:         "",
+	}
+}
+
+func GetAPIServerBasicAuthNoTLS() configs.APIServer {
+	return configs.APIServer{
+		SSLEnabled: "false",
+		AuthType:   "basic",
+		Username:   "logstash",
+		Password:   "whatever",
 	}
 }

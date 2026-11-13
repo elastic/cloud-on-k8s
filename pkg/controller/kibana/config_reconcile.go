@@ -12,7 +12,6 @@ import (
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
@@ -28,12 +27,16 @@ const (
 )
 
 // ReconcileConfigSecret reconciles the expected Kibana config secret for the given Kibana resource.
-// This managed secret is mounted into each pod of the Kibana deployment.
+// secretName is the name of the Secret to write; callers pass kbv1.ConfigSecret(kb.Name) for the
+// UI/single pool and kbv1.BackgroundTasksConfigSecret(kb.Name) for the background tasks pool.
+// keepTelemetry preserves the telemetry data; callers set it when writing the base (UI) secret.
 func ReconcileConfigSecret(
 	ctx context.Context,
 	client k8s.Client,
 	kb kbv1.Kibana,
 	kbSettings CanonicalConfig,
+	secretName string,
+	keepTelemetry bool,
 	meta metadata.Metadata,
 ) error {
 	span, ctx := apm.StartSpan(ctx, "reconcile_config_secret", tracing.SpanTypeApp)
@@ -44,27 +47,26 @@ func ReconcileConfigSecret(
 		return err
 	}
 
-	telemetryYamlBytes, err := getTelemetryYamlBytes(client, kb)
-	if err != nil {
-		return err
-	}
-
 	data := map[string][]byte{
 		SettingsFilename: settingsYamlBytes,
 	}
 
-	if telemetryYamlBytes != nil {
-		data[TelemetryFilename] = telemetryYamlBytes
+	if keepTelemetry {
+		telemetryYamlBytes, err := getTelemetryYamlBytes(client, kb)
+		if err != nil {
+			return err
+		}
+		if telemetryYamlBytes != nil {
+			data[TelemetryFilename] = telemetryYamlBytes
+		}
 	}
 
 	expected := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   kb.Namespace,
-			Name:        kbv1.ConfigSecret(kb.Name),
-			Labels:      maps.Clone(meta.Labels),
-			Annotations: meta.Annotations,
-		},
-		Data: data,
+		Namespace:   kb.Namespace,
+		Name:        secretName,
+		Labels:      maps.Clone(meta.Labels),
+		Annotations: meta.Annotations,
+		Data:        data,
 	}
 
 	_, err = reconciler.ReconcileSecret(ctx, client, expected, &kb)

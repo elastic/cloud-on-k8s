@@ -6,7 +6,7 @@ metadata:
   labels:
     autoops: enabled
 spec:
-  version: 9.2.0
+  version: 9.5.1
   nodeSets:
   - name: default
     count: 3
@@ -21,14 +21,12 @@ kind: AutoOpsAgentPolicy
 metadata:
   name: autoops-sample
 spec:
-  version: 9.2.0
+  version: 9.5.1
   autoOpsRef:
     # This secret contains the AutoOps configuration.
     # It must contain the following:
-    # - cloud-connect-mode-api-key: the Cloud Connected Mode API key. This is used to register the Agent with Elastic Cloud AutoOps.
+    # - cloud-connected-mode-api-key: the Cloud Connected Mode API key. This is used to register the Agent with Elastic Cloud AutoOps.
     # - autoops-otel-url: the URL of the AutoOps OTel endpoint. This is used to send Agent data to the AutoOps platform and is region specific.
-    # - autoops-token: the token to authenticate against the AutoOps platform and is how AutoOps knows how to connect Agent data to the
-    #     relevant Elastic Cloud organization
     secretName: autoops-sample-secret
   resourceSelector:
     matchLabels:

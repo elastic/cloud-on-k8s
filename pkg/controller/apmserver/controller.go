@@ -16,14 +16,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
@@ -87,7 +86,12 @@ var (
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
-	c, err := common.NewController(mgr, controllerName, reconciler, params)
+	c, err := common.NewNamespacedController(mgr, controllerName, reconciler, params,
+		watches.ReconcileObjectsInNamespace(
+			mgr.GetCache(),
+			func() client.ObjectList { return &apmv1.ApmServerList{} },
+		),
+	)
 	if err != nil {
 		return err
 	}
@@ -98,21 +102,22 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServer {
 	return &ReconcileApmServer{
 		Client:         mgr.GetClient(),
-		recorder:       mgr.GetEventRecorderFor(controllerName),
+		recorder:       mgr.GetEventRecorder(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
 	}
 }
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileApmServer) error {
+	m := r.NamespaceMatcher
 	// Watch for changes to ApmServer
-	err := c.Watch(source.Kind(mgr.GetCache(), &apmv1.ApmServer{}, &handler.TypedEnqueueRequestForObject[*apmv1.ApmServer]{}))
+	err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &apmv1.ApmServer{}, &handler.TypedEnqueueRequestForObject[*apmv1.ApmServer]{}))
 	if err != nil {
 		return err
 	}
 
 	// Watch Deployments
-	if err := c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}, handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &appsv1.Deployment{}, handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&apmv1.ApmServer{}, handler.OnlyControllerOwner(),
 	))); err != nil {
@@ -121,12 +126,12 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileApmSer
 
 	// Watch Pods, to ensure `status.version` and version upgrades are correctly reconciled on any change.
 	// Watching Deployments only may lead to missing some events.
-	if err := watches.WatchPods(mgr, c, ApmServerNameLabelName); err != nil {
+	if err := watches.WatchPods(mgr, c, m, ApmServerNameLabelName); err != nil {
 		return err
 	}
 
 	// Watch services
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&apmv1.ApmServer{}, handler.OnlyControllerOwner(),
 	))); err != nil {
@@ -134,26 +139,30 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileApmSer
 	}
 
 	// Watch owned and soft-owned secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&apmv1.ApmServer{}, handler.OnlyControllerOwner(),
 	))); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(mgr, c, apmv1.Kind); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(mgr, c, m, apmv1.Kind); err != nil {
 		return err
 	}
 
 	// dynamically watch referenced secrets to connect to Elasticsearch
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+		return err
+	}
+	// Watch ConfigMaps referenced dynamically (additional HTTP certificate authorities)
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps))
 }
 
-var _ reconcile.Reconciler = &ReconcileApmServer{}
+var _ reconcile.Reconciler = (*ReconcileApmServer)(nil)
 
 // ReconcileApmServer reconciles an ApmServer object
 type ReconcileApmServer struct {
 	k8s.Client
-	recorder       record.EventRecorder
+	recorder       toolsevents.EventRecorder
 	dynamicWatches watches.DynamicWatches
 	operator.Parameters
 	// iteration is the number of times this controller has run its reconcile method
@@ -172,11 +181,11 @@ func (r *ReconcileApmServer) DynamicWatches() watches.DynamicWatches {
 
 // Recorder returns the Kubernetes recorder that is responsible for recording and reporting
 // events from the APM Server reconciler.
-func (r *ReconcileApmServer) Recorder() record.EventRecorder {
+func (r *ReconcileApmServer) Recorder() toolsevents.EventRecorder {
 	return r.recorder
 }
 
-var _ driver.Interface = &ReconcileApmServer{}
+var _ driver.Interface = (*ReconcileApmServer)(nil)
 
 // Reconcile reads that state of the cluster for a ApmServer object and makes changes based on the state read
 // and what is in the ApmServer.Spec
@@ -256,7 +265,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		_, err := results.Aggregate()
-		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEventf(r.recorder, err, as, events.EventReconciliationError, events.EventActionCertificateReconciliation, "Certificate reconciliation error: %v", err)
 		return results, state
 	}
 
@@ -279,14 +288,14 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, as *apmv1.ApmServe
 			log.V(1).Info("Conflict while updating status")
 			return results.WithRequeue(), state
 		}
-		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Deployment reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEventf(r.recorder, err, as, events.EventReconciliationError, events.EventActionDeploymentReconciliation, "Deployment reconciliation error: %v", err)
 		return results.WithError(tracing.CaptureError(ctx, err)), state
 	}
 
 	state.UpdateApmServerExternalService(*svc)
 
 	_, err = results.WithError(err).Aggregate()
-	k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Reconciliation error: %v", err)
+	k8s.MaybeEmitErrorEventf(r.recorder, err, as, events.EventReconciliationError, events.EventActionReconciliation, "Reconciliation error: %v", err)
 	return results, state
 }
 
@@ -294,20 +303,28 @@ func (r *ReconcileApmServer) validate(ctx context.Context, as *apmv1.ApmServer) 
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	if _, err := as.ValidateCreate(); err != nil {
+	warnings, err := apmv1.Validate(as, nil)
+	if err != nil {
 		log.Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReasonValidation, err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, as, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
+	}
+	for _, warning := range warnings {
+		k8s.EmitEvent(r.recorder, as, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, warning)
 	}
 
 	return nil
 }
 
-func (r *ReconcileApmServer) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	// Clean up watches set on secure settings
+// OnNamespaceOutOfScope releases all controller-local state associated with the given ApmServer
+// resource when its namespace no longer matches the operator's namespace selector.
+func (r *ReconcileApmServer) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
-	// Clean up watches set on custom http tls certificates
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(Namer, obj.Name))
+	certificates.RemoveHTTPCertWatches(r.dynamicWatches, Namer, obj)
+}
+
+func (r *ReconcileApmServer) onDelete(ctx context.Context, obj types.NamespacedName) error {
+	r.OnNamespaceOutOfScope(obj)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, apmv1.Kind)
 }
 
@@ -315,13 +332,11 @@ func (r *ReconcileApmServer) onDelete(ctx context.Context, obj types.NamespacedN
 // It reuses the existing token if possible.
 func reconcileApmServerToken(ctx context.Context, c k8s.Client, as *apmv1.ApmServer, meta metadata.Metadata) (corev1.Secret, error) {
 	expectedApmServerSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   as.Namespace,
-			Name:        SecretToken(as.Name),
-			Labels:      labels.AddCredentialsLabel(maps.Clone(meta.Labels)),
-			Annotations: meta.Annotations,
-		},
-		Data: make(map[string][]byte),
+		Namespace:   as.Namespace,
+		Name:        SecretToken(as.Name),
+		Labels:      labels.AddCredentialsLabel(maps.Clone(meta.Labels)),
+		Annotations: meta.Annotations,
+		Data:        make(map[string][]byte),
 	}
 	// reuse the secret token if it already exists
 	var existingSecret corev1.Secret
@@ -355,7 +370,7 @@ func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) erro
 		return nil
 	}
 	if state.ApmServer.Status.IsDegraded(original.Status.DeploymentStatus) {
-		r.recorder.Event(original, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Apm Server health degraded")
+		k8s.EmitEvent(r.recorder, original, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "Apm Server health degraded")
 	}
 	log.V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),

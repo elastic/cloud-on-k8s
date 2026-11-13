@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "ElasticsearchAutoscaler"
 )
@@ -34,7 +34,7 @@ type ElasticsearchAutoscaler struct {
 	Status v1alpha1.ElasticsearchAutoscalerStatus `json:"status,omitempty"`
 }
 
-var _ v1alpha1.AutoscalingResource = &ElasticsearchAutoscaler{}
+var _ v1alpha1.AutoscalingResource = (*ElasticsearchAutoscaler)(nil)
 
 // ElasticsearchAutoscalerSpec holds the specification of an Elasticsearch autoscaler resource.
 type ElasticsearchAutoscalerSpec struct {
@@ -83,8 +83,4 @@ type ElasticsearchAutoscalerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ElasticsearchAutoscaler `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&ElasticsearchAutoscaler{}, &ElasticsearchAutoscalerList{})
 }

@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -66,7 +65,7 @@ func TestExternalServiceURL(t *testing.T) {
 func TestNewExternalService(t *testing.T) {
 	testCases := []struct {
 		name     string
-		httpConf commonv1.HTTPConfig
+		httpConf commonv1.HTTPConfigWithClientOptions
 		wantSvc  func() corev1.Service
 	}{
 		{
@@ -75,10 +74,12 @@ func TestNewExternalService(t *testing.T) {
 		},
 		{
 			name: "no TLS",
-			httpConf: commonv1.HTTPConfig{
-				TLS: commonv1.TLSOptions{
-					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-						Disabled: true,
+			httpConf: commonv1.HTTPConfigWithClientOptions{
+				TLS: commonv1.TLSWithClientOptions{
+					TLSOptions: commonv1.TLSOptions{
+						SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+							Disabled: true,
+						},
 					},
 				},
 			},
@@ -86,12 +87,14 @@ func TestNewExternalService(t *testing.T) {
 		},
 		{
 			name: "self-signed certificate",
-			httpConf: commonv1.HTTPConfig{
-				TLS: commonv1.TLSOptions{
-					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-						SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
-							{
-								DNS: "elasticsearch-test.local",
+			httpConf: commonv1.HTTPConfigWithClientOptions{
+				TLS: commonv1.TLSWithClientOptions{
+					TLSOptions: commonv1.TLSOptions{
+						SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+							SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
+								{
+									DNS: "elasticsearch-test.local",
+								},
 							},
 						},
 					},
@@ -101,10 +104,12 @@ func TestNewExternalService(t *testing.T) {
 		},
 		{
 			name: "user-provided certificate",
-			httpConf: commonv1.HTTPConfig{
-				TLS: commonv1.TLSOptions{
-					Certificate: commonv1.SecretRef{
-						SecretName: "my-cert",
+			httpConf: commonv1.HTTPConfigWithClientOptions{
+				TLS: commonv1.TLSWithClientOptions{
+					TLSOptions: commonv1.TLSOptions{
+						Certificate: commonv1.SecretRef{
+							SecretName: "my-cert",
+						},
 					},
 				},
 			},
@@ -124,12 +129,12 @@ func TestNewExternalService(t *testing.T) {
 func TestNewInternalService(t *testing.T) {
 	testCases := []struct {
 		name     string
-		httpConf commonv1.HTTPConfig
+		httpConf commonv1.HTTPConfigWithClientOptions
 		wantSvc  func() corev1.Service
 	}{
 		{
 			name: "user supplied selector is not applied to internal service",
-			httpConf: commonv1.HTTPConfig{
+			httpConf: commonv1.HTTPConfigWithClientOptions{
 				Service: commonv1.ServiceTemplate{
 					Spec: corev1.ServiceSpec{
 						Selector: map[string]string{
@@ -159,13 +164,11 @@ func TestNewInternalService(t *testing.T) {
 
 func mkHTTPService() corev1.Service {
 	return corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "elasticsearch-test-es-http",
-			Namespace: "test",
-			Labels: map[string]string{
-				label.ClusterNameLabelName: "elasticsearch-test",
-				commonv1.TypeLabelName:     label.Type,
-			},
+		Name:      "elasticsearch-test-es-http",
+		Namespace: "test",
+		Labels: map[string]string{
+			label.ClusterNameLabelName: "elasticsearch-test",
+			commonv1.TypeLabelName:     label.Type,
 		},
 		Spec: corev1.ServiceSpec{
 			Type: corev1.ServiceTypeClusterIP,
@@ -192,13 +195,11 @@ func mkHTTPSService() corev1.Service {
 
 func mkTransportService() corev1.Service {
 	return corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "elasticsearch-test-es-transport",
-			Namespace: "test",
-			Labels: map[string]string{
-				label.ClusterNameLabelName: "elasticsearch-test",
-				commonv1.TypeLabelName:     label.Type,
-			},
+		Name:      "elasticsearch-test-es-transport",
+		Namespace: "test",
+		Labels: map[string]string{
+			label.ClusterNameLabelName: "elasticsearch-test",
+			commonv1.TypeLabelName:     label.Type,
 		},
 		Spec: corev1.ServiceSpec{
 			PublishNotReadyAddresses: true,
@@ -219,12 +220,10 @@ func mkTransportService() corev1.Service {
 	}
 }
 
-func mkElasticsearch(httpConf commonv1.HTTPConfig) esv1.Elasticsearch {
+func mkElasticsearch(httpConf commonv1.HTTPConfigWithClientOptions) esv1.Elasticsearch {
 	return esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "elasticsearch-test",
-			Namespace: "test",
-		},
+		Name:      "elasticsearch-test",
+		Namespace: "test",
 		Spec: esv1.ElasticsearchSpec{
 			HTTP: httpConf,
 		},
@@ -269,10 +268,8 @@ func TestNewTransportService(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			es := esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "elasticsearch-test",
-					Namespace: "test",
-				},
+				Name:      "elasticsearch-test",
+				Namespace: "test",
 				Spec: esv1.ElasticsearchSpec{
 					Transport: tt.transportCfg,
 				},
@@ -286,13 +283,11 @@ func TestNewTransportService(t *testing.T) {
 
 func mkRemoteClusterService() corev1.Service {
 	return corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "elasticsearch-test-es-remote-cluster",
-			Namespace: "test",
-			Labels: map[string]string{
-				label.ClusterNameLabelName: "elasticsearch-test",
-				commonv1.TypeLabelName:     label.Type,
-			},
+		Name:      "elasticsearch-test-es-remote-cluster",
+		Namespace: "test",
+		Labels: map[string]string{
+			label.ClusterNameLabelName: "elasticsearch-test",
+			commonv1.TypeLabelName:     label.Type,
 		},
 		Spec: corev1.ServiceSpec{
 			PublishNotReadyAddresses: true,
@@ -355,10 +350,8 @@ func TestNewRemoteClusterService(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			es := esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "elasticsearch-test",
-					Namespace: "test",
-				},
+				Name:      "elasticsearch-test",
+				Namespace: "test",
 				Spec: esv1.ElasticsearchSpec{
 					RemoteClusterServer: tt.remoteClusterServer,
 				},
@@ -465,14 +458,12 @@ func mkPod(name string, running bool, ready bool) corev1.Pod {
 		)
 	}
 	return corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "test",
-			Name:      name,
-			Labels: map[string]string{
-				label.HTTPSchemeLabelName:      "http",
-				label.StatefulSetNameLabelName: "sset",
-				label.ClusterNameLabelName:     "elasticsearch-test",
-			},
+		Namespace: "test",
+		Name:      name,
+		Labels: map[string]string{
+			label.HTTPSchemeLabelName:      "http",
+			label.StatefulSetNameLabelName: "sset",
+			label.ClusterNameLabelName:     "elasticsearch-test",
 		},
 		Status: corev1.PodStatus{
 			Phase:      phase,
@@ -495,7 +486,7 @@ func TestNewElasticsearchURLProvider(t *testing.T) {
 		{
 			name: "cache failures are returned to the caller",
 			args: args{
-				es:     mkElasticsearch(commonv1.HTTPConfig{}),
+				es:     mkElasticsearch(commonv1.HTTPConfigWithClientOptions{}),
 				client: k8s.NewFailingClient(errors.New("boom")),
 			},
 			wantErr: true,
@@ -503,19 +494,17 @@ func TestNewElasticsearchURLProvider(t *testing.T) {
 		{
 			name: "list pods from cache",
 			args: args{
-				es: mkElasticsearch(commonv1.HTTPConfig{}),
+				es: mkElasticsearch(commonv1.HTTPConfigWithClientOptions{}),
 				client: k8s.NewFakeClient(
-					ptr.To(mkPod("sset-0", true, true)),
-					ptr.To(mkPod("sset-1", true, false)),
+					new(mkPod("sset-0", true, true)),
+					new(mkPod("sset-1", true, false)),
 					&corev1.Pod{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: "test",
-							Name:      "unrelated-0",
-							Labels: map[string]string{
-								label.HTTPSchemeLabelName:      "http",
-								label.StatefulSetNameLabelName: "unrelated",
-								label.ClusterNameLabelName:     "unrelated",
-							},
+						Namespace: "test",
+						Name:      "unrelated-0",
+						Labels: map[string]string{
+							label.HTTPSchemeLabelName:      "http",
+							label.StatefulSetNameLabelName: "unrelated",
+							label.ClusterNameLabelName:     "unrelated",
 						},
 					},
 				),

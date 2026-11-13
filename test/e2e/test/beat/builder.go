@@ -96,6 +96,42 @@ func newBuilder(name string, suffix string) Builder {
 
 type ValidationFunc func(client.Client) error
 
+func (b Builder) DeepCopy() *Builder {
+	bCopy := b.Beat.DeepCopy()
+	builderCopy := Builder{
+		Beat: *bCopy,
+	}
+	switch {
+	case bCopy.Spec.DaemonSet != nil:
+		builderCopy.PodTemplate = &builderCopy.Beat.Spec.DaemonSet.PodTemplate
+	case bCopy.Spec.Deployment != nil:
+		builderCopy.PodTemplate = &builderCopy.Beat.Spec.Deployment.PodTemplate
+	}
+	if b.MutatedFrom != nil {
+		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
+	}
+	return &builderCopy
+}
+
+func (b Builder) WithResources(resources corev1.ResourceRequirements) Builder {
+	containerName := b.Beat.Spec.Type
+	for i := range b.PodTemplate.Spec.Containers {
+		if b.PodTemplate.Spec.Containers[i].Name == containerName {
+			b.PodTemplate.Spec.Containers[i].Resources = resources
+			return b
+		}
+	}
+	b.PodTemplate.Spec.Containers = append(b.PodTemplate.Spec.Containers, corev1.Container{
+		Name:      containerName,
+		Resources: resources,
+	})
+	return b
+}
+
+func (b Builder) ResourceName() string {
+	return b.Beat.Name
+}
+
 func (b Builder) WithType(typ beatcommon.Type) Builder {
 	typeStr := string(typ)
 	b.Beat.Spec.Type = typeStr
@@ -151,7 +187,15 @@ func (b Builder) WithESValidations(validations ...ValidationFunc) Builder {
 }
 
 func (b Builder) WithElasticsearchRef(ref commonv1.ObjectSelector) Builder {
-	b.Beat.Spec.ElasticsearchRef = ref
+	b.Beat.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
+		ObjectSelector:              ref,
+		ClientCertificateSecretName: b.Beat.Spec.ElasticsearchRef.ClientCertificateSecretName,
+	}
+	return b
+}
+
+func (b Builder) WithClientCertificateSecret(secretName string) Builder {
+	b.Beat.Spec.ElasticsearchRef.ClientCertificateSecretName = secretName
 	return b
 }
 
@@ -197,6 +241,14 @@ func (b Builder) WithLabel(key, value string) Builder {
 	return b
 }
 
+func (b Builder) WithAnnotation(key, value string) Builder {
+	if b.Beat.Annotations == nil {
+		b.Beat.Annotations = make(map[string]string)
+	}
+	b.Beat.Annotations[key] = value
+	return b
+}
+
 func (b Builder) WithMutatedFrom(builder *Builder) Builder {
 	b.MutatedFrom = builder
 	return b
@@ -239,18 +291,14 @@ func bind(b Builder, clusterRoleName string) Builder {
 		saName = fmt.Sprintf("%s-sa", b.Beat.Name)
 		b = b.WithPodTemplateServiceAccount(saName)
 		sa := &corev1.ServiceAccount{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      saName,
-				Namespace: b.Beat.Namespace,
-			},
+			Name:      saName,
+			Namespace: b.Beat.Namespace,
 		}
 		b.AdditionalObjects = append(b.AdditionalObjects, sa)
 	}
 
 	crb := &rbacv1.ClusterRoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("%s-%s-%s-binding", clusterRoleName, b.Beat.Namespace, b.Beat.Name),
-		},
+		Name: fmt.Sprintf("%s-%s-%s-binding", clusterRoleName, b.Beat.Namespace, b.Beat.Name),
 		Subjects: []rbacv1.Subject{
 			{
 				Kind:      "ServiceAccount",
@@ -282,9 +330,7 @@ func (b Builder) WithSecureSettings(secretNames ...string) Builder {
 
 func (b Builder) WithConfigRef(secretName string) Builder {
 	b.Beat.Spec.ConfigRef = &commonv1.ConfigSource{
-		SecretRef: commonv1.SecretRef{
-			SecretName: secretName,
-		},
+		SecretName: secretName,
 	}
 
 	return b
@@ -348,9 +394,13 @@ func (b Builder) GetMetricsCluster() *types.NamespacedName {
 }
 
 func (b Builder) GetLogsCluster() *types.NamespacedName {
-	if len(b.Beat.Spec.Monitoring.Metrics.ElasticsearchRefs) == 0 {
+	if len(b.Beat.Spec.Monitoring.Logs.ElasticsearchRefs) == 0 {
 		return nil
 	}
-	metricsCluster := b.Beat.Spec.Monitoring.Logs.ElasticsearchRefs[0].NamespacedName()
-	return &metricsCluster
+	logsCluster := b.Beat.Spec.Monitoring.Logs.ElasticsearchRefs[0].NamespacedName()
+	return &logsCluster
+}
+
+func (b Builder) ListOptions() []k8sclient.ListOption {
+	return test.BeatPodListOptions(b.Beat.Namespace, b.Beat.Name)
 }

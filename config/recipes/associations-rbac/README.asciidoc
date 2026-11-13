@@ -1,0 +1,27 @@
+= Cross-Namespace Associations with RBAC
+
+This recipe demonstrates how to allow Kibana and APM Server resources in separate namespaces to associate with an Elasticsearch cluster in a different namespace, using Kubernetes RBAC to control access.
+
+IMPORTANT: This recipe is for illustration purposes only and should not be considered production-ready.
+
+IMPORTANT: Cross-namespace associations must be explicitly enabled in the ECK operator configuration. See link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-operator-config.html[ECK operator configuration] for details.
+
+CAUTION: This recipe uses the `node.store.allow_mmap: false` configuration value to avoid configuring memory mapping settings on the underlying host. This could have a significant performance impact on your Elasticsearch clusters and should not be used in production without careful consideration. See https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html for more information.
+
+== How it works
+
+By default, ECK only allows associations between resources in the same namespace. When cross-namespace associations are enabled, ECK enforces access control via standard Kubernetes RBAC: an association is permitted only if the ServiceAccount used by the requesting resource (Kibana, APM Server, etc.) has `get` permission on the target Elasticsearch resource.
+
+This recipe creates:
+
+- Three namespaces: `elasticsearch-ns`, `kibana-ns`, and `apmserver-ns`.
+- A `ClusterRole` that grants `get` access to Elasticsearch resources.
+- A `ServiceAccount` in `kibana-ns` and one in `apmserver-ns`, each bound to the `ClusterRole` via a `RoleBinding` scoped to `elasticsearch-ns`.
+- An Elasticsearch cluster in `elasticsearch-ns`, a Kibana instance in `kibana-ns` referencing it, and an APM Server in `apmserver-ns` referencing it.
+
+== Recipe
+
+[source,sh]
+----
+kubectl apply -f apm_es_kibana_rbac.yaml
+----

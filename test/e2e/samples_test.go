@@ -29,15 +29,35 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/logstash"
 )
 
+func TestSmoke_Samples(t *testing.T) {
+	testSamples(t, isSmokeSample)
+}
+
 func TestSamples(t *testing.T) {
+	testSamples(t, func(_ string) bool { return true })
+}
+
+func testSamples(t *testing.T, shouldRun func(sampleName string) bool) {
 	sampleFiles, err := filepath.Glob("../../config/samples/*/*.yaml")
 	require.NoError(t, err, "Failed to find samples")
 
 	decoder := helper.NewYAMLDecoder()
 	for _, sample := range sampleFiles {
+		if !shouldRun(sample) {
+			continue
+		}
 		testName := helper.MkTestName(t, sample)
 		builders := createBuilders(t, decoder, sample, testName)
 		t.Run(testName, func(t *testing.T) {
+			if sampleRequiresLicense(sample) {
+				if test.Ctx().TestLicense == "" {
+					t.Skipf("%s requires an Enterprise license, but no test license is configured", sample)
+				}
+				require.NotEmpty(t, builders, "no builders created from %s", sample)
+				// wrap the first builder: its init steps run first, installing the license before any resource is
+				// created, and its deletion steps run last, removing the license after all resources are gone.
+				builders[0] = test.LicenseTestBuilder(builders[0])
+			}
 			test.Sequence(nil, test.EmptySteps, builders...).RunSequential(t)
 		})
 	}
@@ -72,16 +92,16 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 		case kibana.Builder:
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.Kibana.Spec.ElasticsearchRef, suffix)).
+				WithElasticsearchRef(tweakServiceRef(b.Kibana.Spec.ElasticsearchRef.ObjectSelector, suffix)).
 				WithEnterpriseSearchRef(tweakServiceRef(b.Kibana.Spec.EnterpriseSearchRef, suffix)).
-				WithPackageRegistryRef(tweakServiceRef(b.Kibana.Spec.PackageRegistryRef, suffix)).
+				WithPackageRegistryRef(tweakLocalServiceRef(b.Kibana.Spec.PackageRegistryRef, suffix)).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
 		case apmserver.Builder:
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.ApmServer.Spec.ElasticsearchRef, suffix)).
+				WithElasticsearchRef(tweakServiceRef(b.ApmServer.Spec.ElasticsearchRef.ObjectSelector, suffix)).
 				WithKibanaRef(tweakServiceRef(b.ApmServer.Spec.KibanaRef, suffix)).
 				WithConfig(map[string]interface{}{"apm-server.ilm.enabled": false}).
 				WithRestrictedSecurityContext().
@@ -91,7 +111,7 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 		case enterprisesearch.Builder:
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakServiceRef(b.EnterpriseSearch.Spec.ElasticsearchRef, suffix)).
+				WithElasticsearchRef(tweakServiceRef(b.EnterpriseSearch.Spec.ElasticsearchRef.ObjectSelector, suffix)).
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
@@ -99,8 +119,8 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 			esRefs := make([]logstashv1alpha1.ElasticsearchCluster, 0, len(b.Logstash.Spec.ElasticsearchRefs))
 			for _, ref := range b.Logstash.Spec.ElasticsearchRefs {
 				esRefs = append(esRefs, logstashv1alpha1.ElasticsearchCluster{
-					ObjectSelector: tweakServiceRef(ref.ObjectSelector, suffix),
-					ClusterName:    ref.ClusterName,
+					ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: tweakServiceRef(ref.ObjectSelector, suffix)},
+					ClusterName:           ref.ClusterName,
 				})
 			}
 			metricsRefs := make([]commonv1.ObjectSelector, 0, len(b.Logstash.Spec.Monitoring.Metrics.ElasticsearchRefs))
@@ -140,6 +160,16 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 func tweakServiceRef(ref commonv1.ObjectSelector, suffix string) commonv1.ObjectSelector {
 	// All the objects defined in the YAML file will have a random test suffix added to prevent clashes with previous runs.
 	// This necessitates changing the Elasticsearch reference to match the suffixed name.
+	if ref.Name != "" {
+		ref.Name = ref.Name + "-" + suffix
+	}
+
+	return ref
+}
+
+func tweakLocalServiceRef(ref commonv1.LocalObjectSelector, suffix string) commonv1.LocalObjectSelector {
+	// All the objects defined in the YAML file will have a random test suffix added to prevent clashes with previous runs.
+	// This necessitates changing the reference to match the suffixed name.
 	if ref.Name != "" {
 		ref.Name = ref.Name + "-" + suffix
 	}

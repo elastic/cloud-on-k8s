@@ -6,7 +6,6 @@ metadata:
   labels:
     {{- include "autoops.labels" . | nindent 4 }}
   annotations:
-    eck.k8s.elastic.co/license: enterprise
     {{- with .Values.annotations }}
     {{- toYaml . | nindent 4 }}
     {{- end }}

@@ -16,6 +16,7 @@ The following table lists and describes all the available configuration flags fo
 | `ca-cert-rotate-before` | `24h` | Duration representing how long before expiration CA certificates should be re-issued. |
 | `ca-cert-validity` | `8760h` | Duration representing the validity period of a generated CA certificate. |
 | `ca-dir` | `""` | Path to a directory containing a CA certificate (tls.crt) and its associated private key (tls.key) to be used for all managed resources. Effectively disables the CA rotation and validity options. |
+| `cache-startup-timeout` | `0` | Maximum time to wait for the Kubernetes informer cache to sync on startup. If the cache does not sync within this duration the operator exits, allowing Kubernetes to restart the pod. Set to `0` to wait indefinitely. |
 | `cert-rotate-before` | `24h` | Duration representing how long before expiration TLS certificates should be re-issued. |
 | `cert-validity` | `8760h` | Duration representing the validity period of a generated TLS certificate. |
 | `config` | `""` | Path to a file containing the operator configuration. |
@@ -28,7 +29,7 @@ The following table lists and describes all the available configuration flags fo
 | `enable-leader-election` | `true` | Enable leader election. Must be set to true if using multiple replicas of the operator |
 | `enable-tracing` | `false` | Enable APM tracing in the operator process. Use environment variables to configure APM server URL, credentials, and so on. Check [Apm Go Agent reference](apm-agent-go://reference/configuration.md) for details. |
 | `enable-webhook` | `false` | Enables a validating webhook server in the operator process. |
-| `enforce-rbac-on-refs` | `false` | Enables restrictions on cross-namespace resource association through RBAC. |
+| `enforce-rbac-on-refs` | `false` | Restrict cross-namespace resource association through RBAC. Accepts: `false` (disabled, default), `true` (RBAC checked for all associations; only direct or transitive Elasticsearch associations are blocked on denial — all others emit a warning), `legacy` (identical to `true`, deprecated), `all` (full enforcement: all associations are blocked on denial). The bare flag without a value (`--enforce-rbac-on-refs`) is equivalent to `--enforce-rbac-on-refs=true`. |
 | `exposed-node-labels` | `""` | List of Kubernetes node labels which are allowed to be copied as annotations on the Elasticsearch Pods. Check [Topology spread constraints and availability zone awareness](docs-content://deploy-manage/deploy/cloud-on-k8s/advanced-elasticsearch-node-scheduling.md#k8s-availability-zone-awareness) for more details. |
 | `ip-family` | `""` | Set the IP family to use. Possible values: IPv4, IPv6, "" (= auto-detect) |
 | `kube-client-qps` | `0` | Set the maximum number of queries per second to the Kubernetes API. Default value is inherited from the [Go client](https://github.com/kubernetes/client-go/blob/e6538dd42b4fe55b6c754e41c66b43133ba41a59/rest/config.go#L44). |
@@ -44,6 +45,8 @@ The following table lists and describes all the available configuration flags fo
 | `operator-namespace` | `""` | Namespace the operator runs in. Required. |
 | `password-hash-cache-size` | `5 x max-concurrent-reconciles` | Sets the size of the password hash cache. Caching is disabled if explicitly set to 0 or any negative value. |
 | `password-length` | `24` | Length of generated file-based passwords (enterprise-only feature) |
+| `probes-bind-address` | `:8081` | The address the health probe endpoints (`/healthz`, `/readyz`) bind to. Pod readiness is gated on the informer cache being fully synced. Set to `""` or `"0"` to disable probes entirely. |
+| `restrict-watched-resources` | `false` | Restrict resource watching (secrets, services and configmaps) to resources carrying the label `eck.k8s.elastic.co/watched=true`. When deactivated (default), the operator watches all resources cluster-wide. Useful for multi-tenant clusters where the operator should only discover explicitly-labeled resources. |
 | `set-default-security-context` | `auto-detect` | Enables adding a default Pod Security Context to Elasticsearch Pods in Elasticsearch `8.0.0` and later. `fsGroup` is set to `1000` by default to match Elasticsearch container default UID. This behavior might not be appropriate for OpenShift and PSP-secured Kubernetes clusters, so it can be disabled. |
 | `ubi-only` | `false` | Use only UBI container images to deploy Elastic Stack applications. UBI images are only available from 7.10.0 onward. Ignored from 9.x as default images are based on UBI. Cannot be combined with `--container-suffix` flag. |
 | `validate-storage-class` | `true` | Specifies whether the operator should retrieve storage classes to verify volume expansion support. Can be disabled if cluster-wide storage class RBAC access is not available. |

@@ -5,12 +5,49 @@
 package manager
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/spf13/viper"
+	"go.elastic.co/apm/v2"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
+	apmv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1beta1"
+	esav1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoscaling/v1alpha1"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	esv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1beta1"
+	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
+	entv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1beta1"
+	kbv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1beta1"
+	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
+	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
+	agentcontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
+	autoopsvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoops/validation"
+	esavalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/validation"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
+	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
+	esvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/validation"
+	kibanacontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana"
+	lsvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/validation"
+	scpvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy/validation"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/webhook"
 )
 
 func chooseAndValidateIPFamily(ipFamilyStr string, ipFamilyDefault corev1.IPFamily) (corev1.IPFamily, error) {
@@ -35,4 +72,128 @@ func validateCertExpirationFlags(validityFlag string, rotateBeforeFlag string) (
 	}
 
 	return certValidity, certRotateBefore, nil
+}
+
+func setupWebhook(
+	ctx context.Context,
+	mgr manager.Manager,
+	params operator.Parameters,
+	webhookCertDir string,
+	clientset kubernetes.Interface,
+	exposedNodeLabels esvalidation.NodeLabels,
+	managedNamespaces []string,
+	tracer *apm.Tracer,
+) error {
+	if err := registerWebhookInformers(ctx, mgr.GetCache(), params.ValidateStorageClass, params.NamespaceMatcher); err != nil {
+		return err
+	}
+
+	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
+	if manageWebhookCerts {
+		if err := reconcileWebhookCertsAndAddController(ctx, mgr, params.CertRotation, params.NamespaceMatcher, clientset, tracer); err != nil {
+			return fmt.Errorf("failed to setup webhook certificates: %w", err)
+		}
+	}
+
+	checker := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
+	matcher := params.NamespaceMatcher
+	// setup webhooks for supported types
+	commonwebhook.RegisterResourceWebhook(mgr, apmv1.WebhookPath, checker, managedNamespaces, matcher, apmv1.Validate, "APM Server")
+	commonwebhook.RegisterResourceWebhook(mgr, apmv1beta1.WebhookPath, checker, managedNamespaces, matcher, apmv1beta1.Validate, "APM Server")
+	commonwebhook.RegisterResourceWebhook(mgr, beatv1beta1.WebhookPath, checker, managedNamespaces, matcher, beatv1beta1.Validate, "Beat")
+	commonwebhook.RegisterResourceWebhook(mgr, entv1.WebhookPath, checker, managedNamespaces, matcher, entv1.Validate, "Enterprise Search")
+	commonwebhook.RegisterResourceWebhook(mgr, entv1beta1.WebhookPath, checker, managedNamespaces, matcher, entv1beta1.Validate, "Enterprise Search")
+	commonwebhook.RegisterResourceWebhook(mgr, esv1beta1.WebhookPath, checker, managedNamespaces, matcher, esv1beta1.Validate, "Elasticsearch")
+	commonwebhook.RegisterResourceWebhook(mgr, kbv1beta1.WebhookPath, checker, managedNamespaces, matcher, kbv1beta1.Validate, "Kibana")
+	commonwebhook.RegisterResourceWebhook(mgr, emsv1alpha1.WebhookPath, checker, managedNamespaces, matcher, emsv1alpha1.Validate, "Elastic Maps Server")
+	commonwebhook.RegisterResourceWebhook(mgr, eprv1alpha1.WebhookPath, checker, managedNamespaces, matcher, eprv1alpha1.Validate, "Package Registry")
+	scpvalidation.RegisterWebhook(mgr, checker, managedNamespaces, params.OperatorNamespace, matcher)
+
+	// Logstash, Elasticsearch v1, ElasticsearchAutoscaling, AutoOps, Agent and Kibana v1 validating webhooks are wired up
+	// separately so their validators can use the API client and/or embed license checks. Elasticsearch
+	// v1beta1 remains in the RegisterResourceWebhook list above because it only needs a ValidateFunc.
+	esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, exposedNodeLabels, checker, managedNamespaces, matcher)
+	esavalidation.RegisterWebhook(mgr, params.ValidateStorageClass, checker, managedNamespaces, matcher)
+	lsvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, managedNamespaces, matcher)
+	autoopsvalidation.RegisterWebhook(mgr, checker, managedNamespaces, matcher)
+	agentcontroller.RegisterWebhook(mgr, checker, managedNamespaces, matcher)
+	kibanacontroller.RegisterWebhook(mgr, checker, managedNamespaces, matcher)
+
+	// wait for the secret to be populated in the local filesystem before returning
+	interval := time.Second * 1
+	timeout := time.Second * 30
+	keyPath := filepath.Join(webhookCertDir, certificates.CertFileName)
+	log.Info("Polling for the webhook certificate to be available", "path", keyPath)
+	//nolint:staticcheck // keep
+	err := wait.PollImmediateWithContext(ctx, interval, timeout, func(_ context.Context) (bool, error) {
+		_, err := os.Stat(keyPath)
+		// err could be that the file does not exist, but also that permission was denied or something else
+		if os.IsNotExist(err) {
+			log.V(1).Info("Webhook certificate file not present on filesystem yet", "path", keyPath)
+
+			return false, nil
+		} else if err != nil {
+			log.Error(err, "Error checking if webhook secret path exists", "path", keyPath)
+			return false, err
+		}
+		log.V(1).Info("Webhook certificate file present on filesystem", "path", keyPath)
+		return true, nil
+	})
+	if err != nil {
+		log.Error(err, "Timeout elapsed waiting for webhook certificate to be available", "path", keyPath, "timeout_seconds", timeout.Seconds())
+		return fmt.Errorf("timeout waiting for webhook certificate at %s: %w", keyPath, err)
+	}
+	return nil
+}
+
+func registerWebhookInformers(ctx context.Context, informerCache cache.Cache, validateStorageClass bool, matcher *nsmatch.NamespaceMatcher) error {
+	// Webhook validation performs these reads through the cache-backed client
+	// before leader election. Register only those dependencies so non-leader
+	// replicas have these caches synced before acquiring leader election.
+	objects := []client.Object{
+		&corev1.Secret{},
+		&corev1.ConfigMap{},
+		&corev1.Pod{},
+		&appsv1.StatefulSet{},
+		&esv1.Elasticsearch{},
+		&esav1alpha1.ElasticsearchAutoscaler{},
+	}
+	if validateStorageClass {
+		objects = append(objects, &storagev1.StorageClass{})
+	}
+	if matcher.SelectorEnabled() {
+		objects = append(objects, &corev1.Namespace{})
+	}
+	for _, obj := range objects {
+		if _, err := informerCache.GetInformer(ctx, obj); err != nil {
+			return fmt.Errorf("pre-register webhook informer for %T: %w", obj, err)
+		}
+	}
+	return nil
+}
+
+func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Manager, certRotation certificates.RotationParams, m *nsmatch.NamespaceMatcher, clientset kubernetes.Interface, tracer *apm.Tracer) error {
+	ctx = tracing.NewContextTransaction(ctx, tracer, tracing.ReconciliationTxType, webhook.ControllerName, nil)
+	defer tracing.EndContextTransaction(ctx)
+	log.Info("Automatic management of the webhook certificates enabled")
+	// Ensure that all the certificates needed by the webhook server are already created
+	webhookParams := webhook.Params{
+		Name:       viper.GetString(operator.WebhookNameFlag),
+		Namespace:  viper.GetString(operator.OperatorNamespaceFlag),
+		SecretName: viper.GetString(operator.WebhookSecretFlag),
+		Rotation:   certRotation,
+	}
+
+	// retrieve the current webhook configuration interface
+	wh, err := webhookParams.NewAdmissionControllerInterface(ctx, clientset)
+	if err != nil {
+		return err
+	}
+
+	// Force a first reconciliation to create the resources before the server is started
+	if err := webhookParams.ReconcileResources(ctx, clientset, wh); err != nil {
+		return err
+	}
+
+	return webhook.Add(mgr, m, webhookParams, clientset, wh, tracer)
 }

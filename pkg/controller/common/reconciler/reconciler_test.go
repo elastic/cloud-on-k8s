@@ -135,12 +135,10 @@ func TestReconcileResource(t *testing.T) {
 				}
 			},
 			initialObjects: []client.Object{&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      objectKey.Name,
-					Namespace: objectKey.Namespace,
-					Labels: map[string]string{
-						"label": "baz",
-					},
+				Name:      objectKey.Name,
+				Namespace: objectKey.Namespace,
+				Labels: map[string]string{
+					"label": "baz",
 				},
 			}},
 			argAssertion: func(args args) {
@@ -181,12 +179,10 @@ func TestReconcileResource(t *testing.T) {
 			name: "NeedsUpdate can ignore parts of the resource",
 			args: func() args {
 				expected := &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      objectKey.Name,
-						Namespace: objectKey.Namespace,
-						Labels: map[string]string{
-							"label": "baz",
-						},
+					Name:      objectKey.Name,
+					Namespace: objectKey.Namespace,
+					Labels: map[string]string{
+						"label": "baz",
 					},
 					Data: secretData,
 				}
@@ -202,12 +198,10 @@ func TestReconcileResource(t *testing.T) {
 			},
 			initialObjects: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      objectKey.Name,
-						Namespace: objectKey.Namespace,
-						Labels: map[string]string{
-							"label": "other",
-						},
+					Name:      objectKey.Name,
+					Namespace: objectKey.Namespace,
+					Labels: map[string]string{
+						"label": "other",
 					},
 					Data: secretData,
 				},
@@ -228,10 +222,8 @@ func TestReconcileResource(t *testing.T) {
 					Expected:   obj.DeepCopy(),
 					Reconciled: &corev1.Secret{},
 					Owner: &appsv1.Deployment{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: objectKey.Namespace,
-							Name:      "newOwner",
-						},
+						Namespace: objectKey.Namespace,
+						Name:      "newOwner",
 					},
 					NeedsUpdate: func() bool {
 						return trueVal
@@ -242,11 +234,9 @@ func TestReconcileResource(t *testing.T) {
 			},
 			initialObjects: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:       objectKey.Namespace,
-						Name:            objectKey.Name,
-						OwnerReferences: []metav1.OwnerReference{{Name: "oldOwner", Controller: &trueVal}},
-					},
+					Namespace:       objectKey.Namespace,
+					Name:            objectKey.Name,
+					OwnerReferences: []metav1.OwnerReference{{Name: "oldOwner", Controller: &trueVal}},
 				},
 			},
 			argAssertion: func(args args) {

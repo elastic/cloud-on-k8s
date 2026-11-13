@@ -7,6 +7,7 @@ package kibana
 import (
 	"context"
 	"fmt"
+	"path"
 	"testing"
 
 	ucfg "github.com/elastic/go-ucfg"
@@ -15,10 +16,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -81,6 +84,16 @@ enterpriseSearch:
     verificationMode: certificate
 `)
 
+// canonicalConfigFrom builds a CanonicalConfig from kb.Spec.Config the same way
+// NewConfigSettings callers are expected to do: nil-safe access to .Data.
+func canonicalConfigFrom(cfg *commonv1.Config) CanonicalConfig {
+	var data map[string]any
+	if cfg != nil {
+		data = cfg.Data
+	}
+	return CanonicalConfig{CanonicalConfig: settings.MustCanonicalConfig(data)}
+}
+
 func Test_reuseOrGenerateSecrets(t *testing.T) {
 	defaultKb := mkKibana()
 	type args struct {
@@ -102,7 +115,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			args: args{
 				c: k8s.NewFakeClient(
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Namespace: defaultKb.Namespace, Name: kbv1.ConfigSecret(defaultKb.Name)},
+						Namespace: defaultKb.Namespace, Name: kbv1.ConfigSecret(defaultKb.Name),
 						Data: map[string][]byte{
 							SettingsFilename: defaultConfig,
 						},
@@ -125,7 +138,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			args: args{
 				c: k8s.NewFakeClient(
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Namespace: defaultKb.Namespace, Name: kbv1.ConfigSecret(defaultKb.Name)},
+						Namespace: defaultKb.Namespace, Name: kbv1.ConfigSecret(defaultKb.Name),
 						Data: map[string][]byte{
 							SettingsFilename: esAssociationConfig,
 						},
@@ -149,7 +162,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			args: args{
 				c: k8s.NewFakeClient(
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Namespace: defaultKb.Namespace, Name: kbv1.ConfigSecret(defaultKb.Name)},
+						Namespace: defaultKb.Namespace, Name: kbv1.ConfigSecret(defaultKb.Name),
 						Data: map[string][]byte{
 							SettingsFilename: esAssociationConfig,
 						},
@@ -183,10 +196,8 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 func TestNewConfigSettings(t *testing.T) {
 	defaultKb := mkKibana()
 	existingSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kbv1.ConfigSecret(defaultKb.Name),
-			Namespace: defaultKb.Namespace,
-		},
+		Name:      kbv1.ConfigSecret(defaultKb.Name),
+		Namespace: defaultKb.Namespace,
 		Data: map[string][]byte{
 			SettingsFilename: []byte("xpack.security.encryptionKey: thisismyencryptionkey\nxpack.reporting.encryptionKey: thisismyreportingkey\nxpack.encryptedSavedObjects.encryptionKey: thisismyobjectkey"),
 		},
@@ -198,10 +209,9 @@ func TestNewConfigSettings(t *testing.T) {
 		kibanaConfigFromPolicy *settings.CanonicalConfig
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    []byte
-		wantErr bool
+		name string
+		args args
+		want []byte
 	}{
 		{
 			name: "default config IPv4",
@@ -256,7 +266,6 @@ func TestNewConfigSettings(t *testing.T) {
 				require.NoError(t, err)
 				return bytes
 			}(),
-			wantErr: false,
 		},
 		{
 			name: "with elasticsearch Association",
@@ -264,7 +273,9 @@ func TestNewConfigSettings(t *testing.T) {
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
 					kb.Spec.Version = "8.0.0" // to use service accounts
-					kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "test-es"}
+					kb.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
+						Name: "test-es",
+					}
 					kb.EsAssociation().SetAssociationConf(&commonv1.AssociationConf{
 						AuthSecretName:   "auth-secret",
 						AuthSecretKey:    "token",
@@ -278,18 +289,14 @@ func TestNewConfigSettings(t *testing.T) {
 				client: k8s.NewFakeClient(
 					existingSecret,
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "auth-secret",
-							Namespace: mkKibana().Namespace,
-						},
+						Name:      "auth-secret",
+						Namespace: mkKibana().Namespace,
 						Data: map[string][]byte{
 							"token": []byte("AAEAAWVsYXN0aWMva2liYW5hL2RlZmF1bHRfa2liYW5hXzRjMWJkZTQzLWFiYjMtNDE0MC1hNDk4LTA4NDRkMDkwZjE3Yjplb3RYYlhDbThtOFgxU2pPelpqdktCcjB3V1NPNHZUQ0FRWU4yWEFNMGRyU1lrYTdNUWJXTHozY1lIVzF3YlZw"),
 						},
 					},
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "ca-secret",
-						},
+						Name: "ca-secret",
 						Data: map[string][]byte{
 							"ca.crt": []byte("certificate"),
 						},
@@ -316,14 +323,15 @@ func TestNewConfigSettings(t *testing.T) {
 				require.NoError(t, err)
 				return bytes
 			}(),
-			wantErr: false,
 		},
 		{
 			name: "with elasticsearch Association",
 			args: args{
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
-					kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "test-es"}
+					kb.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
+						Name: "test-es",
+					}
 					kb.EsAssociation().SetAssociationConf(&commonv1.AssociationConf{
 						AuthSecretName: "auth-secret",
 						AuthSecretKey:  "elastic",
@@ -336,18 +344,14 @@ func TestNewConfigSettings(t *testing.T) {
 				client: k8s.NewFakeClient(
 					existingSecret,
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "auth-secret",
-							Namespace: mkKibana().Namespace,
-						},
+						Name:      "auth-secret",
+						Namespace: mkKibana().Namespace,
 						Data: map[string][]byte{
 							"elastic": []byte("password"),
 						},
 					},
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "ca-secret",
-						},
+						Name: "ca-secret",
 						Data: map[string][]byte{
 							"ca.crt": []byte("certificate"),
 						},
@@ -365,7 +369,6 @@ func TestNewConfigSettings(t *testing.T) {
 				require.NoError(t, err)
 				return bytes
 			}(),
-			wantErr: false,
 		},
 		{
 			name: "with Enterprise Search Association",
@@ -385,9 +388,7 @@ func TestNewConfigSettings(t *testing.T) {
 				client: k8s.NewFakeClient(
 					existingSecret,
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "ent-ca-secret",
-						},
+						Name: "ent-ca-secret",
 						Data: map[string][]byte{
 							"ca.crt": []byte("certificate"),
 						},
@@ -405,13 +406,14 @@ func TestNewConfigSettings(t *testing.T) {
 				require.NoError(t, err)
 				return bytes
 			}(),
-			wantErr: false,
 		}, {
 			name: "with Elasticsearch and Enterprise Search associations",
 			args: args{
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
-					kb.Spec.ElasticsearchRef = commonv1.ObjectSelector{Name: "test-es"}
+					kb.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
+						Name: "test-es",
+					}
 					kb.EsAssociation().SetAssociationConf(&commonv1.AssociationConf{
 						AuthSecretName: "auth-secret",
 						AuthSecretKey:  "elastic",
@@ -433,28 +435,22 @@ func TestNewConfigSettings(t *testing.T) {
 					existingSecret,
 					// ent certs
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "ent-ca-secret",
-						},
+						Name: "ent-ca-secret",
 						Data: map[string][]byte{
 							"ca.crt": []byte("certificate"),
 						},
 					},
 					// es auth
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "auth-secret",
-							Namespace: mkKibana().Namespace,
-						},
+						Name:      "auth-secret",
+						Namespace: mkKibana().Namespace,
 						Data: map[string][]byte{
 							"elastic": []byte("password"),
 						},
 					},
 					// es certs
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "ca-secret",
-						},
+						Name: "ca-secret",
 						Data: map[string][]byte{
 							"ca.crt": []byte("certificate"),
 						},
@@ -475,7 +471,6 @@ func TestNewConfigSettings(t *testing.T) {
 				require.NoError(t, err)
 				return bytes
 			}(),
-			wantErr: false,
 		},
 		{
 			name: "with user config",
@@ -516,10 +511,8 @@ func TestNewConfigSettings(t *testing.T) {
 			name: "test existing secret does not prevent updates to config, e.g. spec takes precedence even if there is a secret indicating otherwise",
 			args: args{
 				client: k8s.NewFakeClient(&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      kbv1.ConfigSecret(defaultKb.Name),
-						Namespace: defaultKb.Namespace,
-					},
+					Name:      kbv1.ConfigSecret(defaultKb.Name),
+					Namespace: defaultKb.Namespace,
 					Data: map[string][]byte{
 						SettingsFilename: append(defaultConfig, []byte(`logging.verbose: true`)...),
 					},
@@ -541,10 +534,8 @@ func TestNewConfigSettings(t *testing.T) {
 			name: "test existing secret does not prevent removing items from config in spec",
 			args: args{
 				client: k8s.NewFakeClient(&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      kbv1.ConfigSecret(defaultKb.Name),
-						Namespace: defaultKb.Namespace,
-					},
+					Name:      kbv1.ConfigSecret(defaultKb.Name),
+					Namespace: defaultKb.Namespace,
 					Data: map[string][]byte{
 						SettingsFilename: append(defaultConfig, []byte(`logging.verbose: true`)...),
 					},
@@ -557,15 +548,51 @@ func TestNewConfigSettings(t *testing.T) {
 			},
 			want: defaultConfig,
 		},
+		{
+			name: "with PKI mode: ssl cert/key set, no credentials",
+			args: args{
+				client: k8s.NewFakeClient(existingSecret),
+				kb: func() kbv1.Kibana {
+					kb := mkKibana()
+					kb.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
+						Name:               "test-es",
+						AuthenticationMode: commonv1.AuthenticationModePKI,
+					}
+					kb.EsAssociation().SetAssociationConf(&commonv1.AssociationConf{
+						AuthSecretName:       commonv1.NoAuthRequiredValue,
+						ClientCertSecretName: "client-cert-secret",
+						URL:                  "https://es-url:9200",
+					})
+					return kb
+				},
+				ipFamily: corev1.IPv4Protocol,
+			},
+			want: func() []byte {
+				cfg, err := settings.ParseConfig(defaultConfig)
+				require.NoError(t, err)
+				assocCfg, err := settings.ParseConfig([]byte(`elasticsearch:
+  hosts:
+    - "https://es-url:9200"
+  ssl:
+    verificationMode: certificate
+    certificate: /usr/share/kibana/config/elasticsearch-client-certs/tls.crt
+    key: /usr/share/kibana/config/elasticsearch-client-certs/tls.key
+    alwaysPresentCertificate: true
+`))
+				require.NoError(t, err)
+				require.NoError(t, cfg.MergeWith(assocCfg))
+				bytes, err := cfg.Render()
+				require.NoError(t, err)
+				return bytes
+			}(),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			kb := tt.args.kb()
 			v := version.From(7, 6, 0)
-			got, err := NewConfigSettings(context.Background(), tt.args.client, kb, v, tt.args.ipFamily, tt.args.kibanaConfigFromPolicy)
-			if tt.wantErr {
-				require.Error(t, err)
-			}
+			userSettings := canonicalConfigFrom(kb.Spec.Config)
+			got, err := NewConfigSettings(context.Background(), tt.args.client, kb, userSettings, v, tt.args.ipFamily, tt.args.kibanaConfigFromPolicy)
 			require.NoError(t, err)
 
 			// convert "got" into something comparable
@@ -588,7 +615,8 @@ func TestNewConfigSettingsCreateEncryptionKeys(t *testing.T) {
 	client := k8s.NewFakeClient()
 	kb := mkKibana()
 	v := version.MustParse(kb.Spec.Version)
-	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol, nil)
+	userSettings := canonicalConfigFrom(kb.Spec.Config)
+	got, err := NewConfigSettings(context.Background(), client, kb, userSettings, v, corev1.IPv4Protocol, nil)
 	require.NoError(t, err)
 	for _, key := range []string{XpackSecurityEncryptionKey, XpackReportingEncryptionKey, XpackEncryptedSavedObjectsEncryptionKey} {
 		val, err := (*ucfg.Config)(got.CanonicalConfig).String(key, -1, settings.Options...)
@@ -604,17 +632,16 @@ func TestNewConfigSettingsExistingEncryptionKey(t *testing.T) {
 	reportKey := "reportKey"
 	savedObjsKey := "savedObjsKey"
 	existingSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kbv1.ConfigSecret(kb.Name),
-			Namespace: kb.Namespace,
-		},
+		Name:      kbv1.ConfigSecret(kb.Name),
+		Namespace: kb.Namespace,
 		Data: map[string][]byte{
 			SettingsFilename: fmt.Appendf(nil, "%s: %s\n%s: %s\n%s: %s", XpackSecurityEncryptionKey, securityKey, XpackReportingEncryptionKey, reportKey, XpackEncryptedSavedObjectsEncryptionKey, savedObjsKey),
 		},
 	}
 	client := k8s.NewFakeClient(existingSecret)
 	v := version.MustParse(kb.Spec.Version)
-	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol, nil)
+	userSettings := canonicalConfigFrom(kb.Spec.Config)
+	got, err := NewConfigSettings(context.Background(), client, kb, userSettings, v, corev1.IPv4Protocol, nil)
 	require.NoError(t, err)
 	var gotCfg map[string]any
 	require.NoError(t, got.Unpack(&gotCfg))
@@ -643,7 +670,8 @@ func TestNewConfigSettingsExplicitEncryptionKey(t *testing.T) {
 	kb.Spec.Config = &cfg
 	client := k8s.NewFakeClient()
 	v := version.MustParse(kb.Spec.Version)
-	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol, nil)
+	userSettings := canonicalConfigFrom(kb.Spec.Config)
+	got, err := NewConfigSettings(context.Background(), client, kb, userSettings, v, corev1.IPv4Protocol, nil)
 	require.NoError(t, err)
 	val, err := (*ucfg.Config)(got.CanonicalConfig).String(XpackSecurityEncryptionKey, -1, settings.Options...)
 	require.NoError(t, err)
@@ -656,55 +684,46 @@ func TestNewConfigSettingsPre760(t *testing.T) {
 	kb.Spec.Version = "7.5.0"
 	client := k8s.NewFakeClient()
 	v := version.MustParse(kb.Spec.Version)
-	got, err := NewConfigSettings(context.Background(), client, kb, v, corev1.IPv4Protocol, nil)
+	userSettings := canonicalConfigFrom(kb.Spec.Config)
+	got, err := NewConfigSettings(context.Background(), client, kb, userSettings, v, corev1.IPv4Protocol, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 0, len(got.CanonicalConfig.HasKeys([]string{XpackEncryptedSavedObjects})))
 }
 
 func mkKibana() kbv1.Kibana {
 	kb := kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "testkb",
-			Namespace: "testns",
-		},
-		Spec: kbv1.KibanaSpec{Version: "7.6.0"},
+		Name:      "testkb",
+		Namespace: "testns",
+		Spec:      kbv1.KibanaSpec{Version: "7.6.0"},
 	}
 	return kb
 }
 
 func Test_getExistingConfig(t *testing.T) {
 	testKb := kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "testkb",
-			Namespace: "testns",
-		},
+		Name:      "testkb",
+		Namespace: "testns",
 		Spec: kbv1.KibanaSpec{
 			Version: "7.6.0",
 		},
 	}
 	testValidSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kbv1.ConfigSecret(testKb.Name),
-			Namespace: testKb.Namespace,
-		},
+		Name:      kbv1.ConfigSecret(testKb.Name),
+		Namespace: testKb.Namespace,
 		Data: map[string][]byte{
 			SettingsFilename: defaultConfig,
 		},
 	}
 	testNoYaml := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kbv1.ConfigSecret(testKb.Name),
-			Namespace: testKb.Namespace,
-		},
+		Name:      kbv1.ConfigSecret(testKb.Name),
+		Namespace: testKb.Namespace,
 		Data: map[string][]byte{
 			"notarealkey": []byte(`:-{`),
 		},
 	}
 	testInvalidYaml := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kbv1.ConfigSecret(testKb.Name),
-			Namespace: testKb.Namespace,
-		},
+		Name:      kbv1.ConfigSecret(testKb.Name),
+		Namespace: testKb.Namespace,
 		Data: map[string][]byte{
 			SettingsFilename: []byte(`:-{`),
 		},
@@ -762,6 +781,295 @@ func Test_getExistingConfig(t *testing.T) {
 				require.NotNil(t, result)
 				assert.True(t, (*ucfg.Config)(result).HasField(tc.expectKey))
 			}
+		})
+	}
+}
+
+func Test_elasticsearchTLSSettings(t *testing.T) {
+	t.Run("without client cert", func(t *testing.T) {
+		conf := commonv1.AssociationConf{
+			CACertProvided: true,
+			CASecretName:   "es-ca",
+		}
+		cfg := elasticsearchTLSSettings(conf)
+		require.Equal(t, "certificate", cfg[ElasticsearchSslVerificationMode])
+		require.Contains(t, cfg, ElasticsearchSslCertificateAuthorities)
+		require.NotContains(t, cfg, ElasticsearchSslCertificate)
+		require.NotContains(t, cfg, ElasticsearchSslKey)
+		require.NotContains(t, cfg, ElasticsearchSslAlwaysPresentCertificate)
+	})
+
+	t.Run("with client cert", func(t *testing.T) {
+		conf := commonv1.AssociationConf{
+			CACertProvided:       true,
+			CASecretName:         "es-ca",
+			ClientCertSecretName: "client-cert",
+		}
+		cfg := elasticsearchTLSSettings(conf)
+		require.Equal(t, "certificate", cfg[ElasticsearchSslVerificationMode])
+		require.Contains(t, cfg, ElasticsearchSslCertificateAuthorities)
+		require.Equal(t, esClientCertVolumeMountPath+"/tls.crt", cfg[ElasticsearchSslCertificate])
+		require.Equal(t, esClientCertVolumeMountPath+"/tls.key", cfg[ElasticsearchSslKey])
+		require.Equal(t, true, cfg[ElasticsearchSslAlwaysPresentCertificate])
+	})
+}
+
+// mockAssociationRef implements commonv1.AssociationRef for testing.
+type mockAssociationRef struct {
+	namespace string
+	name      string
+}
+
+func (m mockAssociationRef) IsExternal() bool                       { return false }
+func (m mockAssociationRef) IsSet() bool                            { return true }
+func (m mockAssociationRef) GetName() string                        { return m.name }
+func (m mockAssociationRef) GetNamespace() string                   { return m.namespace }
+func (m mockAssociationRef) GetSecretName() string                  { return "" }
+func (m mockAssociationRef) GetServiceName() string                 { return "" }
+func (m mockAssociationRef) GetClientCertificateSecretName() string { return "" }
+func (m mockAssociationRef) NamespacedName() types.NamespacedName {
+	return types.NamespacedName{Namespace: m.namespace, Name: m.name}
+}
+func (m mockAssociationRef) NameOrSecretName() string { return m.name }
+func (m mockAssociationRef) GetAuthenticationMode() commonv1.AuthenticationMode {
+	return commonv1.AuthenticationModeCredentials
+}
+
+// mockAssociation implements commonv1.Association for testing.
+// It embeds a Kibana object to satisfy the metav1.Object and runtime.Object
+// interfaces required by the Associated interface.
+type mockAssociation struct {
+	kbv1.Kibana
+	assocType commonv1.AssociationType
+	ref       commonv1.AssociationRef
+}
+
+func (m *mockAssociation) AssociationType() commonv1.AssociationType { return m.assocType }
+func (m *mockAssociation) AssociationRef() commonv1.AssociationRef   { return m.ref }
+func (m *mockAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
+	return "", nil
+}
+func (m *mockAssociation) Associated() commonv1.Associated                     { return nil }
+func (m *mockAssociation) AssociationConfAnnotationName() string               { return "" }
+func (m *mockAssociation) AssociationConf() (*commonv1.AssociationConf, error) { return nil, nil }
+func (m *mockAssociation) SetAssociationConf(*commonv1.AssociationConf)        {}
+func (m *mockAssociation) SupportsAuthAPIKey() bool                            { return false }
+func (m *mockAssociation) AssociationID() string                               { return "" }
+
+func Test_injectFleetOutputClientCerts(t *testing.T) {
+	esURL := "https://es.default.svc:9200"
+	wantCert := path.Join(agent.FleetManagedAgentClientCertDir, certificates.CertFileName)
+	wantKey := path.Join(agent.FleetManagedAgentClientCertDir, certificates.KeyFileName)
+
+	tests := []struct {
+		name     string
+		cfg      *settings.CanonicalConfig
+		wantCert string
+		wantKey  string
+	}{
+		{
+			name: "injects cert and key into matching ES output",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				"xpack.fleet.outputs": []any{
+					map[string]any{
+						"type":  "elasticsearch",
+						"hosts": []any{esURL},
+					},
+				},
+			}),
+			wantCert: wantCert,
+			wantKey:  wantKey,
+		},
+		{
+			name: "preserves user-provided cert and key",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				"xpack.fleet.outputs": []any{
+					map[string]any{
+						"type":  "elasticsearch",
+						"hosts": []any{esURL},
+						"ssl": map[string]any{
+							"certificate": "/custom/cert.pem",
+							"key":         "/custom/key.pem",
+						},
+					},
+				},
+			}),
+			wantCert: "/custom/cert.pem",
+			wantKey:  "/custom/key.pem",
+		},
+		{
+			name: "skips non-elasticsearch output type",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				"xpack.fleet.outputs": []any{
+					map[string]any{
+						"type":  "logstash",
+						"hosts": []any{esURL},
+					},
+				},
+			}),
+			wantCert: "",
+			wantKey:  "",
+		},
+		{
+			name: "skips output with non-matching URL",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				"xpack.fleet.outputs": []any{
+					map[string]any{
+						"type":  "elasticsearch",
+						"hosts": []any{"https://other.default.svc:9200"},
+					},
+				},
+			}),
+			wantCert: "",
+			wantKey:  "",
+		},
+		{
+			name:     "no outputs defined",
+			cfg:      settings.MustCanonicalConfig(map[string]any{}),
+			wantCert: "",
+			wantKey:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := injectFleetOutputClientCerts(tt.cfg, esURL)
+			require.NoError(t, err)
+
+			ucfgCfg := (*ucfg.Config)(tt.cfg)
+			opts := settings.Options
+
+			output, childErr := ucfgCfg.Child("xpack.fleet.outputs", 0, opts...)
+			if tt.wantCert == "" && tt.wantKey == "" {
+				// Either no outputs or the output should not have been modified.
+				if childErr != nil {
+					// No outputs at all.
+					return
+				}
+				hasCert, _ := output.Has("ssl.certificate", -1, opts...)
+				hasKey, _ := output.Has("ssl.key", -1, opts...)
+				require.False(t, hasCert, "ssl.certificate should not be set")
+				require.False(t, hasKey, "ssl.key should not be set")
+				return
+			}
+
+			require.NoError(t, childErr)
+			gotCert, err := output.String("ssl.certificate", -1, opts...)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantCert, gotCert)
+
+			gotKey, err := output.String("ssl.key", -1, opts...)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantKey, gotKey)
+		})
+	}
+}
+
+func Test_injectFleetOutputCertificateAuthorities(t *testing.T) {
+	esURL := "https://es.default.svc:9200"
+	assoc := &mockAssociation{
+		assocType: commonv1.ElasticsearchAssociationType,
+		ref:       mockAssociationRef{namespace: "default", name: "my-es"},
+	}
+	wantCA := path.Join(agent.CertificatesDir(assoc), agent.CAFileName)
+
+	tests := []struct {
+		name    string
+		cfg     *settings.CanonicalConfig
+		wantCAs []string
+	}{
+		{
+			name: "injects CA into matching ES output",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				"xpack.fleet.outputs": []any{
+					map[string]any{
+						"type":  "elasticsearch",
+						"hosts": []any{esURL},
+					},
+				},
+			}),
+			wantCAs: []string{wantCA},
+		},
+		{
+			name: "appends CA to existing certificate_authorities",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				"xpack.fleet.outputs": []any{
+					map[string]any{
+						"type":  "elasticsearch",
+						"hosts": []any{esURL},
+						"ssl": map[string]any{
+							"certificate_authorities": []any{"/existing/ca.pem"},
+						},
+					},
+				},
+			}),
+			wantCAs: []string{"/existing/ca.pem", wantCA},
+		},
+		{
+			name: "skips non-elasticsearch output type",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				"xpack.fleet.outputs": []any{
+					map[string]any{
+						"type":  "logstash",
+						"hosts": []any{esURL},
+					},
+				},
+			}),
+			wantCAs: nil,
+		},
+		{
+			name: "skips output with non-matching URL",
+			cfg: settings.MustCanonicalConfig(map[string]any{
+				"xpack.fleet.outputs": []any{
+					map[string]any{
+						"type":  "elasticsearch",
+						"hosts": []any{"https://other.default.svc:9200"},
+					},
+				},
+			}),
+			wantCAs: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := injectFleetOutputCertificateAuthorities(tt.cfg, esURL, assoc)
+			require.NoError(t, err)
+
+			ucfgCfg := (*ucfg.Config)(tt.cfg)
+			opts := settings.Options
+
+			output, childErr := ucfgCfg.Child("xpack.fleet.outputs", 0, opts...)
+			if tt.wantCAs == nil {
+				// Output should not have been modified.
+				require.NoError(t, childErr)
+				has, _ := output.Has("ssl.certificate_authorities", -1, opts...)
+				require.False(t, has, "ssl.certificate_authorities should not be set")
+				return
+			}
+
+			require.NoError(t, childErr)
+
+			// Unpack the output to read ssl.certificate_authorities reliably.
+			var outputMap map[string]any
+			require.NoError(t, output.Unpack(&outputMap, opts...))
+			ssl, ok := outputMap["ssl"].(map[string]any)
+			require.True(t, ok, "expected ssl map in output")
+			cas, ok := ssl["certificate_authorities"]
+			require.True(t, ok, "expected certificate_authorities in ssl")
+
+			var gotCAs []string
+			switch v := cas.(type) {
+			case string:
+				gotCAs = []string{v}
+			case []any:
+				for _, item := range v {
+					s, ok := item.(string)
+					require.True(t, ok, "expected string, got %T", item)
+					gotCAs = append(gotCAs, s)
+				}
+			}
+			require.Equal(t, tt.wantCAs, gotCAs)
 		})
 	}
 }

@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/google/go-cmp/cmp"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -42,17 +44,23 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 						"mapsassociation.k8s.elastic.co/namespace":  b.EMS.Namespace,
 					},
 				},
-				test.ExpectedSecret{
-					Name: emsName + "-maps-user",
-					Keys: []string{b.EMS.Namespace + "-" + emsName + "-maps-user"},
-					Labels: map[string]string{
-						"eck.k8s.elastic.co/credentials":            "true",
-						"elasticsearch.k8s.elastic.co/cluster-name": b.EMS.Spec.ElasticsearchRef.Name,
-						"mapsassociation.k8s.elastic.co/name":       emsName,
-						"mapsassociation.k8s.elastic.co/namespace":  b.EMS.Namespace,
-					},
-				},
 			)
+			// In PKI mode the component authenticates with its client certificate and no credentials Secret is created;
+			// skip the check to avoid a hang in CheckSecretsContent.
+			if b.EMS.Spec.ElasticsearchRef.AuthenticationMode != commonv1.AuthenticationModePKI {
+				expected = append(expected,
+					test.ExpectedSecret{
+						Name: emsName + "-maps-user",
+						Keys: []string{b.EMS.Namespace + "-" + emsName + "-maps-user"},
+						Labels: map[string]string{
+							"eck.k8s.elastic.co/credentials":            "true",
+							"elasticsearch.k8s.elastic.co/cluster-name": b.EMS.Spec.ElasticsearchRef.Name,
+							"mapsassociation.k8s.elastic.co/name":       emsName,
+							"mapsassociation.k8s.elastic.co/namespace":  b.EMS.Namespace,
+						},
+					},
+				)
+			}
 		}
 		if b.EMS.Spec.HTTP.TLS.Enabled() {
 			expected = append(expected,
@@ -117,10 +125,11 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 					AvailableNodes: b.EMS.Spec.Count,
 					Version:        b.EMS.Spec.Version,
 					Health:         "green",
+					Conditions:     ems.Status.Conditions, // Ignore Conditions whose LastTransitionTime is unpredictable
 				},
 				AssociationStatus: "",
 			}
-			if ems.Status != expected {
+			if !cmp.Equal(ems.Status, expected) {
 				return fmt.Errorf("expected status %+v but got %+v", expected, ems.Status)
 			}
 			return nil

@@ -25,8 +25,8 @@ import (
 
 func esv7() esv1.Elasticsearch {
 	return esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
-		Spec:       esv1.ElasticsearchSpec{Version: "7.5.0"},
+		Namespace: "ns", Name: "es",
+		Spec: esv1.ElasticsearchSpec{Version: "7.5.0"},
 	}
 }
 func withAnnotations(es esv1.Elasticsearch, annotations map[string]string) esv1.Elasticsearch {
@@ -170,7 +170,7 @@ func Test_getInitialMasterNodesAnnotation(t *testing.T) {
 }
 
 func Test_setInitialMasterNodesAnnotation(t *testing.T) {
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
+	es := esv1.Elasticsearch{Namespace: "ns", Name: "es"}
 	k8sClient := k8s.NewFakeClient(&es)
 	initialMasterNodes := []string{"node-0", "node-1", "node-2"}
 	err := setInitialMasterNodesAnnotation(context.Background(), k8sClient, es, initialMasterNodes)

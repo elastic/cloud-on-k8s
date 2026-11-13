@@ -7,6 +7,7 @@ package beat
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
@@ -63,7 +64,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 					}
 				}
 				// wait for Beat pods to disappear
-				if err := k.CheckPodCount(0, test.BeatPodListOptions(b.Beat.Namespace, b.Beat.Name, b.Beat.Spec.Type)...); err != nil {
+				if err := k.CheckPodCount(0, test.BeatPodListOptions(b.Beat.Namespace, b.Beat.Name)...); err != nil {
 					return err
 				}
 
@@ -123,8 +124,9 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 				beat.Status.ObservedGeneration = 0
 
 				expected := beatv1beta1.BeatStatus{
-					Version: b.Beat.Spec.Version,
-					Health:  "green",
+					Version:    b.Beat.Spec.Version,
+					Health:     "green",
+					Conditions: beat.Status.Conditions, // Ignore Conditions whose LastTransitionTime is unpredictable
 				}
 				if b.Beat.Spec.Deployment != nil {
 					expectedReplicas := pointer.Int32OrDefault(b.Beat.Spec.Deployment.Replicas, int32(1))
@@ -141,6 +143,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 				return nil
 			}),
 		},
+		test.CheckFieldsNotOwnedByOperator(&b.Beat, k, nil),
 	}
 }
 
@@ -198,6 +201,11 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Beat), &beat); err != nil {
 					return err
 				}
+				// merge annotations
+				if beat.Annotations == nil {
+					beat.Annotations = make(map[string]string)
+				}
+				maps.Copy(beat.Annotations, b.Beat.Annotations)
 				beat.Spec = b.Beat.Spec
 				return k.Client.Update(context.Background(), &beat)
 			}),
@@ -237,7 +245,7 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "Beat pods should be eventually be removed",
 			Test: test.Eventually(func() error {
-				return k.CheckPodCount(0, test.BeatPodListOptions(b.Beat.Namespace, b.Beat.Name, b.Beat.Spec.Type)...)
+				return k.CheckPodCount(0, test.BeatPodListOptions(b.Beat.Namespace, b.Beat.Name)...)
 			}),
 		},
 	}

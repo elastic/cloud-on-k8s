@@ -7,15 +7,19 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	common_name "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 )
 
@@ -77,13 +81,15 @@ func CheckSupportedStackVersion(ver string, supported version.MinMaxVersion) fie
 }
 
 // CheckDeprecatedStackVersion checks that the given version is not deprecated.
+// Parse errors are silently ignored and return no warning; the caller is expected
+// to also run CheckSupportedStackVersion which will surface the parse error.
 func CheckDeprecatedStackVersion(ver string) (string, field.ErrorList) {
 	v, err := ParseVersion(ver)
 	if err != nil {
-		return "", err
+		return "", nil
 	}
 
-	if v.GTE(version.DeprecatedVersions.Min) && v.LT(version.DeprecatedVersions.Max) {
+	if err := version.DeprecatedVersions.WithinRange(*v); err == nil {
 		return fmt.Sprintf("Version %s is EOL and support for it will be removed in a future release of the ECK operator", ver), nil
 	}
 
@@ -109,8 +115,144 @@ func CheckNoDowngrade(prev, curr string) field.ErrorList {
 	return nil
 }
 
+// PKIAuthMinVersion is the minimum version for PKI authentication. Elasticsearch needs it for the
+// pki_public_key_fingerprint metadata field used in role mapping rules (ES #156144) and for the PKI realm
+// truststore reload (ES #160416). Elastic Maps Server needs it to authenticate with only a client certificate.
+var PKIAuthMinVersion = version.MinFor(9, 6, 0)
+
+// CheckNoPKIAuthenticationMode returns a validation error when the given ElasticsearchSelector
+// uses PKI authentication mode, which some resource types do not support.
+func CheckNoPKIAuthenticationMode(path *field.Path, ref ElasticsearchSelector, resourceType string) field.ErrorList {
+	if ref.AuthenticationMode == AuthenticationModePKI {
+		return field.ErrorList{field.Invalid(
+			path.Child("authenticationMode"),
+			AuthenticationModePKI,
+			fmt.Sprintf("PKI authentication mode is not supported for %s", resourceType),
+		)}
+	}
+	return nil
+}
+
+// CheckReservedPKIRealmConfig rejects realm settings in cfg that clash with the ECK-managed PKI realm: settings under
+// its name, which would change the realm, realms of another type using its name, and realms using its order. Realm
+// names and orders must be unique across all realm types, so the last two would stop Elasticsearch from starting.
+// It also rejects the node attribute ECK uses to detect the nodes running the realm
+// (ECKPKIRealmNodeAttributeConfigKey). path is the path of cfg.
+func CheckReservedPKIRealmConfig(path *field.Path, cfg *settings.CanonicalConfig) field.ErrorList {
+	var errs field.ErrorList
+	if len(cfg.HasKeys([]string{ECKPKIRealmNodeAttributeConfigKey})) > 0 {
+		errs = append(errs, field.Invalid(
+			path.Child(ECKPKIRealmNodeAttributeConfigKey),
+			ECKPKIRealmNodeAttributeConfigKey,
+			fmt.Sprintf("node attribute %s is reserved for ECK-managed PKI authentication", ECKPKIRealmNodeAttribute),
+		))
+	}
+	if !cfg.HasChildConfig(realmsConfigKey) {
+		return errs
+	}
+	if cfg.HasChildConfig(ECKPKIRealmConfigKey) {
+		errs = append(errs, field.Invalid(
+			path.Child(ECKPKIRealmConfigKey),
+			ECKPKIRealmConfigKey,
+			fmt.Sprintf("realm name %s is reserved for ECK-managed PKI authentication", ECKPKIRealmName),
+		))
+	}
+	// realm type -> realm name -> realm settings
+	var realms map[string]map[string]struct {
+		Order *int64 `config:"order"`
+	}
+	if err := cfg.UnpackChild(realmsConfigKey, &realms); err != nil {
+		// Malformed realm settings are rejected by Elasticsearch, not by this check.
+		return errs
+	}
+	for _, realmType := range slices.Sorted(maps.Keys(realms)) {
+		for _, realmName := range slices.Sorted(maps.Keys(realms[realmType])) {
+			// the pki realm type is covered above, also when the realm settings cannot be unpacked
+			if key := strings.Join([]string{realmsConfigKey, realmType, realmName}, "."); realmName == ECKPKIRealmName && key != ECKPKIRealmConfigKey {
+				errs = append(errs, field.Invalid(
+					path.Child(key),
+					key,
+					fmt.Sprintf("realm name %s is reserved for ECK-managed PKI authentication", ECKPKIRealmName),
+				))
+			}
+			if order := realms[realmType][realmName].Order; order != nil && *order == ECKPKIRealmOrder {
+				key := strings.Join([]string{realmsConfigKey, realmType, realmName, "order"}, ".")
+				errs = append(errs, field.Invalid(
+					path.Child(key),
+					*order,
+					fmt.Sprintf("realm order %d is reserved for the ECK-managed PKI realm %s", ECKPKIRealmOrder, ECKPKIRealmName),
+				))
+			}
+		}
+	}
+	return errs
+}
+
 // CheckAssociationRefs checks that the given association references are valid.
 func CheckAssociationRefs(path *field.Path, refs ...ObjectSelector) field.ErrorList {
+	for _, ref := range refs {
+		if err := ref.IsValid(); err != nil {
+			return field.ErrorList{field.Forbidden(path, fmt.Sprintf("Invalid association reference: %s", err))}
+		}
+	}
+	return nil
+}
+
+// CheckElasticsearchSelectorRefs checks that the given Elasticsearch selector references are valid.
+func CheckElasticsearchSelectorRefs(path *field.Path, refs ...ElasticsearchSelector) field.ErrorList {
+	for _, ref := range refs {
+		if err := ref.IsValid(); err != nil {
+			return field.ErrorList{field.Forbidden(path, fmt.Sprintf("Invalid association reference: %s", err))}
+		}
+	}
+	return nil
+}
+
+// CheckConsistentESRefAuthentication rejects references to the same Elasticsearch cluster that authenticate
+// differently: with different authentication modes, or in PKI mode with different client certificates. These references
+// share the association configuration and Secrets, including the client certificate and the PKI role mapping request,
+// so each reference would keep overwriting or deleting the resources of the other. namespace is the default namespace
+// of the references. References to an external Elasticsearch through secretName are ignored.
+func CheckConsistentESRefAuthentication(path *field.Path, namespace string, refs ...ElasticsearchSelector) field.ErrorList {
+	firstRefs := make(map[types.NamespacedName]ElasticsearchSelector, len(refs))
+	var errs field.ErrorList
+	for i, ref := range refs {
+		if !ref.IsSet() || ref.IsExternal() {
+			continue
+		}
+		nsn := ref.WithDefaultNamespace(namespace).NamespacedName()
+		first, exists := firstRefs[nsn]
+		if !exists {
+			firstRefs[nsn] = ref
+			continue
+		}
+		mode, firstMode := ref.GetAuthenticationMode(), first.GetAuthenticationMode()
+		switch {
+		case mode != firstMode:
+			errs = append(errs, field.Invalid(path.Index(i).Child("authenticationMode"), mode,
+				fmt.Sprintf("all references to Elasticsearch %s must use the same authentication mode, found %s and %s", nsn, firstMode, mode)))
+		case mode == AuthenticationModePKI && ref.ClientCertificateSecretName != first.ClientCertificateSecretName:
+			// Only checked in PKI mode: in Credentials mode, references with different client certificates were
+			// accepted before PKI authentication was introduced.
+			errs = append(errs, field.Invalid(path.Index(i).Child("clientCertificateSecretName"), ref.ClientCertificateSecretName,
+				fmt.Sprintf("all references to Elasticsearch %s with authentication mode PKI must use the same client certificate", nsn)))
+		}
+	}
+	return errs
+}
+
+// CheckLocalAssociationRefs checks that the given local association references are valid.
+func CheckLocalAssociationRefs(path *field.Path, refs ...LocalObjectSelector) field.ErrorList {
+	for _, ref := range refs {
+		if err := ref.IsValid(); err != nil {
+			return field.ErrorList{field.Forbidden(path, fmt.Sprintf("Invalid association reference: %s", err))}
+		}
+	}
+	return nil
+}
+
+// CheckFleetServerSelectorRefs checks that the given Fleet Server selector references are valid.
+func CheckFleetServerSelectorRefs(path *field.Path, refs ...FleetServerSelector) field.ErrorList {
 	for _, ref := range refs {
 		if err := ref.IsValid(); err != nil {
 			return field.ErrorList{field.Forbidden(path, fmt.Sprintf("Invalid association reference: %s", err))}
@@ -126,4 +268,26 @@ func ParseVersion(ver string) (*version.Version, field.ErrorList) {
 	}
 
 	return &v, nil
+}
+
+// CheckPauseOrchestrationAnnotation ensures that the PauseOrchestrationAnnotation annotation is absent or set to
+// exactly 'true' or exactly 'false'.
+func CheckPauseOrchestrationAnnotation(obj metav1.Object) field.ErrorList {
+	if annValue, ok := obj.GetAnnotations()[PauseOrchestrationAnnotation]; ok {
+		if annValue != "true" && annValue != "false" {
+			return field.ErrorList{
+				field.Invalid(
+					field.NewPath("metadata").Child("annotations").Key(PauseOrchestrationAnnotation),
+					annValue,
+					fmt.Sprintf("%s annotation must be set to either 'true' or 'false' if provided", PauseOrchestrationAnnotation),
+				),
+			}
+		}
+	}
+	return nil
+}
+
+// PauseOrchestrationAnnotationCheck returns a validation function for use in per-resource validation lists.
+func PauseOrchestrationAnnotationCheck[PT metav1.Object]() func(PT) field.ErrorList {
+	return func(obj PT) field.ErrorList { return CheckPauseOrchestrationAnnotation(obj) }
 }

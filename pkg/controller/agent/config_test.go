@@ -6,28 +6,27 @@ package agent
 import (
 	"context"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
 var (
 	agentFixture = func() *agentv1alpha1.Agent {
 		return &agentv1alpha1.Agent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "agent",
-				Namespace: "ns",
-			},
+			Name:      "agent",
+			Namespace: "ns",
 			Spec: agentv1alpha1.AgentSpec{
 				KibanaRef: commonv1.ObjectSelector{
 					Name:      "kibana",
@@ -91,10 +90,8 @@ func TestExtractConnectionSettings(t *testing.T) {
 			name:  "happy path without ca",
 			agent: *assocWithoutCAFixture().Agent,
 			client: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "secret-name",
-					Namespace: "ns",
-				},
+				Name:      "secret-name",
+				Namespace: "ns",
 				Data: map[string][]byte{
 					"user": []byte("password"),
 				},
@@ -114,10 +111,8 @@ func TestExtractConnectionSettings(t *testing.T) {
 			name:  "happy path with ca",
 			agent: *assocWithCAFixture().Agent,
 			client: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "secret-name",
-					Namespace: "ns",
-				},
+				Name:      "secret-name",
+				Namespace: "ns",
 				Data: map[string][]byte{
 					"user": []byte("password"),
 				},
@@ -147,10 +142,8 @@ func TestExtractConnectionSettings(t *testing.T) {
 func Test_extractClientConnectionSettings(t *testing.T) {
 	// assoc secret all other cases are tested in TestExtractConnectionSettings
 	assocSecretFixture := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "secret-name",
-			Namespace: "ns",
-		},
+		Name:      "secret-name",
+		Namespace: "ns",
 		Data: map[string][]byte{
 			"user": []byte("password"),
 		},
@@ -162,10 +155,8 @@ func Test_extractClientConnectionSettings(t *testing.T) {
 	certs, err := certificates.ParsePEMCerts(bytes)
 	require.NoError(t, err)
 	caSecretFixture := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "ca-secret-name",
-			Namespace: "ns",
-		},
+		Name:      "ca-secret-name",
+		Namespace: "ns",
 		Data: map[string][]byte{
 			"ca.crt": bytes,
 		},
@@ -237,4 +228,122 @@ func Test_extractClientConnectionSettings(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_buildOutputConfig_withClientCert(t *testing.T) {
+	agent := &agentv1alpha1.Agent{
+		Name:      "agent",
+		Namespace: "ns",
+		Spec: agentv1alpha1.AgentSpec{
+			ElasticsearchRefs: []agentv1alpha1.Output{
+				{
+					Name:       "es",
+					Namespace:  "es-ns",
+					OutputName: "default",
+				},
+			},
+		},
+	}
+
+	assoc := agent.GetAssociations()[0]
+	assoc.SetAssociationConf(&commonv1.AssociationConf{
+		AuthSecretName:       "auth-secret",
+		AuthSecretKey:        "user",
+		URL:                  "https://es:9200",
+		CACertProvided:       true,
+		CASecretName:         "ca-secret",
+		ClientCertSecretName: "es-client-cert",
+	})
+
+	params := Params{
+		Context: context.Background(),
+		Agent:   *agent,
+		Client: k8s.NewFakeClient(&corev1.Secret{
+			Name:      "auth-secret",
+			Namespace: "ns",
+			Data: map[string][]byte{
+				"user": []byte("password"),
+			},
+		}),
+	}
+
+	got, err := buildOutputConfig(params)
+	require.NoError(t, err)
+
+	expectedClientCertDir := "/mnt/elastic-internal/elasticsearch-association/es-ns/es/client-certs"
+	expectedCfg, err := settings.NewCanonicalConfigFrom(map[string]any{
+		"outputs": map[string]any{
+			"default": map[string]any{
+				"type":                        "elasticsearch",
+				"hosts":                       []string{"https://es:9200"},
+				"username":                    "user",
+				"password":                    "password",
+				"ssl.certificate_authorities": []string{"/mnt/elastic-internal/elasticsearch-association/es-ns/es/certs/ca.crt"},
+				"ssl.certificate":             path.Join(expectedClientCertDir, certificates.CertFileName),
+				"ssl.key":                     path.Join(expectedClientCertDir, certificates.KeyFileName),
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	expectedBytes, err := expectedCfg.Render()
+	require.NoError(t, err)
+	gotBytes, err := got.Render()
+	require.NoError(t, err)
+	require.Equal(t, string(expectedBytes), string(gotBytes))
+}
+
+func Test_buildOutputConfig_withPKIAuth(t *testing.T) {
+	agent := &agentv1alpha1.Agent{
+		Name:      "agent",
+		Namespace: "ns",
+		Spec: agentv1alpha1.AgentSpec{
+			ElasticsearchRefs: []agentv1alpha1.Output{
+				{
+					Name:               "es",
+					Namespace:          "es-ns",
+					AuthenticationMode: commonv1.AuthenticationModePKI,
+					OutputName:         "default",
+				},
+			},
+		},
+	}
+
+	assoc := agent.GetAssociations()[0]
+	assoc.SetAssociationConf(&commonv1.AssociationConf{
+		AuthSecretName:       commonv1.NoAuthRequiredValue,
+		URL:                  "https://es:9200",
+		CACertProvided:       true,
+		CASecretName:         "ca-secret",
+		ClientCertSecretName: "es-client-cert",
+	})
+
+	params := Params{
+		Context: context.Background(),
+		Agent:   *agent,
+		Client:  k8s.NewFakeClient(),
+	}
+
+	got, err := buildOutputConfig(params)
+	require.NoError(t, err)
+
+	expectedClientCertDir := "/mnt/elastic-internal/elasticsearch-association/es-ns/es/client-certs"
+	expectedCfg, err := settings.NewCanonicalConfigFrom(map[string]any{
+		"outputs": map[string]any{
+			"default": map[string]any{
+				"type":                        "elasticsearch",
+				"hosts":                       []string{"https://es:9200"},
+				"ssl.certificate_authorities": []string{"/mnt/elastic-internal/elasticsearch-association/es-ns/es/certs/ca.crt"},
+				"ssl.certificate":             path.Join(expectedClientCertDir, certificates.CertFileName),
+				"ssl.key":                     path.Join(expectedClientCertDir, certificates.KeyFileName),
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	expectedBytes, err := expectedCfg.Render()
+	require.NoError(t, err)
+	gotBytes, err := got.Render()
+	require.NoError(t, err)
+	require.Equal(t, string(expectedBytes), string(gotBytes))
 }

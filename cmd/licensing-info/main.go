@@ -40,7 +40,7 @@ func main() {
 	var operatorNamespace string
 	flag.StringVar(&operatorNamespace, "operator-namespace", "elastic-system", "indicates the namespace where the operator is deployed")
 	flag.Parse()
-	licensingInfo, err := license.NewResourceReporter(newK8sClient(), operatorNamespace, nil).Get(context.Background())
+	licensingInfo, err := license.NewResourceReporter(newK8sClient(), operatorNamespace, nil, 0).Get(context.Background())
 	if err != nil {
 		log.Fatal(err, "Failed to get licensing info")
 	}

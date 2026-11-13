@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
@@ -21,10 +20,8 @@ var (
 func Test_lowestHighestSupportedVersions_VerifySupportsExistingPods(t *testing.T) {
 	newPodWithVersionLabel := func(v version.Version) corev1.Pod {
 		return corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: map[string]string{
-					label.VersionLabelName: v.String(),
-				},
+			Labels: map[string]string{
+				label.VersionLabelName: v.String(),
 			},
 		}
 	}

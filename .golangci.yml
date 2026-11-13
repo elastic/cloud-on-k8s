@@ -1,8 +1,18 @@
 version: "2"
 linters:
   settings:
+    custom:
+      ssacrlint:
+        type: module
+        description: "flags client.Writer.Update() and implicit-ownership Patch() calls on ECK CRs that may cause SSA field-ownership conflicts"
+
     exhaustive:
       default-signifies-exhaustive: true
+
+    forbidigo:
+      forbid:
+        - pattern: '^source\.Kind$'
+          msg: "use watches.NamespacedKind (pkg/controller/common/watches) instead of source.Kind directly, so namespace-selector filtering is respected"
 
     goheader:
       template: |-
@@ -10,9 +20,6 @@ linters:
         or more contributor license agreements. Licensed under the Elastic License 2.0;
         you may not use this file except in compliance with the Elastic License 2.0.
 
-    gosec:
-      excludes:
-        - G115
 
     nolintlint:
       require-specific: true
@@ -100,27 +107,42 @@ linters:
       - linters:
           - gosec
           - unparam
+          - forbidigo
+          - ssacrlint
         path: .*_test\.go
+      - linters:
+          - ssacrlint
+        path: test/e2e/
       - linters:
           - staticcheck
         path: pkg/controller/common/tracing/apmclientgo/client.go
         text: SA1019
       - linters:
           - staticcheck
-        # added exclusion until https://github.com/elastic/cloud-on-k8s/issues/8442 is implemented
-        text: 'SA1019: .* is deprecated: Consider CustomValidator instead, this only restores the old ctrl-runtime interface for bwc.'
-      - linters:
-          - staticcheck
         # added exclusion until ElasticsearchAutoscalingSpecAnnotationName is completely removed
         text: 'SA1019: .* is deprecated: the autoscaling annotation has been deprecated in favor of the ElasticsearchAutoscaler custom resource.'
       - linters:
           - staticcheck
-        # added exclusion until migration to new events API (events.k8s.io/v1) is completed
-        text: 'SA1019: .*GetEventRecorderFor is deprecated: this uses the old events API'
+        # added exclusion until ManagedAnnotation is completely removed
+        text: 'SA1019: .*/common.IsUnmanaged is deprecated: Migrate to IsOrchestrationPaused instead. See https://github.com/elastic/cloud-on-k8s/issues/9295.'
+      - linters:
+          - staticcheck
+        # added exclusion until ManagedAnnotation is completely removed
+        text: 'SA1019: .*/common.ManagedAnnotation is deprecated: Use PauseOrchestrationAnnotation instead. See https://github.com/elastic/cloud-on-k8s/issues/9295.'
+      - linters:
+          - staticcheck
+        # SelfLink is a legacy k8s read-only field no longer populated by the system; still set in test fixtures for historical reasons
+        path: .*_test\.go
+        text: 'SA1019: .*\.SelfLink is deprecated: selfLink is a legacy read-only field'
+      - linters:
+          - staticcheck
+        # added exclusion until SecureSettings is completely removed from StackConfigPolicySpec
+        path: .*_test\.go
+        text: 'SA1019: .*\.SecureSettings is deprecated: SecureSettings only applies to Elasticsearch'
       - linters:
           - revive
         # revive naming rules are not that happy with our packages/var names in common/utils/shared packages
-        path: '.*/(common|utils|shared)/.*.go'
+        path: '.*/(common|utils|shared|test)/.*.go|pkg/controller/(maps|elasticsearch/driver|elasticsearch/user|elasticsearch/version).*.go|hack/deployer/exec/.*.go'
         text: 'var-naming: avoid (package names that conflict with Go standard library package names|meaningless package names)'
     paths:
       - third_party$
@@ -130,6 +152,7 @@ linters:
   default: none
 
   enable:
+    - ssacrlint
     - asciicheck
     - bodyclose
     - dogsled
@@ -137,6 +160,7 @@ linters:
     - errcheck
     - errorlint
     - exhaustive
+    - forbidigo
     - forcetypeassert
     - gocritic
     - goheader

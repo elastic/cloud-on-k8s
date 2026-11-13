@@ -8,15 +8,17 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	commonlabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
@@ -26,8 +28,9 @@ import (
 )
 
 const (
-	apiKeySecretType = "api-key"
-	caSecretType     = "ca"
+	apiKeySecretType     = "api-key"
+	caSecretType         = "ca"
+	clientCertSecretType = "client-cert"
 )
 
 // reconcileAutoOpsESCASecret reconciles the Secret containing the CA certificate
@@ -58,10 +61,16 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESCASecret(
 		return fmt.Errorf("while retrieving http-certs-public secret for ES cluster %s/%s: %w", es.Namespace, es.Name, err)
 	}
 
-	caCert, ok := sourceSecret.Data[certificates.CertFileName]
+	// Prefer ca.crt over tls.crt: the CA does not change during leaf rotation, so using it
+	// avoids a brief verification failure while the agent secret catches up. Fall back to
+	// tls.crt for the self-signed case where ECK embeds the CA at the end of the cert chain.
+	caCert, ok := sourceSecret.Data[certificates.CAFileName]
 	if !ok || len(caCert) == 0 {
-		log.V(1).Info("tls.crt not found in http-certs-public secret, skipping")
-		return nil
+		caCert, ok = sourceSecret.Data[certificates.CertFileName]
+		if !ok || len(caCert) == 0 {
+			log.V(1).Info("neither ca.crt nor tls.crt found in http-certs-public secret, skipping")
+			return nil
+		}
 	}
 
 	secretName := autoopsv1alpha1.CASecret(policy.GetName(), es)
@@ -102,6 +111,123 @@ func (r *AgentPolicyReconciler) reconcileAutoOpsESCASecret(
 	)
 }
 
+// deleteAutoOpsESClientCertSecret deletes the client certificate secret for a specific ES cluster, and the
+// trust source published for it into the ES namespace, when client authentication is no longer required.
+func (r *AgentPolicyReconciler) deleteAutoOpsESClientCertSecret(
+	ctx context.Context,
+	policy autoopsv1alpha1.AutoOpsAgentPolicy,
+	es esv1.Elasticsearch,
+) error {
+	secretName := autoopsv1alpha1.ClientCertSecret(policy.GetName(), es)
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(secretName)
+	secretNSN := types.NamespacedName{
+		Namespace: policy.GetNamespace(),
+		Name:      secretName,
+	}
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.ClientCertTrustSourceKey(es.Namespace, secretNSN).Name)
+	if err := k8s.DeleteSecretIfExists(ctx, r.Client, secretNSN); err != nil {
+		return err
+	}
+	return certificates.DeleteClientCertTrustSource(ctx, r.Client, es.Namespace, secretNSN)
+}
+
+// reconcileAutoOpsESClientCertSecret reconciles a self-signed client certificate
+// for a specific Elasticsearch cluster that requires client authentication.
+// The certificate is unique to this policy+ES pair. Its public part is published as a trust
+// source into the ES namespace so the ES trust bundle controller includes it in the client CA
+// trust bundle.
+// Returns a requeue duration for certificate rotation.
+//
+// Unlike reconcileAutoOpsESCASecret above, this does not gate on ES readiness: we want
+// the client cert to land as early as possible so the ES trust bundle controller picks
+// it up ASAP and autoops can eventually connect. Initial connection attempts may fail
+// while the trust bundle catches up (tracked in #9165).
+func (r *AgentPolicyReconciler) reconcileAutoOpsESClientCertSecret(
+	ctx context.Context,
+	policy autoopsv1alpha1.AutoOpsAgentPolicy,
+	es esv1.Elasticsearch,
+) (*corev1.Secret, *reconciler.Results) {
+	ulog.FromContext(ctx).V(1).Info("Reconciling AutoOps ES client cert secret",
+		"es_namespace", es.Namespace, "es_name", es.Name)
+
+	secretName := autoopsv1alpha1.ClientCertSecret(policy.GetName(), es)
+
+	labels := resourceLabelsFor(policy, es)
+	labels[policySecretTypeLabelKey] = clientCertSecretType
+	labels[commonlabels.ClientCertificateLabelName] = "true"
+
+	meta := metadata.Propagate(&policy, metadata.Metadata{
+		// merge into labels (a fresh map) so that policy.GetLabels() is not mutated
+		Labels:      maps.MergePreservingExistingKeys(labels, policy.GetLabels()),
+		Annotations: policy.GetAnnotations(),
+	})
+
+	certRotation := certificates.RotationParams{
+		Validity:     certificates.DefaultCertValidity,
+		RotateBefore: certificates.DefaultRotateBefore,
+	}
+	certReconciler := certificates.Reconciler{
+		K8sClient:    r.Client,
+		Owner:        &policy,
+		Metadata:     meta,
+		CertRotation: certRotation,
+	}
+
+	commonName := policy.GetName()
+	orgUnit := policy.GetName()
+
+	results := reconciler.NewResult(ctx)
+	clientCertSecret, err := certReconciler.ReconcileClientCertificate(ctx, secretName, commonName, orgUnit, labels)
+	if err != nil {
+		return nil, results.WithError(err)
+	}
+
+	if err := certificates.RemoveServerSoftOwnerLabels(ctx, r.Client, &clientCertSecret.Secret); err != nil {
+		return nil, results.WithError(err)
+	}
+
+	// Publish the public client certificate into the ES namespace so it is included in the ES trust bundle.
+	// The trust source only carries the policy and ES labels, so the orphan cleanup can find it, plus the metadata
+	// the user explicitly asked to propagate. The remaining policy labels and annotations stay in the policy namespace.
+	trustSourceLabels := resourceLabelsFor(policy, es)
+	trustSourceLabels[policySecretTypeLabelKey] = clientCertSecretType
+	trustSourceMeta := metadata.Propagate(&policy, metadata.Metadata{Labels: trustSourceLabels})
+	if err := certificates.ReconcileClientCertTrustSource(
+		ctx, r.Client, &es, k8s.ExtractNamespacedName(&clientCertSecret.Secret),
+		clientCertSecret.CertPem(), trustSourceMeta,
+	); err != nil {
+		return nil, results.WithError(err)
+	}
+
+	// Register a dynamic watch on the client cert secret so the controller is
+	// re-triggered if it is deleted out from under us (the cert is otherwise
+	// only re-issued via rotation requeue, which fires once per cert validity).
+	watcher := k8s.ExtractNamespacedName(&policy)
+	if err := watches.WatchUserProvidedSecrets(watcher, r.dynamicWatches, secretName, []string{secretName}); err != nil {
+		return nil, results.WithError(err)
+	}
+
+	// Same for the trust source in the ES namespace: the ES owns it, so nothing else would publish it again.
+	trustSourceKey := certificates.ClientCertTrustSourceKey(es.Namespace, k8s.ExtractNamespacedName(&clientCertSecret.Secret))
+	if err := r.dynamicWatches.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{
+		Name:    trustSourceKey.Name,
+		Watched: []types.NamespacedName{trustSourceKey},
+		Watcher: watcher,
+	}); err != nil {
+		return nil, results.WithError(err)
+	}
+
+	// Schedule requeue for certificate rotation.
+	primaryCert, err := certificates.GetPrimaryCertificate(clientCertSecret.CertPem())
+	if err != nil {
+		return nil, results.WithError(err)
+	}
+	results.WithReconciliationState(
+		reconciler.RequeueAfter(certificates.ShouldRotateIn(time.Now(), primaryCert.NotAfter, certRotation.RotateBefore)).ReconciliationComplete(),
+	)
+	return &clientCertSecret.Secret, results
+}
+
 // buildAutoOpsESCASecret builds the expected Secret for autoops ES CA certificate.
 func buildAutoOpsESCASecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch, secretName string, caCert []byte) corev1.Secret {
 	if len(caCert) == 0 {
@@ -110,18 +236,18 @@ func buildAutoOpsESCASecret(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.E
 
 	labels := resourceLabelsFor(policy, es)
 	labels[policySecretTypeLabelKey] = caSecretType
+	labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 	meta := metadata.Propagate(&policy, metadata.Metadata{
-		Labels:      maps.Merge(policy.GetLabels(), labels),
+		// merge into labels (a fresh map) so that policy.GetLabels() is not mutated
+		Labels:      maps.MergePreservingExistingKeys(labels, policy.GetLabels()),
 		Annotations: policy.GetAnnotations(),
 	})
 
 	return corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        secretName,
-			Namespace:   policy.GetNamespace(),
-			Labels:      meta.Labels,
-			Annotations: meta.Annotations,
-		},
+		Name:        secretName,
+		Namespace:   policy.GetNamespace(),
+		Labels:      meta.Labels,
+		Annotations: meta.Annotations,
 		Data: map[string][]byte{
 			certificates.CAFileName: caCert,
 		},

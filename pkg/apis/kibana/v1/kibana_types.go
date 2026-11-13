@@ -13,16 +13,22 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/kibana/label"
 )
 
 const (
 	KibanaContainerName = "kibana"
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Kibana"
 	// KibanaServiceAccount is the Elasticsearch service account to be used to authenticate.
 	KibanaServiceAccount commonv1.ServiceAccountName = "kibana"
 )
+
+// BackgroundTasksMinVersion is the minimum Kibana version that supports background task isolation
+// via spec.backgroundTasks. It is set to 8.16.0 because that is when /api/status became available
+// as an unauthenticated readiness probe endpoint; background-only nodes do not serve /login.
+var BackgroundTasksMinVersion = version.From(8, 16, 0)
 
 // +kubebuilder:object:root=true
 
@@ -33,7 +39,7 @@ const (
 // +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
 // +kubebuilder:printcolumn:name="version",type="string",JSONPath=".status.version",description="Kibana version"
 // +kubebuilder:printcolumn:name="age",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:subresource:scale:specpath=.spec.count,statuspath=.status.count,selectorpath=.status.selector
+// +kubebuilder:subresource:scale:specpath=.spec.count,statuspath=.status.pools.primary.count,selectorpath=.status.pools.primary.selector
 // +kubebuilder:storageversion
 type Kibana struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -60,10 +66,6 @@ type KibanaList struct {
 	Items           []Kibana `json:"items"`
 }
 
-func init() {
-	SchemeBuilder.Register(&Kibana{}, &KibanaList{})
-}
-
 // KibanaSpec holds the specification of a Kibana instance.
 type KibanaSpec struct {
 	// Version of Kibana.
@@ -76,23 +78,29 @@ type KibanaSpec struct {
 	Count int32 `json:"count,omitempty"`
 
 	// ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
-	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
+	ElasticsearchRef commonv1.ElasticsearchSelector `json:"elasticsearchRef,omitempty"`
 
 	// PackageRegistryRef is a reference to an Elastic Package Registry running in the same Kubernetes cluster.
-	PackageRegistryRef commonv1.ObjectSelector `json:"packageRegistryRef,omitempty"`
+	PackageRegistryRef commonv1.LocalObjectSelector `json:"packageRegistryRef,omitempty"`
 
 	// EnterpriseSearchRef is a reference to an EnterpriseSearch running in the same Kubernetes cluster.
 	// Kibana provides the default Enterprise Search UI starting version 7.14.
 	EnterpriseSearchRef commonv1.ObjectSelector `json:"enterpriseSearchRef,omitempty"`
 
-	// Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
+	// Config holds the Kibana configuration. See: https://www.elastic.co/docs/reference/kibana/configuration-reference
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Config *commonv1.Config `json:"config,omitempty"`
 
 	// HTTP holds the HTTP layer configuration for Kibana.
 	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
 
-	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
+	// Resources provides a shorthand to set CPU and Memory resources on the Kibana container. When set, these
+	// values override any CPU or memory resource settings specified in the PodTemplate for the primary Kibana
+	// container. To set resources on other containers, use the PodTemplate.
+	// +kubebuilder:validation:Optional
+	Resources commonv1.Resources `json:"resources,omitzero"`
+
+	// PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
@@ -109,11 +117,62 @@ type KibanaSpec struct {
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	// Monitoring enables you to collect and ship log and monitoring data of this Kibana.
-	// See https://www.elastic.co/guide/en/kibana/current/xpack-monitoring.html.
+	// See https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring.
 	// Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
 	// Elasticsearch monitoring clusters running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
 	Monitoring commonv1.Monitoring `json:"monitoring,omitempty"`
+
+	// BackgroundTasks, when set, runs background task execution (node.roles: ["background_tasks"])
+	// in a dedicated Deployment and pins the primary Deployment to node.roles: ["ui"].
+	// When nil, Kibana runs a single Deployment with all roles.
+	// Requires Kibana >= 8.16.0 and an Enterprise license.
+	// +kubebuilder:validation:Optional
+	BackgroundTasks *KibanaBackgroundTasks `json:"backgroundTasks,omitempty"`
+}
+
+// KibanaBackgroundTasks defines the configuration for the Kibana background tasks pool.
+// When set, ECK creates a dedicated Deployment with node.roles: ["background_tasks"] and
+// pins the primary (UI) Deployment to node.roles: ["ui"].
+// Requires an Enterprise license.
+type KibanaBackgroundTasks struct {
+	// Count of background task Kibana instances. When nil, ECK does not manage the replica count
+	// of the Deployment, allowing an HPA to target it directly.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Minimum=0
+	Count *int32 `json:"count,omitempty"`
+
+	// Config holds Kibana configuration specific to the background tasks pool.
+	// The node.roles setting is managed by ECK and must not be set here.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Config *commonv1.Config `json:"config,omitempty"`
+
+	// Resources provides a shorthand to set CPU and Memory resources on the Kibana container in the
+	// background tasks pool. When set, these values override any CPU or memory resource settings
+	// specified in PodTemplate for the primary Kibana container. To set resources on other containers,
+	// use PodTemplate.
+	// +kubebuilder:validation:Optional
+	Resources commonv1.Resources `json:"resources,omitzero"`
+
+	// PodTemplate provides customization options for the background tasks pool pods.
+	// It is applied as a strategic-merge overlay on top of spec.podTemplate.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
+}
+
+// KibanaPoolsStatuses reports the observed state of all Kibana pools (UI and background tasks).
+type KibanaPoolsStatuses struct {
+	// BackgroundTasks reports the state of the background tasks Deployment.
+	// Only set when spec.backgroundTasks is configured.
+	// +optional
+	BackgroundTasks *commonv1.DeploymentStatus `json:"backgroundTasks,omitempty"`
+
+	// Primary reports the state of the primary Deployment.
+	// Always set, also when spec.backgroundTasks is not configured.
+	// +optional
+	Primary commonv1.DeploymentStatus `json:"primary,omitempty"`
 }
 
 // KibanaStatus defines the observed state of Kibana
@@ -141,11 +200,23 @@ type KibanaStatus struct {
 	// If the generation observed in status diverges from the generation in metadata, the Kibana
 	// controller has not yet processed the changes contained in the Kibana specification.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// Pools reports the state of the background tasks and primary Deployments.
+	// The background tasks pool status is only set when spec.backgroundTasks is configured.
+	// +optional
+	Pools KibanaPoolsStatuses `json:"pools,omitempty"`
 }
 
 // IsMarkedForDeletion returns true if the Kibana is going to be deleted
 func (k *Kibana) IsMarkedForDeletion() bool {
 	return !k.DeletionTimestamp.IsZero()
+}
+
+// BackgroundTasksEnabled reports whether the background tasks pool is configured.
+// When true, the controller creates a second Deployment with node.roles: ["background_tasks"]
+// and restricts the primary Deployment to node.roles: ["ui"].
+func (k *Kibana) BackgroundTasksEnabled() bool {
+	return k.Spec.BackgroundTasks != nil
 }
 
 func (k *Kibana) SecureSettings() []commonv1.SecretSource {
@@ -158,9 +229,12 @@ func (k *Kibana) ServiceAccountName() string {
 
 var KibanaServiceAccountMinVersion = semver.MustParse("7.17.0")
 
+// KibanaSpacesMinVersion is the minimum Kibana version that supports space-scoped Fleet APIs.
+var KibanaSpacesMinVersion = semver.MustParse("9.1.0")
+
 // -- associations
 
-var _ commonv1.Associated = &Kibana{}
+var _ commonv1.Associated = (*Kibana)(nil)
 
 func (k *Kibana) Associated() commonv1.Associated {
 	return k
@@ -169,23 +243,23 @@ func (k *Kibana) Associated() commonv1.Associated {
 func (k *Kibana) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 
-	if k.Spec.ElasticsearchRef.IsDefined() {
+	if k.Spec.ElasticsearchRef.IsSet() {
 		associations = append(associations, &KibanaEsAssociation{
 			Kibana: k,
 		})
 	}
-	if k.Spec.EnterpriseSearchRef.IsDefined() {
+	if k.Spec.EnterpriseSearchRef.IsSet() {
 		associations = append(associations, &KibanaEntAssociation{
 			Kibana: k,
 		})
 	}
-	if k.Spec.PackageRegistryRef.IsDefined() {
+	if k.Spec.PackageRegistryRef.IsSet() {
 		associations = append(associations, &KibanaEPRAssociation{
 			Kibana: k,
 		})
 	}
 	for _, ref := range k.Spec.Monitoring.Metrics.ElasticsearchRefs {
-		if ref.IsDefined() {
+		if ref.IsSet() {
 			associations = append(associations, &KbMonitoringAssociation{
 				Kibana: k,
 				ref:    ref.WithDefaultNamespace(k.Namespace),
@@ -193,7 +267,7 @@ func (k *Kibana) GetAssociations() []commonv1.Association {
 		}
 	}
 	for _, ref := range k.Spec.Monitoring.Logs.ElasticsearchRefs {
-		if ref.IsDefined() {
+		if ref.IsSet() {
 			associations = append(associations, &KbMonitoringAssociation{
 				Kibana: k,
 				ref:    ref.WithDefaultNamespace(k.Namespace),
@@ -207,25 +281,25 @@ func (k *Kibana) GetAssociations() []commonv1.Association {
 func (k *Kibana) AssociationStatusMap(typ commonv1.AssociationType) commonv1.AssociationStatusMap {
 	switch typ {
 	case commonv1.ElasticsearchAssociationType:
-		if k.Spec.ElasticsearchRef.IsDefined() {
+		if k.Spec.ElasticsearchRef.IsSet() {
 			return commonv1.NewSingleAssociationStatusMap(k.Status.ElasticsearchAssociationStatus)
 		}
 	case commonv1.EntAssociationType:
-		if k.Spec.EnterpriseSearchRef.IsDefined() {
+		if k.Spec.EnterpriseSearchRef.IsSet() {
 			return commonv1.NewSingleAssociationStatusMap(k.Status.EnterpriseSearchAssociationStatus)
 		}
 	case commonv1.PackageRegistryAssociationType:
-		if k.Spec.PackageRegistryRef.IsDefined() {
+		if k.Spec.PackageRegistryRef.IsSet() {
 			return commonv1.NewSingleAssociationStatusMap(k.Status.PackageRegistryAssociationStatus)
 		}
 	case commonv1.KbMonitoringAssociationType:
 		for _, esRef := range k.Spec.Monitoring.Metrics.ElasticsearchRefs {
-			if esRef.IsDefined() {
+			if esRef.IsSet() {
 				return k.Status.MonitoringAssociationStatus
 			}
 		}
 		for _, esRef := range k.Spec.Monitoring.Logs.ElasticsearchRefs {
-			if esRef.IsDefined() {
+			if esRef.IsSet() {
 				return k.Status.MonitoringAssociationStatus
 			}
 		}
@@ -273,6 +347,16 @@ func (k *Kibana) GetObservedGeneration() int64 {
 	return k.Status.ObservedGeneration
 }
 
+// MergeConditions provides a nil-safe way to merge the KibanaStatus's Conditions with the new Condition(s).
+func (k *Kibana) MergeConditions(conditions ...commonv1.Condition) {
+	k.Status.Conditions = k.Status.Conditions.MergeWith(conditions...)
+}
+
+// Conditions returns this Kibana's KibanaStatus Conditions.
+func (k *Kibana) Conditions() commonv1.Conditions {
+	return k.Status.Conditions
+}
+
 // -- association with Elasticsearch
 
 func (k *Kibana) EsAssociation() *KibanaEsAssociation {
@@ -284,7 +368,7 @@ type KibanaEsAssociation struct {
 	*Kibana
 }
 
-var _ commonv1.Association = &KibanaEsAssociation{}
+var _ commonv1.Association = (*KibanaEsAssociation)(nil)
 
 func (kbes *KibanaEsAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	v, err := version.Parse(kbes.Spec.Version)
@@ -315,7 +399,7 @@ func (kbes *KibanaEsAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
-func (kbes *KibanaEsAssociation) AssociationRef() commonv1.ObjectSelector {
+func (kbes *KibanaEsAssociation) AssociationRef() commonv1.AssociationRef {
 	return kbes.Spec.ElasticsearchRef.WithDefaultNamespace(kbes.Namespace)
 }
 
@@ -346,7 +430,7 @@ type KibanaEntAssociation struct {
 	*Kibana
 }
 
-var _ commonv1.Association = &KibanaEntAssociation{}
+var _ commonv1.Association = (*KibanaEntAssociation)(nil)
 
 func (kbent *KibanaEntAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	return "", nil
@@ -370,7 +454,7 @@ func (kbent *KibanaEntAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.EntAssociationType
 }
 
-func (kbent *KibanaEntAssociation) AssociationRef() commonv1.ObjectSelector {
+func (kbent *KibanaEntAssociation) AssociationRef() commonv1.AssociationRef {
 	return kbent.Spec.EnterpriseSearchRef.WithDefaultNamespace(kbent.Namespace)
 }
 
@@ -400,7 +484,7 @@ type KbMonitoringAssociation struct {
 	ref commonv1.ObjectSelector
 }
 
-var _ commonv1.Association = &KbMonitoringAssociation{}
+var _ commonv1.Association = (*KbMonitoringAssociation)(nil)
 
 func (kbmon *KbMonitoringAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	return "", nil
@@ -424,7 +508,7 @@ func (kbmon *KbMonitoringAssociation) AssociationType() commonv1.AssociationType
 	return commonv1.KbMonitoringAssociationType
 }
 
-func (kbmon *KbMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
+func (kbmon *KbMonitoringAssociation) AssociationRef() commonv1.AssociationRef {
 	return kbmon.ref
 }
 
@@ -460,7 +544,7 @@ type KibanaEPRAssociation struct {
 	*Kibana
 }
 
-var _ commonv1.Association = &KibanaEPRAssociation{}
+var _ commonv1.Association = (*KibanaEPRAssociation)(nil)
 
 func (kbepr *KibanaEPRAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	return "", nil
@@ -484,7 +568,7 @@ func (kbepr *KibanaEPRAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.PackageRegistryAssociationType
 }
 
-func (kbepr *KibanaEPRAssociation) AssociationRef() commonv1.ObjectSelector {
+func (kbepr *KibanaEPRAssociation) AssociationRef() commonv1.AssociationRef {
 	return kbepr.Spec.PackageRegistryRef.WithDefaultNamespace(kbepr.Namespace)
 }
 
@@ -519,4 +603,13 @@ func (k *Kibana) MonitoringAssociation(esRef commonv1.ObjectSelector) commonv1.A
 		Kibana: k,
 		ref:    esRef.WithDefaultNamespace(k.Namespace),
 	}
+}
+
+func (k *Kibana) GetResourcesForRole(role label.Role) commonv1.Resources {
+	if role.IsBackgroundTasks() &&
+		!k.Spec.BackgroundTasks.Resources.IsEmpty() {
+		return k.Spec.BackgroundTasks.Resources
+	}
+
+	return k.Spec.Resources
 }

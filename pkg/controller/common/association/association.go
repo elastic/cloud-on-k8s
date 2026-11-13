@@ -19,13 +19,16 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
-// WriteAssocsToConfigHash dereferences auth, CA and custom secrets (if any) to include it in the configHash.
+// WriteAssocsToConfigHash dereferences auth, CA, client cert and custom secrets (if any) to include it in the configHash.
 func WriteAssocsToConfigHash(client k8s.Client, associations []commonv1.Association, configHash hash.Hash) error {
 	for _, assoc := range associations {
 		if err := writeAuthSecretToConfigHash(client, assoc, configHash); err != nil {
 			return err
 		}
 		if err := writeCASecretToConfigHash(client, assoc, configHash); err != nil {
+			return err
+		}
+		if err := writeClientCertSecretToConfigHash(client, assoc, configHash); err != nil {
 			return err
 		}
 		if err := writeUnmanagedSecretToConfigHash(client, assoc, configHash); err != nil {
@@ -86,6 +89,34 @@ func writeCASecretToConfigHash(client k8s.Client, assoc commonv1.Association, co
 	}
 
 	_, _ = configHash.Write(certPem)
+
+	return nil
+}
+
+func writeClientCertSecretToConfigHash(client k8s.Client, assoc commonv1.Association, configHash hash.Hash) error {
+	assocConf, err := assoc.AssociationConf()
+	if err != nil {
+		return err
+	}
+	if !assocConf.ClientCertIsConfigured() {
+		return nil
+	}
+
+	clientCertNsName := types.NamespacedName{
+		Namespace: assoc.GetNamespace(),
+		Name:      assocConf.GetClientCertSecretName(),
+	}
+	var clientCertSecret corev1.Secret
+	if err := client.Get(context.Background(), clientCertNsName, &clientCertSecret); err != nil {
+		return err
+	}
+
+	if certPem, ok := clientCertSecret.Data[certificates.CertFileName]; ok {
+		_, _ = configHash.Write(certPem)
+	}
+	if keyPem, ok := clientCertSecret.Data[certificates.KeyFileName]; ok {
+		_, _ = configHash.Write(keyPem)
+	}
 
 	return nil
 }

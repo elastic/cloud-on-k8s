@@ -68,7 +68,7 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 		lsNamespace := nn.Namespace
 
 		for _, ref := range b.Logstash.Spec.ElasticsearchRefs {
-			esNamespace := ref.WithDefaultNamespace(lsNamespace).Namespace
+			esNamespace := ref.WithDefaultNamespace(lsNamespace).GetNamespace()
 			expected = append(expected,
 				test.ExpectedSecret{
 					Name: fmt.Sprintf("%s-logstash-es-%s-%s-ca", lsName, esNamespace, ref.Name),
@@ -81,6 +81,11 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 					},
 				},
 			)
+			// In PKI mode the component authenticates with its client certificate and no credentials Secret is created;
+			// skip the check to avoid a hang in CheckSecretsContent.
+			if ref.AuthenticationMode == v1.AuthenticationModePKI {
+				continue
+			}
 			expected = append(expected,
 				test.ExpectedSecret{
 					Name: fmt.Sprintf("%s-%s-%s-%s-logstash-user", lsNamespace, lsName, esNamespace, ref.Name),

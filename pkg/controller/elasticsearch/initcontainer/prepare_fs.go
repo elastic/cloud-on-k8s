@@ -133,6 +133,9 @@ func NewPrepareFSInitContainer(transportCertificatesVolume volume.SecretVolume, 
 	return container, nil
 }
 
+// RenderPrepareFsScript renders the prepare-fs init container script. The script embeds
+// expectedAnnotations in their given order; callers must keep that order stable across
+// operator versions to avoid changing the config hash and triggering a rolling restart.
 func RenderPrepareFsScript(expectedAnnotations []string) (string, error) {
 	templateParams := TemplateParams{
 		PluginVolumes: PluginVolumes,

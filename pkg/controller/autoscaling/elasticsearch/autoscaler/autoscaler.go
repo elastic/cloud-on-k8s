@@ -97,9 +97,7 @@ func (ctx *Context) stabilize(calculatedResources v1alpha1.NodeSetsResources) v1
 		nextResources := v1alpha1.NodeSetsResources{
 			Name:             currentResources.Name,
 			NodeSetNodeCount: nextNodeSetNodeCountList,
-			NodeResources: v1alpha1.NodeResources{
-				Requests: currentResources.Requests.DeepCopy(),
-			},
+			Requests:         currentResources.Requests.DeepCopy(),
 		}
 		// Reuse and adjust memory
 		if ctx.AutoscalingSpec.IsMemoryDefined() && currentResources.HasRequest(corev1.ResourceMemory) {

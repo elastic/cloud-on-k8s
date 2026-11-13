@@ -22,7 +22,6 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -106,12 +105,10 @@ func reconcileApplicationSecret(
 		},
 	)
 	applicationStore = corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        applicationSecretName.Name,
-			Namespace:   applicationSecretName.Namespace,
-			Labels:      applicationSecretMeta.Labels,
-			Annotations: applicationSecretMeta.Annotations,
-		},
+		Name:        applicationSecretName.Name,
+		Namespace:   applicationSecretName.Namespace,
+		Labels:      applicationSecretMeta.Labels,
+		Annotations: applicationSecretMeta.Annotations,
 		Data: map[string][]byte{
 			esuser.ServiceAccountTokenNameField: []byte(token.TokenName),
 			ServiceAccountTokenValueField:       []byte(token.Token),
@@ -161,12 +158,10 @@ func reconcileElasticsearchSecret(
 		},
 	)
 	esSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        elasticsearchSecretName.Name,
-			Namespace:   elasticsearchSecretName.Namespace,
-			Labels:      esSecretMeta.Labels,
-			Annotations: esSecretMeta.Annotations,
-		},
+		Name:        elasticsearchSecretName.Name,
+		Namespace:   elasticsearchSecretName.Namespace,
+		Labels:      esSecretMeta.Labels,
+		Annotations: esSecretMeta.Annotations,
 		Data: map[string][]byte{
 			esuser.ServiceAccountTokenNameField: []byte(fullyQualifiedName),
 			esuser.ServiceAccountHashField:      []byte(token.Hash),

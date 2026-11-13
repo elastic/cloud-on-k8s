@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -26,23 +26,19 @@ import (
 
 func entWithConfigRef(secretName string) entv1.EnterpriseSearch {
 	ent := entv1.EnterpriseSearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "ent",
-		},
+		Namespace: "ns",
+		Name:      "ent",
 	}
 	if secretName != "" {
-		ent.Spec.ConfigRef = &commonv1.ConfigSource{SecretRef: commonv1.SecretRef{SecretName: secretName}}
+		ent.Spec.ConfigRef = &commonv1.ConfigSource{SecretName: secretName}
 	}
 	return ent
 }
 
 func secretWithConfig(name string, cfg []byte) *corev1.Secret {
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      name,
-		},
+		Namespace: "ns",
+		Name:      name,
 		Data: map[string][]byte{
 			ConfigFilename: cfg,
 		},
@@ -51,10 +47,8 @@ func secretWithConfig(name string, cfg []byte) *corev1.Secret {
 
 func entWithAssociation(name string, version string, associationConf commonv1.AssociationConf) entv1.EnterpriseSearch {
 	ent := entv1.EnterpriseSearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      name,
-		},
+		Namespace: "ns",
+		Name:      name,
 		Spec: entv1.EnterpriseSearchSpec{
 			Version: version,
 		},
@@ -102,7 +96,7 @@ func Test_parseConfigRef(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.secrets...)
 			w := watches.NewDynamicWatches()
-			driver := &ReconcileEnterpriseSearch{dynamicWatches: w, Client: c, recorder: record.NewFakeRecorder(10)}
+			driver := &ReconcileEnterpriseSearch{dynamicWatches: w, Client: c, recorder: toolsevents.NewFakeRecorder(10)}
 			got, err := parseConfigRef(driver, tt.ent)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -135,7 +129,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			args: args{
 				c: k8s.NewFakeClient(
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent-sample-ent-config"},
+						Namespace: "ns", Name: "ent-sample-ent-config",
 						Data: map[string][]byte{
 							ConfigFilename: []byte(existingConfig),
 						},
@@ -160,7 +154,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			args: args{
 				c: k8s.NewFakeClient(
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent-sample-ent-config"},
+						Namespace: "ns", Name: "ent-sample-ent-config",
 						Data: map[string][]byte{
 							ConfigFilename: []byte(existingConfigWithReusableSettings),
 						},
@@ -322,10 +316,8 @@ func TestReconcileConfig(t *testing.T) {
 			}),
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sample-ent-user",
-					},
+					Namespace: "ns",
+					Name:      "sample-ent-user",
 					Data: map[string][]byte{
 						"ns-sample-ent-user": []byte("mypassword"),
 					},
@@ -361,6 +353,105 @@ func TestReconcileConfig(t *testing.T) {
 			},
 		},
 		{
+			name: "with Elasticsearch association and client cert",
+			ent: entWithAssociation("sample", "7.9.1", commonv1.AssociationConf{
+				AuthSecretName:       "sample-ent-user",
+				AuthSecretKey:        "ns-sample-ent-user",
+				CACertProvided:       true,
+				CASecretName:         "sample-ent-es-ca",
+				URL:                  "https://elasticsearch-sample-es-http.default.svc:9200",
+				ClientCertSecretName: "sample-client-cert",
+			}),
+			runtimeObjs: []client.Object{
+				&corev1.Secret{
+					Namespace: "ns",
+					Name:      "sample-ent-user",
+					Data: map[string][]byte{
+						"ns-sample-ent-user": []byte("mypassword"),
+					},
+				},
+			},
+			ipFamily: corev1.IPv4Protocol,
+			wantSecretEntries: []string{
+				// same as "with Elasticsearch association" plus client cert entries
+				"allow_es_settings_modification: true",
+				"elasticsearch:",
+				"host: https://elasticsearch-sample-es-http.default.svc:9200",
+				"password: mypassword",
+				"ssl:",
+				"certificate: /mnt/elastic-internal/es-client-certs/tls.crt", // client cert
+				"certificate_authority: /mnt/elastic-internal/es-certs/ca.crt",
+				"enabled: true",
+				"key: /mnt/elastic-internal/es-client-certs/tls.key", // client key
+				"username: ns-sample-ent-user",
+				"ent_search:",
+				"auth:",
+				"source: elasticsearch-native",
+				"external_url: https://localhost:3002",
+				"filebeat_log_directory: /var/log/enterprise-search",
+				"listen_host: 0.0.0.0",
+				"log_directory: /var/log/enterprise-search",
+				"ssl:",
+				"certificate: /mnt/elastic-internal/http-certs/tls.crt",
+				"certificate_authorities:",
+				"- /mnt/elastic-internal/http-certs/ca.crt",
+				"enabled: true",
+				"key: /mnt/elastic-internal/http-certs/tls.key",
+				"secret_management:",
+				"encryption_keys:",
+				"-",                   // don't check the actual encryption key
+				"secret_session_key:", // don't check the actual secret session key
+			},
+		},
+		{
+			name: "with Elasticsearch association and client cert, no CA",
+			ent: entWithAssociation("sample", "7.9.1", commonv1.AssociationConf{
+				AuthSecretName:       "sample-ent-user",
+				AuthSecretKey:        "ns-sample-ent-user",
+				CACertProvided:       false,
+				URL:                  "https://elasticsearch-sample-es-http.default.svc:9200",
+				ClientCertSecretName: "sample-client-cert",
+			}),
+			runtimeObjs: []client.Object{
+				&corev1.Secret{
+					Namespace: "ns",
+					Name:      "sample-ent-user",
+					Data: map[string][]byte{
+						"ns-sample-ent-user": []byte("mypassword"),
+					},
+				},
+			},
+			ipFamily: corev1.IPv4Protocol,
+			wantSecretEntries: []string{
+				// client cert entries without CA
+				"allow_es_settings_modification: true",
+				"elasticsearch:",
+				"host: https://elasticsearch-sample-es-http.default.svc:9200",
+				"password: mypassword",
+				"ssl:",
+				"certificate: /mnt/elastic-internal/es-client-certs/tls.crt", // client cert
+				"key: /mnt/elastic-internal/es-client-certs/tls.key",         // client key
+				"username: ns-sample-ent-user",
+				"ent_search:",
+				"auth:",
+				"source: elasticsearch-native",
+				"external_url: https://localhost:3002",
+				"filebeat_log_directory: /var/log/enterprise-search",
+				"listen_host: 0.0.0.0",
+				"log_directory: /var/log/enterprise-search",
+				"ssl:",
+				"certificate: /mnt/elastic-internal/http-certs/tls.crt",
+				"certificate_authorities:",
+				"- /mnt/elastic-internal/http-certs/ca.crt",
+				"enabled: true",
+				"key: /mnt/elastic-internal/http-certs/tls.key",
+				"secret_management:",
+				"encryption_keys:",
+				"-",                   // don't check the actual encryption key
+				"secret_session_key:", // don't check the actual secret session key
+			},
+		},
+		{
 			name: "with Elasticsearch association, support new auth config starting 8x",
 			ent: entWithAssociation("sample", "8.0.0", commonv1.AssociationConf{
 				AuthSecretName: "sample-ent-user",
@@ -371,10 +462,8 @@ func TestReconcileConfig(t *testing.T) {
 			}),
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sample-ent-user",
-					},
+					Namespace: "ns",
+					Name:      "sample-ent-user",
 					Data: map[string][]byte{
 						"ns-sample-ent-user": []byte("mypassword"),
 					},
@@ -521,10 +610,8 @@ func TestReconcileConfig(t *testing.T) {
 			name: "with user-provided config secret",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "my-config",
-					},
+					Namespace: "ns",
+					Name:      "my-config",
 					Data: map[string][]byte{
 						"enterprise-search.yml": []byte(`ent_search.external_url: https://my.own.dns.from.configref.com`),
 					},
@@ -542,7 +629,7 @@ func TestReconcileConfig(t *testing.T) {
 						"ent_search.external_url": "https://my.own.dns.com", // override existing setting
 					}},
 					ConfigRef: &commonv1.ConfigSource{
-						SecretRef: commonv1.SecretRef{SecretName: "my-config"}, // override the external url from config
+						SecretName: "my-config", // override the external url from config
 					},
 				},
 			},
@@ -572,7 +659,7 @@ func TestReconcileConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			driver := &ReconcileEnterpriseSearch{
 				Client:         k8s.NewFakeClient(tt.runtimeObjs...),
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
@@ -584,6 +671,7 @@ func TestReconcileConfig(t *testing.T) {
 			assert.Equal(t, map[string]string{
 				"common.k8s.elastic.co/type":           "enterprise-search",
 				"eck.k8s.elastic.co/credentials":       "true",
+				"eck.k8s.elastic.co/watched":           "true",
 				"enterprisesearch.k8s.elastic.co/name": "sample",
 			}, got.Labels)
 
@@ -678,10 +766,8 @@ func TestReconcileConfig_UserProvidedEncryptionKeys(t *testing.T) {
 			},
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sample-ent-config",
-					},
+					Namespace: "ns",
+					Name:      "sample-ent-config",
 					Data: map[string][]byte{
 						"enterprise-search.yml": []byte(`
 secret_management:
@@ -723,10 +809,8 @@ secret_session_key: alreadysetsessionkey
 			},
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sample-ent-config",
-					},
+					Namespace: "ns",
+					Name:      "sample-ent-config",
 					Data: map[string][]byte{
 						"enterprise-search.yml": []byte(`
 secret_management:
@@ -754,7 +838,7 @@ secret_session_key: alreadysetsessionkey
 		t.Run(tt.name, func(t *testing.T) {
 			driver := &ReconcileEnterpriseSearch{
 				Client:         k8s.NewFakeClient(tt.runtimeObjs...),
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
@@ -811,10 +895,8 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 			name: "update existing readiness probe script if different",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sample-ent-config",
-					},
+					Namespace: "ns",
+					Name:      "sample-ent-config",
 					Data: map[string][]byte{
 						ReadinessProbeFilename: []byte("to update"),
 					},
@@ -843,10 +925,8 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 			}),
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sample-ent-user",
-					},
+					Namespace: "ns",
+					Name:      "sample-ent-user",
 					Data: map[string][]byte{
 						"ns-sample-ent-user": []byte("password"),
 					},
@@ -859,10 +939,8 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 			name: "with es credentials in a user-provided config secret",
 			runtimeObjs: []client.Object{
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "my-config",
-					},
+					Namespace: "ns",
+					Name:      "my-config",
 					Data: map[string][]byte{
 						"enterprise-search.yml": []byte("elasticsearch.password: mypassword\nelasticsearch.username: myusername"),
 					},
@@ -876,7 +954,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 				Spec: entv1.EnterpriseSearchSpec{
 					Version: "7.9.0",
 					ConfigRef: &commonv1.ConfigSource{
-						SecretRef: commonv1.SecretRef{SecretName: "my-config"},
+						SecretName: "my-config",
 					},
 				},
 			},
@@ -888,7 +966,7 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			driver := &ReconcileEnterpriseSearch{
 				Client:         k8s.NewFakeClient(tt.runtimeObjs...),
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 

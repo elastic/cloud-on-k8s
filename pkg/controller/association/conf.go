@@ -14,9 +14,8 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
@@ -25,7 +24,7 @@ import (
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
-func AreConfiguredIfSet(ctx context.Context, associations []commonv1.Association, r record.EventRecorder) (bool, error) {
+func AreConfiguredIfSet(ctx context.Context, associations []commonv1.Association, r toolsevents.EventRecorder) (bool, error) {
 	allAssociationsConfigured := true
 	for _, association := range associations {
 		isAssocConfigured, err := IsConfiguredIfSet(ctx, association, r)
@@ -39,24 +38,26 @@ func AreConfiguredIfSet(ctx context.Context, associations []commonv1.Association
 
 // IsConfiguredIfSet checks if an association is set in the spec and if it has been configured by an association controller.
 // This is used to prevent the deployment of an associated resource while the association is not yet fully configured.
-func IsConfiguredIfSet(ctx context.Context, association commonv1.Association, r record.EventRecorder) (bool, error) {
+func IsConfiguredIfSet(ctx context.Context, association commonv1.Association, r toolsevents.EventRecorder) (bool, error) {
 	ref := association.AssociationRef()
 	assocConf, err := association.AssociationConf()
 	if err != nil {
 		return false, err
 	}
-	if (&ref).IsDefined() && !assocConf.IsConfigured() {
-		r.Event(
+	if ref.IsSet() && !assocConf.IsConfigured() {
+		k8s.EmitEventf(
+			r,
 			association,
 			corev1.EventTypeWarning,
 			events.EventAssociationError,
-			fmt.Sprintf("Association backend for %s is not configured", association.AssociationType()),
+			events.EventActionAssociationConfiguration,
+			"Association backend for %s is not configured", association.AssociationType(),
 		)
 		ulog.FromContext(ctx).Info("Association not established: skipping association resource reconciliation",
 			"kind", association.GetObjectKind().GroupVersionKind().Kind,
 			"namespace", association.GetNamespace(),
 			"name", association.GetName(),
-			"ref_namespace", ref.Namespace,
+			"ref_namespace", ref.GetNamespace(),
 			"ref_name", ref.NameOrSecretName(),
 		)
 		return false, nil
@@ -81,7 +82,7 @@ func ElasticsearchAuthSettings(ctx context.Context, c k8s.Client, assoc commonv1
 	if err != nil {
 		return Credentials{}, err
 	}
-	if !assocConf.AuthIsConfigured() {
+	if !assocConf.AuthIsConfigured() || assocConf.NoAuthRequired() {
 		return Credentials{}, nil
 	}
 	if assocConf.IsAPIKey && !assoc.SupportsAuthAPIKey() {
@@ -126,10 +127,10 @@ const UnknownVersion = "unknown_version"
 // For example: Kibana in version 7.8.0 cannot be deployed if its Elasticsearch association reports version 7.7.0.
 // A difference in the patch version is ignored: Kibana 7.8.1+ can be deployed alongside Elasticsearch 7.8.0.
 // Referenced resources version is parsed from the association conf annotation.
-func AllowVersion(resourceVersion version.Version, associated commonv1.Associated, logger logr.Logger, recorder record.EventRecorder) (bool, error) {
+func AllowVersion(resourceVersion version.Version, associated commonv1.Associated, logger logr.Logger, recorder toolsevents.EventRecorder) (bool, error) {
 	for _, assoc := range associated.GetAssociations() {
 		assocRef := assoc.AssociationRef()
-		if !assocRef.IsDefined() {
+		if !assocRef.IsSet() {
 			// no association specified, move on
 			continue
 		}
@@ -140,7 +141,7 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 		if assocConf == nil || assocConf.Version == "" {
 			// no conf reported yet, this may be the initial resource creation
 			logger.Info("Delaying version deployment since the version of an associated resource is not reported yet",
-				"version", resourceVersion, "ref_namespace", assocRef.Namespace, "ref_name", assocRef.NameOrSecretName())
+				"version", resourceVersion, "ref_namespace", assocRef.GetNamespace(), "ref_name", assocRef.NameOrSecretName())
 			return false, nil
 		}
 		if assocConf.Version == UnknownVersion {
@@ -162,9 +163,9 @@ func AllowVersion(resourceVersion version.Version, associated commonv1.Associate
 			// the desired version of the reconciled resource (example: Kibana)
 			logger.Info("Delaying version deployment since a referenced resource is not upgraded yet",
 				"version", resourceVersion, "ref_version", refVer,
-				"ref_type", assoc.AssociationType(), "ref_namespace", assocRef.Namespace, "ref_name", assocRef.NameOrSecretName())
-			recorder.Event(associated, corev1.EventTypeWarning, events.EventReasonDelayed,
-				fmt.Sprintf("Delaying deployment of version %s since the referenced %s is not upgraded yet", resourceVersion, assoc.AssociationType()))
+				"ref_type", assoc.AssociationType(), "ref_namespace", assocRef.GetNamespace(), "ref_name", assocRef.NameOrSecretName())
+			k8s.EmitEventf(recorder, associated, corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionVersionCheck,
+				"Delaying deployment of version %s since the referenced %s is not upgraded yet", resourceVersion, assoc.AssociationType())
 			return false, nil
 		}
 	}
@@ -199,44 +200,31 @@ func RemoveObsoleteAssociationConfs(
 	associated commonv1.Associated,
 	associationConfAnnotationNameBase string,
 ) error {
-	accessor := meta.NewAccessor()
-	annotations, err := accessor.Annotations(associated)
-	if err != nil {
-		return err
-	}
+	annotations := associated.GetAnnotations()
 
 	expected := make(map[string]bool)
 	for _, association := range associated.GetAssociations() {
 		expected[association.AssociationConfAnnotationName()] = true
 	}
 
-	modified := false
+	var toDelete []string
 	for key := range annotations {
 		if strings.HasPrefix(key, associationConfAnnotationNameBase) && !expected[key] {
-			delete(annotations, key)
-			modified = true
+			toDelete = append(toDelete, key)
 		}
 	}
 
-	if !modified {
+	if len(toDelete) == 0 {
 		return nil
 	}
 
-	if err := accessor.SetAnnotations(associated, annotations); err != nil {
-		return err
-	}
-
-	return client.Update(ctx, associated)
+	return k8s.PatchAnnotations(ctx, client, associated, nil, toDelete...)
 }
 
 // RemoveAssociationConf removes the association configuration annotation.
 func RemoveAssociationConf(ctx context.Context, client k8s.Client, association commonv1.Association) error {
 	associated := association.Associated()
-	accessor := meta.NewAccessor()
-	annotations, err := accessor.Annotations(associated)
-	if err != nil {
-		return err
-	}
+	annotations := associated.GetAnnotations()
 
 	if len(annotations) == 0 {
 		return nil
@@ -247,12 +235,7 @@ func RemoveAssociationConf(ctx context.Context, client k8s.Client, association c
 		return nil
 	}
 
-	delete(annotations, annotationName)
-	if err := accessor.SetAnnotations(associated, annotations); err != nil {
-		return err
-	}
-
-	return client.Update(ctx, associated)
+	return k8s.PatchAnnotations(ctx, client, associated, nil, annotationName)
 }
 
 // UpdateAssociationConf updates the association configuration annotation.
@@ -262,32 +245,14 @@ func UpdateAssociationConf(
 	association commonv1.Association,
 	wantConf *commonv1.AssociationConf,
 ) error {
-	accessor := meta.NewAccessor()
-
-	obj := association.Associated()
-	annotations, err := accessor.Annotations(obj)
-	if err != nil {
-		return err
-	}
-
-	// serialize the config and update the object
+	// serialize the config
 	serializedConf, err := json.Marshal(wantConf)
 	if err != nil {
 		return errors.Wrapf(err, "failed to serialize configuration")
 	}
 
-	if annotations == nil {
-		annotations = make(map[string]string)
-	}
-
-	annotationName := association.AssociationConfAnnotationName()
-	annotations[annotationName] = unsafeBytesToString(serializedConf)
-	if err := accessor.SetAnnotations(obj, annotations); err != nil {
-		return err
-	}
-
-	// persist the changes
-	return client.Update(ctx, obj)
+	obj := association.Associated()
+	return k8s.PatchAnnotations(ctx, client, obj, map[string]string{association.AssociationConfAnnotationName(): unsafeBytesToString(serializedConf)})
 }
 
 // unsafeBytesToString converts a byte array to string without making extra allocations.

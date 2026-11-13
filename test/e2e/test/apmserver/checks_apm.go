@@ -75,7 +75,7 @@ func (c *apmClusterChecks) BuildApmServerClient(apm apmv1.ApmServer, k *test.K8s
 				c.apmClient = apmClient
 
 				// Get the associated Elasticsearch
-				if !apm.Spec.ElasticsearchRef.IsDefined() { // No associated ES, do not try to create a client
+				if !apm.Spec.ElasticsearchRef.IsSet() { // No associated ES, do not try to create a client
 					return nil
 				}
 
@@ -140,7 +140,7 @@ func (c *apmClusterChecks) CheckAPMEventCanBeIndexedInElasticsearch(apm apmv1.Ap
 		Name: "ApmServer should accept event and write data to Elasticsearch",
 		Test: test.Eventually(func() error {
 			// All APM Server tests do not have an Elasticsearch reference.
-			if !apm.Spec.ElasticsearchRef.IsDefined() {
+			if !apm.Spec.ElasticsearchRef.IsSet() {
 				return nil
 			}
 			if err := c.checkEventsAPI(apm); err != nil {
@@ -158,7 +158,7 @@ func (c *apmClusterChecks) CheckAPMSecretTokenConfiguration(apm apmv1.ApmServer,
 		Name: "APMServer should reject events with incorrect token setup",
 		Test: test.Eventually(func() error {
 			// All APM Server tests do not have an Elasticsearch reference.
-			if !apm.Spec.ElasticsearchRef.IsDefined() {
+			if !apm.Spec.ElasticsearchRef.IsSet() {
 				return nil
 			}
 
@@ -273,7 +273,7 @@ func (c *apmClusterChecks) checkEventsInElasticsearch(apm apmv1.ApmServer, k *te
 		return err
 	}
 
-	if !updatedApmServer.Spec.ElasticsearchRef.IsDefined() {
+	if !updatedApmServer.Spec.ElasticsearchRef.IsSet() {
 		// No ES is referenced, do not try to check data
 		return nil
 	}
@@ -362,7 +362,7 @@ const sampleDefaultAgentConfiguration = `{"service":{},"settings":{"transaction_
 func (c *apmClusterChecks) CheckAgentConfiguration(apm apmv1.ApmServer, k *test.K8sClient) test.StepList {
 	apmVersion := version.MustParse(apm.Spec.Version)
 
-	if !apm.Spec.KibanaRef.IsDefined() {
+	if !apm.Spec.KibanaRef.IsSet() {
 		return []test.Step{}
 	}
 
@@ -380,7 +380,7 @@ func (c *apmClusterChecks) CheckAgentConfiguration(apm apmv1.ApmServer, k *test.
 					return err
 				}
 
-				uri := "/api/apm/settings/agent-configuration"
+				uri := "/api/apm/settings/agent-configuration?overwrite=true"
 
 				// URI is slightly different before 7.7.0, we need to add "/new" at the end
 				if !apmVersion.GTE(version.MustParse("7.7.0")) {

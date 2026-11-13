@@ -49,13 +49,11 @@ func validatePodTemplate(
 	template := sset.Spec.Template
 	// Create a dummy Pod with the pod template
 	dummyPod := &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   sset.GetNamespace(),
-			Name:        sset.GetName() + "-dummy-" + rand.String(5),
-			Labels:      template.Labels,
-			Annotations: template.Annotations,
-		},
-		Spec: template.Spec,
+		Namespace:   sset.GetNamespace(),
+		Name:        sset.GetName() + "-dummy-" + rand.String(5),
+		Labels:      template.Labels,
+		Annotations: template.Annotations,
+		Spec:        template.Spec,
 	}
 	if err := c.Create(ctx, dummyPod, client.DryRunAll); err != nil {
 		return toPodTemplateError(ctx, parent, sset, err)

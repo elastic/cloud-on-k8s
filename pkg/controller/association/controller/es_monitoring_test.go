@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -19,11 +18,10 @@ import (
 
 var (
 	sampleES = esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:       "esns",
-			Name:            "esname",
-			ResourceVersion: "42"},
-		Status: esv1.ElasticsearchStatus{Version: "7.15.0"},
+		Namespace:       "esns",
+		Name:            "esname",
+		ResourceVersion: "42",
+		Status:          esv1.ElasticsearchStatus{Version: "7.15.0"},
 	}
 )
 

@@ -7,7 +7,7 @@ package v1
 import "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 
 // as of 8.2.0 a simplified unauthenticated readiness port is available which takes cluster membership into account
-// see https://www.elastic.co/guide/en/elasticsearch/reference/current/advanced-configuration.html#readiness-tcp-port
+// see https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/networking-settings#tcp-readiness-port
 var MinReadinessPortVersion = version.MinFor(8, 2, 0)
 
 const (
@@ -38,6 +38,9 @@ const (
 
 	XPackSecurityAuthcRealmsFileFile1Order     = "xpack.security.authc.realms.file.file1.order"
 	XPackSecurityAuthcRealmsNativeNative1Order = "xpack.security.authc.realms.native.native1.order"
+
+	XPackSecurityAuthcRealmsPKIECKPKIOrder                  = "xpack.security.authc.realms.pki.eck_managed_pki.order"
+	XPackSecurityAuthcRealmsPKIECKPKICertificateAuthorities = "xpack.security.authc.realms.pki.eck_managed_pki.certificate_authorities"
 
 	XPackSecurityAuthcReservedRealmEnabled          = "xpack.security.authc.reserved_realm.enabled"
 	XPackSecurityEnabled                            = "xpack.security.enabled"

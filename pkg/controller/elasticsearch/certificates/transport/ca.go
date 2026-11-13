@@ -10,7 +10,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -52,7 +51,7 @@ func ReconcileOrRetrieveCA(
 	customCASecret, err := certificates.GetSecretFromRef(driver.K8sClient(), esNSN, es.Spec.Transport.TLS.Certificate)
 	if err != nil {
 		// error should already contain enough context including the name of the secret
-		driver.Recorder().Eventf(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, err.Error())
+		k8s.EmitEvent(driver.Recorder(), &es, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionGetSecret, err.Error())
 		return nil, err
 	}
 	// 1. No custom certs are specified, reconcile our internal self-signed CA instead (probably the common case)
@@ -81,7 +80,7 @@ func ReconcileOrRetrieveCA(
 		// Surface validation/parsing errors to the user via an event otherwise they might be hard to spot
 		// validation at admission would also be an alternative but seems quite costly and secret contents might change
 		// in the time between admission and reading the secret contents so we need to re-run validation here anyway.
-		driver.Recorder().Eventf(&es, corev1.EventTypeWarning, events.EventReasonValidation, err.Error())
+		k8s.EmitEvent(driver.Recorder(), &es, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionParseSecret, err.Error())
 		return nil, err
 	}
 
@@ -89,16 +88,14 @@ func ReconcileOrRetrieveCA(
 		// Surface validation errors to the user via an event
 		validationErr := fmt.Errorf("error validating custom CA certificate in %s/%s: %w",
 			customCASecret.GetNamespace(), customCASecret.GetName(), err)
-		driver.Recorder().Eventf(&es, corev1.EventTypeWarning, events.EventReasonValidation, validationErr.Error())
+		k8s.EmitEvent(driver.Recorder(), &es, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, validationErr.Error())
 		return nil, validationErr
 	}
 
 	// Garbage collect the self-signed CA secret which might be left over from an earlier revision on a best effort basis.
 	err = driver.K8sClient().Delete(ctx, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      certificates.CAInternalSecretName(esv1.ESNamer, esNSN.Name, certificates.TransportCAType),
-			Namespace: esNSN.Namespace,
-		},
+		Name:      certificates.CAInternalSecretName(esv1.ESNamer, esNSN.Name, certificates.TransportCAType),
+		Namespace: esNSN.Namespace,
 	})
 	if err != nil && !apierrors.IsNotFound(err) {
 		ulog.FromContext(ctx).Info("Failed to garbage collect self-signed transport CA secret, non-critical, continuing",

@@ -92,6 +92,14 @@ var (
 		Name:      "memory_gibibytes_logstash",
 		Help:      "Memory used by Logstash in GiB",
 	}, []string{LicenseLevelLabel}))
+
+	// LicensingFleetServerMemoryGauge reports the Fleet Server memory usage for licensing purposes.
+	LicensingFleetServerMemoryGauge = registerGauge(prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: namespace,
+		Subsystem: licensingSubsystem,
+		Name:      "memory_gibibytes_fleet_server",
+		Help:      "Memory used by Fleet Server in GiB",
+	}, []string{LicenseLevelLabel}))
 )
 
 func registerGauge(gauge *prometheus.GaugeVec) *prometheus.GaugeVec {

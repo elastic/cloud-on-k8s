@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"k8s.io/utils/ptr"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,21 +35,20 @@ func TestReconcileServices(t *testing.T) {
 				},
 			},
 			wantSvc: []corev1.Service{{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "logstash-ls-api",
-					Namespace: "test",
-					Labels: map[string]string{
-						"common.k8s.elastic.co/type":   "logstash",
-						"logstash.k8s.elastic.co/name": "logstash",
-					},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
-							Kind:               "Logstash",
-							Name:               "logstash",
-							Controller:         ptr.To(true),
-							BlockOwnerDeletion: ptr.To(true),
-						},
+				Name:      "logstash-ls-api",
+				Namespace: "test",
+				Labels: map[string]string{
+					"common.k8s.elastic.co/type":   "logstash",
+					"eck.k8s.elastic.co/watched":   "true",
+					"logstash.k8s.elastic.co/name": "logstash",
+				},
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
+						Kind:               "Logstash",
+						Name:               "logstash",
+						Controller:         new(true),
+						BlockOwnerDeletion: new(true),
 					},
 				},
 				Spec: corev1.ServiceSpec{
@@ -86,21 +84,20 @@ func TestReconcileServices(t *testing.T) {
 				},
 			},
 			wantSvc: []corev1.Service{{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "logstash-ls-api",
-					Namespace: "test",
-					Labels: map[string]string{
-						"common.k8s.elastic.co/type":   "logstash",
-						"logstash.k8s.elastic.co/name": "logstash",
-					},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
-							Kind:               "Logstash",
-							Name:               "logstash",
-							Controller:         ptr.To(true),
-							BlockOwnerDeletion: ptr.To(true),
-						},
+				Name:      "logstash-ls-api",
+				Namespace: "test",
+				Labels: map[string]string{
+					"common.k8s.elastic.co/type":   "logstash",
+					"eck.k8s.elastic.co/watched":   "true",
+					"logstash.k8s.elastic.co/name": "logstash",
+				},
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
+						Kind:               "Logstash",
+						Name:               "logstash",
+						Controller:         new(true),
+						BlockOwnerDeletion: new(true),
 					},
 				},
 				Spec: corev1.ServiceSpec{
@@ -137,21 +134,20 @@ func TestReconcileServices(t *testing.T) {
 			},
 			wantSvc: []corev1.Service{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "logstash-ls-test",
-						Namespace: "test",
-						Labels: map[string]string{
-							"common.k8s.elastic.co/type":   "logstash",
-							"logstash.k8s.elastic.co/name": "logstash",
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
-								Kind:               "Logstash",
-								Name:               "logstash",
-								Controller:         ptr.To(true),
-								BlockOwnerDeletion: ptr.To(true),
-							},
+					Name:      "logstash-ls-test",
+					Namespace: "test",
+					Labels: map[string]string{
+						"common.k8s.elastic.co/type":   "logstash",
+						"eck.k8s.elastic.co/watched":   "true",
+						"logstash.k8s.elastic.co/name": "logstash",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
+							Kind:               "Logstash",
+							Name:               "logstash",
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						},
 					},
 					Spec: corev1.ServiceSpec{
@@ -192,22 +188,21 @@ func TestReconcileServices(t *testing.T) {
 			},
 			wantSvc: []corev1.Service{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "logstash-ls-test",
-						Namespace: "test",
-						Labels: map[string]string{
-							"common.k8s.elastic.co/type":   "logstash",
-							"logstash.k8s.elastic.co/name": "logstash",
-							"some.label":                   "abc",
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
-								Kind:               "Logstash",
-								Name:               "logstash",
-								Controller:         ptr.To(true),
-								BlockOwnerDeletion: ptr.To(true),
-							},
+					Name:      "logstash-ls-test",
+					Namespace: "test",
+					Labels: map[string]string{
+						"common.k8s.elastic.co/type":   "logstash",
+						"eck.k8s.elastic.co/watched":   "true",
+						"logstash.k8s.elastic.co/name": "logstash",
+						"some.label":                   "abc",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
+							Kind:               "Logstash",
+							Name:               "logstash",
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						},
 					},
 					Spec: corev1.ServiceSpec{
@@ -246,21 +241,20 @@ func TestReconcileServices(t *testing.T) {
 			},
 			wantSvc: []corev1.Service{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "logstash-ls-api",
-						Namespace: "test",
-						Labels: map[string]string{
-							"common.k8s.elastic.co/type":   "logstash",
-							"logstash.k8s.elastic.co/name": "logstash",
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
-								Kind:               "Logstash",
-								Name:               "logstash",
-								Controller:         ptr.To(true),
-								BlockOwnerDeletion: ptr.To(true),
-							},
+					Name:      "logstash-ls-api",
+					Namespace: "test",
+					Labels: map[string]string{
+						"common.k8s.elastic.co/type":   "logstash",
+						"eck.k8s.elastic.co/watched":   "true",
+						"logstash.k8s.elastic.co/name": "logstash",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
+							Kind:               "Logstash",
+							Name:               "logstash",
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						},
 					},
 					Spec: corev1.ServiceSpec{
@@ -303,21 +297,20 @@ func TestReconcileServices(t *testing.T) {
 
 func DefaultAPIService() corev1.Service {
 	return corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "logstash-ls-api",
-			Namespace: "test",
-			Labels: map[string]string{
-				"common.k8s.elastic.co/type":   "logstash",
-				"logstash.k8s.elastic.co/name": "logstash",
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
-					Kind:               "Logstash",
-					Name:               "logstash",
-					Controller:         ptr.To(true),
-					BlockOwnerDeletion: ptr.To(true),
-				},
+		Name:      "logstash-ls-api",
+		Namespace: "test",
+		Labels: map[string]string{
+			"common.k8s.elastic.co/type":   "logstash",
+			"eck.k8s.elastic.co/watched":   "true",
+			"logstash.k8s.elastic.co/name": "logstash",
+		},
+		OwnerReferences: []metav1.OwnerReference{
+			{
+				APIVersion:         "logstash.k8s.elastic.co/v1alpha1",
+				Kind:               "Logstash",
+				Name:               "logstash",
+				Controller:         new(true),
+				BlockOwnerDeletion: new(true),
 			},
 		},
 		Spec: corev1.ServiceSpec{

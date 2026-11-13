@@ -25,10 +25,8 @@ func NewEmptyDirVolume(name, mountPath string) EmptyDirVolume {
 // Volume returns the associated k8s volume
 func (v EmptyDirVolume) Volume() corev1.Volume {
 	return corev1.Volume{
-		Name: v.name,
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
+		Name:     v.name,
+		EmptyDir: &corev1.EmptyDirVolumeSource{},
 	}
 }
 

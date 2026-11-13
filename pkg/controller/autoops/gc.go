@@ -7,6 +7,7 @@ package autoops
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -20,6 +21,7 @@ import (
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	commonapikey "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/apikey"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -240,19 +242,21 @@ func cleanupOrphanedConfigMaps(
 	return nil
 }
 
-// cleanupOrphanedSecrets removes secrets (CA and API key) for ES clusters that no longer match the selector.
-func cleanupOrphanedSecrets(
+// cleanupOrphanedSecrets removes secrets (CA, client cert, and API key) for ES clusters that no longer
+// match the selector. The dynamic watch registered for each managed secret is also removed; otherwise
+// it would linger until policy deletion, by which time the secret is gone and onDelete's
+// label-driven enumeration can't find it.
+func (r *AgentPolicyReconciler) cleanupOrphanedSecrets(
 	ctx context.Context,
 	log logr.Logger,
-	c k8s.Client,
-	esClientProvider commonesclient.Provider,
-	dialer net.Dialer,
 	policy autoopsv1alpha1.AutoOpsAgentPolicy,
 	matchLabels client.MatchingLabels,
 	matchingESset sets.Set[types.NamespacedName],
 ) error {
+	secretLabels := maps.Clone(matchLabels)
+	secretLabels[policyNamespaceLabelKey] = policy.Namespace
 	var secrets corev1.SecretList
-	if err := c.List(ctx, &secrets, client.InNamespace(policy.Namespace), matchLabels); err != nil {
+	if err := r.Client.List(ctx, &secrets, client.InNamespace(policy.Namespace), secretLabels); err != nil {
 		return err
 	}
 
@@ -266,16 +270,41 @@ func cleanupOrphanedSecrets(
 		if secretType, exists := secret.Labels[policySecretTypeLabelKey]; exists && secretType == "api-key" {
 			// Try to get the ES cluster to clean up API key
 			var es esv1.Elasticsearch
-			if err := c.Get(ctx, esNN, &es); err == nil {
+			if err := r.Client.Get(ctx, esNN, &es); err == nil {
 				// ES cluster exists, try to clean up API key
-				if err := cleanupAutoOpsESAPIKey(ctx, c, esClientProvider, dialer, policy.Namespace, policy.Name, es); err != nil {
+				if err := cleanupAutoOpsESAPIKey(ctx, r.Client, r.esClientProvider, r.params.Dialer, policy.Namespace, policy.Name, es); err != nil {
 					log.Error(err, "while cleaning up API key for ES cluster, continuing with secret deletion", "es_namespace", esNN.Namespace, "es_name", esNN.Name)
 				}
 			}
 		}
 
+		// Remove the dynamic watch keyed by secret name (registered in
+		// reconcileAutoOpsESCASecret / reconcileAutoOpsESClientCertSecret).
+		r.dynamicWatches.Secrets.RemoveHandlerForKey(secret.Name)
+
 		log.Info("Deleting orphaned Secret", "secret", secret.Name, "es_namespace", esNN.Namespace, "es_name", esNN.Name)
-		if err := c.Delete(ctx, secret); err != nil && !apierrors.IsNotFound(err) {
+		if err := r.Client.Delete(ctx, secret); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+	}
+
+	// Trust sources are in the ES namespaces, so the list above misses them unless the ES is in the policy namespace.
+	trustSources, err := certificates.ListClientCertTrustSources(ctx, r.Client, client.MatchingLabels{
+		PolicyNameLabelKey:      policy.Name,
+		policyNamespaceLabelKey: policy.Namespace,
+	})
+	if err != nil {
+		return err
+	}
+	for i := range trustSources {
+		trustSource := &trustSources[i]
+		esNN, shouldDelete := shouldDeleteResource(trustSource, matchingESset)
+		if !shouldDelete {
+			continue
+		}
+		log.Info("Deleting orphaned client certificate trust source", "secret", trustSource.Name, "es_namespace", esNN.Namespace, "es_name", esNN.Name)
+		r.dynamicWatches.Secrets.RemoveHandlerForKey(trustSource.Name)
+		if err := k8s.DeleteSecretIfExists(ctx, r.Client, k8s.ExtractNamespacedName(trustSource)); err != nil {
 			return err
 		}
 	}

@@ -21,21 +21,19 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch
 spec:
-  version: 9.3.0
+  version: 9.5.1
   nodeSets:
   - name: default
-    count: 1
+    count: 2
+    resources:
+      requests:
+        memory: 1Gi
+        cpu: 500m
+      limits:
+        memory: 1Gi
+        cpu: 500m
     podTemplate:
       spec:
         nodeSelector:
           cloud.google.com/compute-class: "elasticsearch"
-        containers:
-        - name: elasticsearch
-          resources:
-            requests:
-              memory: 1Gi
-              cpu: 500m
-            limits:
-              memory: 1Gi
-              cpu: 500m
 ---

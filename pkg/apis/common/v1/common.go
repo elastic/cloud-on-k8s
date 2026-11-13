@@ -7,7 +7,9 @@ package v1
 import (
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
+	"strings"
 
 	v1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
@@ -19,10 +21,79 @@ import (
 
 type DeploymentHealth string
 
+// AuthenticationMode controls how a component authenticates to Elasticsearch.
+type AuthenticationMode string
+
 const (
-	GreenHealth DeploymentHealth = "green"
-	RedHealth   DeploymentHealth = "red"
+	GreenHealth  DeploymentHealth = "green"
+	RedHealth    DeploymentHealth = "red"
+	YellowHealth DeploymentHealth = "yellow"
+
+	// AuthenticationModeCredentials uses credential-based authentication (service account token or username/password).
+	AuthenticationModeCredentials AuthenticationMode = "Credentials"
+	// AuthenticationModePKI uses the PKI realm: the component authenticates via its TLS client certificate.
+	AuthenticationModePKI AuthenticationMode = "PKI"
+
+	// ECKPKIRealmName is the name of the ECK-managed PKI realm.
+	ECKPKIRealmName = "eck_managed_pki"
+
+	// ECKPKIRoleMappingPrefix is reserved for PKI role mappings managed by ECK.
+	ECKPKIRoleMappingPrefix = ECKPKIRealmName + "_"
+
+	// ECKPKIRoleMappingManagedByKey, ECKPKIRoleMappingManagedByECK and ECKPKIRoleMappingResourceUIDKey are the metadata
+	// keys and value ECK sets on the PKI role mappings it generates. See IsECKManagedPKIRoleMapping.
+	ECKPKIRoleMappingManagedByKey   = "managed_by"
+	ECKPKIRoleMappingManagedByECK   = "eck"
+	ECKPKIRoleMappingResourceUIDKey = "eck_resource_uid"
+
+	// realmsConfigKey is the dotted-path key under which Elasticsearch realms are configured.
+	realmsConfigKey = "xpack.security.authc.realms"
+	// pkiRealmType is the type of the ECK-managed PKI realm.
+	pkiRealmType = "pki"
+
+	// ECKPKIRealmConfigKey is the dotted-path key for the ECK-managed PKI realm in elasticsearch.yml.
+	// User and SCP config must not set any keys under this path; ECK owns the entire subtree.
+	ECKPKIRealmConfigKey = realmsConfigKey + "." + pkiRealmType + "." + ECKPKIRealmName
+
+	// ECKPKIRealmOrder places the ECK-managed PKI realm last. Elasticsearch uses the token of the first realm, in
+	// order, that extracts one, and under mTLS the PKI realm extracts one from every request. Ordered earlier, it would
+	// shadow token-based realms such as JWT or Kerberos. User and SCP config must not use this order, because
+	// Elasticsearch rejects duplicate realm orders.
+	ECKPKIRealmOrder = math.MaxInt32
+
+	// ECKPKIRealmNodeAttribute is set to "true" on the nodes configured with the ECK-managed PKI realm. ECK reads it
+	// from the nodes info API to know which nodes loaded the realm: the realm settings are reported there by default, but
+	// users can hide them with xpack.security.hide_settings, which does not apply to node attributes. User and SCP config
+	// must not set it, or nodes without the realm would report it.
+	ECKPKIRealmNodeAttribute = "eck_managed_pki_realm"
+	// ECKPKIRealmNodeAttributeConfigKey is the dotted-path key of ECKPKIRealmNodeAttribute in elasticsearch.yml.
+	ECKPKIRealmNodeAttributeConfigKey = "node.attr." + ECKPKIRealmNodeAttribute
+
+	// PauseOrchestrationAnnotation pauses spec-driven orchestration (rolling upgrades, StatefulSet spec changes, scale
+	// up/down) while keeping housekeeping running (certificate rotation, unicast hosts, user/secret reconciliation,
+	// health monitoring). Defined here (rather than in pkg/controller/common) so the validating webhook can reference
+	// it without introducing an import cycle.
+	PauseOrchestrationAnnotation = "eck.k8s.elastic.co/pause-orchestration"
 )
+
+// IsECKManagedPKIRoleMapping reports whether a role mapping entry is owned by ECK, which then replaces or removes it to
+// match the PKI role mappings it generates. The eck_managed_pki_ prefix alone is not enough, since StackConfigPolicies
+// may use it too, so the metadata set by ECK is also checked.
+func IsECKManagedPKIRoleMapping(name string, mapping any) bool {
+	if !strings.HasPrefix(name, ECKPKIRoleMappingPrefix) {
+		return false
+	}
+	entry, ok := mapping.(map[string]any)
+	if !ok {
+		return false
+	}
+	meta, ok := entry["metadata"].(map[string]any)
+	if !ok {
+		return false
+	}
+	resourceUID, _ := meta[ECKPKIRoleMappingResourceUIDKey].(string)
+	return meta[ECKPKIRoleMappingManagedByKey] == ECKPKIRoleMappingManagedByECK && resourceUID != ""
+}
 
 // DeploymentStatus represents status information about a deployment.
 type DeploymentStatus struct {
@@ -38,6 +109,9 @@ type DeploymentStatus struct {
 	Version string `json:"version,omitempty"`
 	// Health of the deployment.
 	Health DeploymentHealth `json:"health,omitempty"`
+	// Conditions holds the current service state of the deployment.
+	// +optional
+	Conditions Conditions `json:"conditions"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.
@@ -47,6 +121,7 @@ func (ds DeploymentStatus) IsDegraded(prev DeploymentStatus) bool {
 
 // ConfigMapRef is a reference to a config map that exists in the same namespace as the referring resource.
 type ConfigMapRef struct {
+	// ConfigMapName is the name of the config map.
 	ConfigMapName string `json:"configMapName,omitempty"`
 }
 
@@ -59,6 +134,8 @@ type SecretRef struct {
 	// SecretName is the name of the secret.
 	SecretName string `json:"secretName,omitempty"`
 }
+
+var _ AssociationRef = (*LocalObjectSelector)(nil)
 
 // LocalObjectSelector defines a reference to a Kubernetes object corresponding to an Elastic resource managed by the operator
 type LocalObjectSelector struct {
@@ -74,6 +151,16 @@ type LocalObjectSelector struct {
 	ServiceName string `json:"serviceName,omitempty"`
 }
 
+// GetClientCertificateSecretName always returns empty string as LocalObjectSelector does not support client certificates.
+func (o LocalObjectSelector) GetClientCertificateSecretName() string {
+	return ""
+}
+
+// GetAuthenticationMode always returns Credentials as LocalObjectSelector does not support PKI authentication.
+func (o LocalObjectSelector) GetAuthenticationMode() AuthenticationMode {
+	return AuthenticationModeCredentials
+}
+
 // WithDefaultNamespace adds a default namespace to a given LocalObjectSelector if none is set.
 func (o LocalObjectSelector) WithDefaultNamespace(defaultNamespace string) LocalObjectSelector {
 	if len(o.Namespace) > 0 {
@@ -86,7 +173,7 @@ func (o LocalObjectSelector) WithDefaultNamespace(defaultNamespace string) Local
 	}
 }
 
-// NamespacedName is a convenience method to turn an LocalObjectSelector into a NamespacedName.
+// NamespacedName is a convenience method to turn a LocalObjectSelector into a NamespacedName.
 func (o LocalObjectSelector) NamespacedName() types.NamespacedName {
 	return types.NamespacedName{
 		Name:      o.Name,
@@ -96,9 +183,63 @@ func (o LocalObjectSelector) NamespacedName() types.NamespacedName {
 
 // IsDefined checks if the local object selector is not nil and has a name.
 // Namespace is not mandatory as it may be inherited by the parent object.
+//
+// Deprecated: Use IsSet instead.
 func (o *LocalObjectSelector) IsDefined() bool {
-	return o != nil && o.Name != ""
+	if o == nil {
+		return false
+	}
+	return o.IsSet()
 }
+
+// IsSet checks if the local object selector has a name.
+// Namespace is not mandatory as it may be inherited by the parent object.
+func (o LocalObjectSelector) IsSet() bool {
+	return o.Name != ""
+}
+
+// NameOrSecretName returns the name. LocalObjectSelector does not support external references.
+func (o LocalObjectSelector) NameOrSecretName() string {
+	return o.Name
+}
+
+// IsExternal always returns false as LocalObjectSelector does not support external references.
+func (o LocalObjectSelector) IsExternal() bool {
+	return false
+}
+
+// GetName returns the name of the LocalObjectSelector.
+func (o LocalObjectSelector) GetName() string {
+	return o.Name
+}
+
+// GetNamespace returns the namespace of the LocalObjectSelector.
+func (o LocalObjectSelector) GetNamespace() string {
+	return o.Namespace
+}
+
+// GetSecretName always returns empty string as LocalObjectSelector does not support external references.
+func (o LocalObjectSelector) GetSecretName() string {
+	return ""
+}
+
+// GetServiceName returns the service name of the LocalObjectSelector.
+func (o LocalObjectSelector) GetServiceName() string {
+	return o.ServiceName
+}
+
+// IsValid validates the LocalObjectSelector.
+func (o LocalObjectSelector) IsValid() error {
+	if o.Name == "" && o.ServiceName != "" {
+		return errors.New("serviceName can only be used in combination with name")
+	}
+	if o.Name == "" && o.Namespace != "" {
+		return errors.New("namespace can only be used in combination with name")
+	}
+	return nil
+}
+
+var _ AssociationRef = (*ObjectSelector)(nil)
 
 // ObjectSelector defines a reference to a Kubernetes object which can be an Elastic resource managed by the operator
 // or a Secret describing an external Elastic resource not managed by the operator.
@@ -124,6 +265,16 @@ type ObjectSelector struct {
 	// - `api-key`: the key to authenticate against the Elastic resource instead of a username and password (supported only for `elasticsearchRefs` in AgentSpec and in BeatSpec)
 	// This field cannot be used in combination with the other fields name, namespace or serviceName.
 	SecretName string `json:"secretName,omitempty"`
+}
+
+// GetClientCertificateSecretName always returns empty string as ObjectSelector does not support client certificates.
+func (o ObjectSelector) GetClientCertificateSecretName() string {
+	return ""
+}
+
+// GetAuthenticationMode always returns Credentials as ObjectSelector does not support PKI authentication.
+func (o ObjectSelector) GetAuthenticationMode() AuthenticationMode {
+	return AuthenticationModeCredentials
 }
 
 // WithDefaultNamespace adds a default namespace to a given ObjectSelector if none is set.
@@ -158,14 +309,44 @@ func (o ObjectSelector) NamespacedName() types.NamespacedName {
 
 // IsDefined checks if the object selector is not nil and has a name or a secret name.
 // Namespace is not mandatory as it may be inherited by the parent object.
+//
+// Deprecated: Use IsSet instead.
 func (o *ObjectSelector) IsDefined() bool {
-	return o != nil && o.NameOrSecretName() != ""
+	if o == nil {
+		return false
+	}
+	return o.IsSet()
 }
 
 // IsExternal returns true when the object selector references a Kubernetes secret describing an external
 // referenced object not managed by the operator.
 func (o ObjectSelector) IsExternal() bool {
-	return o.IsDefined() && o.SecretName != ""
+	return o.IsSet() && o.SecretName != ""
+}
+
+// IsSet checks if the object selector has a name or a secret name set.
+func (o ObjectSelector) IsSet() bool {
+	return o.NameOrSecretName() != ""
+}
+
+// GetName returns the name of the ObjectSelector.
+func (o ObjectSelector) GetName() string {
+	return o.Name
+}
+
+// GetNamespace returns the namespace of the ObjectSelector.
+func (o ObjectSelector) GetNamespace() string {
+	return o.Namespace
+}
+
+// GetSecretName returns the secret name of the ObjectSelector.
+func (o ObjectSelector) GetSecretName() string {
+	return o.SecretName
+}
+
+// GetServiceName returns the service name of the ObjectSelector.
+func (o ObjectSelector) GetServiceName() string {
+	return o.ServiceName
 }
 
 func (o ObjectSelector) IsValid() error {
@@ -192,6 +373,120 @@ func (o ObjectSelector) ToID() string {
 	return o.NameOrSecretName()
 }
 
+var _ AssociationRef = (*ElasticsearchSelector)(nil)
+
+// ElasticsearchSelector defines a reference to an Elasticsearch cluster managed by the operator
+// or a Secret describing an external cluster not managed by the operator.
+type ElasticsearchSelector struct {
+	ObjectSelector `json:",inline"`
+
+	// ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+	// (tls.crt) and private key (tls.key) for client authentication to the referenced resource.
+	// This field is only relevant when the referenced Elasticsearch cluster has client authentication enabled.
+	// If not specified and the referenced resource requires client authentication, ECK will auto-generate a
+	// client certificate. When authenticationMode is PKI, ECK binds the Elasticsearch role mapping to the
+	// public key of this certificate.
+	ClientCertificateSecretName string `json:"clientCertificateSecretName,omitempty"`
+
+	// AuthenticationMode controls how this component authenticates to Elasticsearch.
+	// Credentials uses a service account token or a username and password. This is used when the field is omitted.
+	// PKI uses the TLS client certificate instead, and requires Elasticsearch 9.6.0+ with
+	// spec.http.tls.client.authentication and spec.auth.pki.enabled. Otherwise the association remains Pending.
+	// PKI is rejected for Enterprise Search and for Fleet-managed Elastic Agents and Fleet Server, and requires
+	// Elastic Maps Server 9.6.0+.
+	// +kubebuilder:validation:Enum=Credentials;PKI
+	AuthenticationMode AuthenticationMode `json:"authenticationMode,omitempty"`
+}
+
+// GetClientCertificateSecretName returns the name of the client certificate secret.
+func (e ElasticsearchSelector) GetClientCertificateSecretName() string {
+	return e.ClientCertificateSecretName
+}
+
+// GetAuthenticationMode returns the authentication mode for this association.
+// Returns AuthenticationModeCredentials when the field is unset.
+func (e ElasticsearchSelector) GetAuthenticationMode() AuthenticationMode {
+	if e.AuthenticationMode == "" {
+		return AuthenticationModeCredentials
+	}
+	return e.AuthenticationMode
+}
+
+// IsValid validates the ElasticsearchSelector, including the embedded ObjectSelector.
+func (e ElasticsearchSelector) IsValid() error {
+	if err := e.ObjectSelector.IsValid(); err != nil {
+		return err
+	}
+	if e.Name == "" && e.ClientCertificateSecretName != "" {
+		return errors.New("clientCertificateSecretName can only be used in combination with name")
+	}
+	if e.Name == "" && e.AuthenticationMode == AuthenticationModePKI {
+		return errors.New("authenticationMode PKI can only be used in combination with name")
+	}
+	return nil
+}
+
+// WithDefaultNamespace adds a default namespace to a given ElasticsearchSelector if none is set.
+func (e ElasticsearchSelector) WithDefaultNamespace(defaultNamespace string) ElasticsearchSelector {
+	if len(e.Namespace) > 0 {
+		return e
+	}
+	return ElasticsearchSelector{
+		ObjectSelector:              e.ObjectSelector.WithDefaultNamespace(defaultNamespace),
+		ClientCertificateSecretName: e.ClientCertificateSecretName,
+		AuthenticationMode:          e.AuthenticationMode,
+	}
+}
+
+var _ AssociationRef = (*FleetServerSelector)(nil)
+
+// FleetServerSelector defines a reference to a Fleet Server managed by the operator
+// or a Secret describing an external Fleet Server not managed by the operator.
+type FleetServerSelector struct {
+	ObjectSelector `json:",inline"`
+
+	// ClientCertificateSecretName is the name of an existing Kubernetes secret containing a client certificate
+	// (tls.crt) and private key (tls.key) for client authentication to the referenced Fleet Server.
+	// This field is only relevant when the referenced Fleet Server has client authentication enabled.
+	// If not specified and the referenced Fleet Server requires client authentication, ECK will auto-generate a
+	// client certificate.
+	// This field can only be used when referencing a Fleet Server managed by ECK (via name); it cannot be
+	// combined with secretName.
+	ClientCertificateSecretName string `json:"clientCertificateSecretName,omitempty"`
+}
+
+// GetClientCertificateSecretName returns the name of the client certificate secret.
+func (f FleetServerSelector) GetClientCertificateSecretName() string {
+	return f.ClientCertificateSecretName
+}
+
+// GetAuthenticationMode always returns Credentials as FleetServerSelector does not support PKI authentication.
+func (f FleetServerSelector) GetAuthenticationMode() AuthenticationMode {
+	return AuthenticationModeCredentials
+}
+
+// IsValid validates the FleetServerSelector, including the embedded ObjectSelector.
+func (f FleetServerSelector) IsValid() error {
+	if err := f.ObjectSelector.IsValid(); err != nil {
+		return err
+	}
+	if f.Name == "" && f.ClientCertificateSecretName != "" {
+		return errors.New("clientCertificateSecretName can only be used in combination with name")
+	}
+	return nil
+}
+
+// WithDefaultNamespace adds a default namespace to a given FleetServerSelector if none is set.
+func (f FleetServerSelector) WithDefaultNamespace(defaultNamespace string) FleetServerSelector {
+	if len(f.Namespace) > 0 {
+		return f
+	}
+	return FleetServerSelector{
+		ObjectSelector:              f.ObjectSelector.WithDefaultNamespace(defaultNamespace),
+		ClientCertificateSecretName: f.ClientCertificateSecretName,
+	}
+}
+
 // HTTPConfig holds the HTTP layer configuration for resources.
 type HTTPConfig struct {
 	// Service defines the template for the associated Kubernetes Service object.
@@ -202,6 +497,22 @@ type HTTPConfig struct {
 
 // Protocol returns the inferrred protocol (http or https) for this configuration.
 func (http HTTPConfig) Protocol() string {
+	if http.TLS.Enabled() {
+		return "https"
+	}
+	return "http"
+}
+
+// HTTPConfigWithClientOptions holds the HTTP layer configuration for resources.
+type HTTPConfigWithClientOptions struct {
+	// Service defines the template for the associated Kubernetes Service object.
+	Service ServiceTemplate `json:"service,omitempty"`
+	// TLS defines options for configuring TLS for HTTP.
+	TLS TLSWithClientOptions `json:"tls,omitempty"`
+}
+
+// Protocol returns the inferred protocol (http or https) for this configuration.
+func (http HTTPConfigWithClientOptions) Protocol() string {
 	if http.TLS.Enabled() {
 		return "https"
 	}
@@ -220,12 +531,39 @@ type TLSOptions struct {
 	// - `tls.crt`: The certificate (or a chain).
 	// - `tls.key`: The private key to the first certificate in the certificate chain.
 	Certificate SecretRef `json:"certificate,omitempty"`
+
+	// CertificateAuthorities is a reference to a config map with a `ca.crt` file that contains one or more
+	// x509 certificates for trusted authorities in PEM format. The operator appends them to the CA bundle it
+	// hands out to clients of this resource, such as associated resources and Stack Monitoring Beats.
+	// Use it if the CA that issued the certificate in `certificate` is not part of `ca.crt` in that secret.
+	// Clients trust only the resulting bundle. Changes to it restart associated resources that trust it.
+	// Only certificates are used, other PEM blocks are ignored.
+	CertificateAuthorities ConfigMapRef `json:"certificateAuthorities,omitempty"`
 }
 
 // Enabled returns true when TLS is enabled based on this option struct.
 func (tls TLSOptions) Enabled() bool {
 	selfSigned := tls.SelfSignedCertificate
 	return selfSigned == nil || !selfSigned.Disabled || tls.Certificate.SecretName != ""
+}
+
+// TLSWithClientOptions extends TLSOptions with client authentication settings.
+type TLSWithClientOptions struct {
+	TLSOptions `json:",inline"`
+
+	// Client holds client configuration options.
+	Client ClientOptions `json:"client,omitempty"`
+}
+
+// Enabled returns true when TLS is enabled based on this option struct.
+func (tls TLSWithClientOptions) Enabled() bool {
+	return tls.TLSOptions.Enabled()
+}
+
+// ClientOptions configures client certificate authentication for incoming connections.
+type ClientOptions struct {
+	// Authentication enables client authentication (enterprise-only feature).
+	Authentication bool `json:"authentication,omitempty"`
 }
 
 // SelfSignedCertificate holds configuration for the self-signed certificate generated by the operator.
@@ -372,6 +710,17 @@ type ConfigSource struct {
 	SecretRef `json:",inline"`
 }
 
+// ConfigMapOrSecretSource references configuration stored in either a Kubernetes Secret or a ConfigMap.
+// At most one of [secretName, configMapName] might be specified.
+type ConfigMapOrSecretSource struct {
+	// SecretRef references a Kubernetes Secret in the same namespace.
+	// +kubebuilder:validation:Optional
+	SecretRef `json:",inline"`
+	// ConfigMapRef references a Kubernetes ConfigMap in the same namespace.
+	// +kubebuilder:validation:Optional
+	ConfigMapRef `json:",inline"`
+}
+
 // HasObservedGeneration allows a return of any object's observed generation.
 // +kubebuilder:object:generate=false
 type HasObservedGeneration interface {
@@ -397,3 +746,8 @@ func IsConfiguredToAllowDowngrades(o metav1.Object) bool {
 	val, exists := o.GetAnnotations()[DisableDowngradeValidationAnnotation]
 	return exists && val == "true"
 }
+
+const (
+	RestrictWatchedResourcesLabelName  = "eck.k8s.elastic.co/watched"
+	RestrictWatchedResourcesLabelValue = "true"
+)

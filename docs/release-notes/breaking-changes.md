@@ -7,12 +7,79 @@ Breaking changes can impact your Elastic applications, potentially disrupting no
 
 % ## Next version [elastic-cloud-kubernetes-nextversion-breaking-changes]
 
-% ::::{dropdown} Title of breaking change 
+% ::::{dropdown} Title of breaking change
 % Description of the breaking change.
 % For more information, check [PR #](PR link).
 % **Impact**<br> Impact of the breaking change.
 % **Action**<br> Steps for mitigating deprecation impact.
 % ::::
+
+## 3.5.0 [elastic-cloud-kubernetes-350-breaking-changes]
+
+::::{dropdown} Rolling restart of Fleet-server pods during operator upgrade
+ECK 3.5.0 includes changes that modify the Fleet-server pod spec, triggering a restart of all Fleet-server pods during the operator upgrade.
+
+**Impact**<br> All Fleet-server pods will be restarted as part of the operator upgrade.
+
+**Action**<br> No action required. Be aware that Fleet-server pods will restart during the upgrade.
+::::
+
+::::{dropdown} Rolling restart of {{es}} and {{product.kibana}} pods during operator upgrade
+ECK 3.5.0 adds the `eck.k8s.elastic.co/watched: "true"` label to the Secrets, Services, and ConfigMaps that the operator manages. This label supports the new opt-in `--restrict-watched-resources` operator flag. Due to a bug, the label also leaked into the {{es}} and {{product.kibana}} pod templates. Because this changes their pod specs, their pods restart during the operator upgrade.
+
+**Impact**<br> All {{es}} and {{product.kibana}} pods will be restarted as part of the operator upgrade. The `--restrict-watched-resources` flag is disabled by default and does not need to be enabled for this restart to occur.
+
+**Action**<br> No action required. Be aware that {{es}} and {{product.kibana}} pods will restart during the upgrade. A future ECK release that fixes this bug removes the label again, which causes another restart of these pods.
+
+For more information, check [PR #9359](https://github.com/elastic/cloud-on-k8s/pull/9359) and [Issue #9786](https://github.com/elastic/cloud-on-k8s/issues/9786).
+::::
+
+## 3.4.1 [elastic-cloud-kubernetes-341-breaking-changes]
+
+There are no breaking changes for ECK 3.4.1
+
+## 3.4.0 [elastic-cloud-kubernetes-340-breaking-changes]
+
+::::{dropdown} Rolling restart of {{es}} pods during operator upgrade
+ECK 3.4.0 includes changes that modify the {{es}} pod spec, triggering a rolling restart of all {{es}} pods during the operator upgrade. These changes include setting `seccompProfile` to `RuntimeDefault` and updated pre-stop hook and readiness probe scripts for client certificate authentication support.
+
+**Impact**<br> All {{es}} pods will be restarted as part of the operator upgrade.
+
+**Action**<br> No action required. Be aware that {{es}} pods will restart during the upgrade.
+::::
+
+::::{dropdown} Rolling restart of {{product.kibana}} pods during operator upgrade and potential OOM risk for low memory limits
+ECK 3.4.0 includes changes that modify the {{product.kibana}} pod spec, triggering a rolling restart of {{product.kibana}} pods during the operator upgrade. These changes include setting `seccompProfile` to `RuntimeDefault`, a new default security context on the init container, and an increase of the default memory limit from 1Gi to 2Gi. The memory limit increase addresses OOM crashes for {{product.kibana}} 9.4.0+ where the 1Gi limit does not provide enough headroom for plugin initialization.
+
+**Impact**<br> {{product.kibana}} pods will be restarted as part of the operator upgrade. Pods without explicit memory limits will consume up to 2Gi of memory instead of 1Gi.
+
+**Action**<br> Ensure that cluster nodes have sufficient memory to accommodate the increased default. If you have explicitly set a memory limit in the {{product.kibana}} `podTemplate`, the memory limit change does not affect you. However, if you have set a memory limit lower than 2Gi, be aware that {{product.kibana}} 9.4.0+ may experience OOM crashes due to the increased V8 heap usage.
+::::
+
+::::{dropdown} Rolling restart of APM Server, Logstash, Elastic Maps Server, and Package Registry pods during operator upgrade
+ECK 3.4.0 sets `seccompProfile: RuntimeDefault` on APM Server, Logstash, Elastic Maps Server, and Package Registry pods, triggering a rolling restart during the operator upgrade. This applies when `--set-default-security-context` is `true`, or `auto-detect` (the default) on non-OpenShift clusters. On OpenShift, `auto-detect` suppresses the injection.
+
+**Impact**<br> These pods restart during the operator upgrade wherever the security context is injected (flag `true`, or `auto-detect` on non-OpenShift). OpenShift is unaffected.
+
+**Action**<br> No action required on standard Kubernetes. On OpenShift, see [known issues](./known-issues.md) for a Logstash-specific case where the flag is incorrectly ignored.
+::::
+
+::::{dropdown} Default PVC handling change for {{es}} volumes
+ECK 3.4.0 unifies how the operator handles default volume claim templates. Previously, the operator only skipped adding a default PVC when a non-PVC volume (such as `emptyDir` or `hostPath`) with the same name existed. Now, it skips the default PVC whenever any volume with the same name exists, including user-provided PVCs.
+
+**Impact**<br> If you defined custom PVC volumes in `podTemplate.spec.volumes` with the same name as a default volume (for example `elasticsearch-data`), those custom volumes were previously ignored and default volumes were provisioned instead. After upgrading, the operator will attempt to use your custom PVC volumes, which may cause a StatefulSet update rejection by Kubernetes.
+
+**Action**<br> If you encounter a StatefulSet update error after upgrading, remove the custom PVC entries from `podTemplate.spec.volumes` that overlap with default volume names.
+::::
+
+
+## 3.3.2 [elastic-cloud-kubernetes-332-breaking-changes]
+
+There are no breaking changes for ECK 3.3.2
+
+## 3.3.1 [elastic-cloud-kubernetes-331-breaking-changes]
+
+There are no breaking changes for ECK 3.3.1
 
 ## 3.3.0 [elastic-cloud-kubernetes-330-breaking-changes]
 

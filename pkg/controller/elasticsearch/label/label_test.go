@@ -12,9 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	v1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -24,10 +22,8 @@ import (
 func TestClusterFromResourceLabels(t *testing.T) {
 	// test when label is not set
 	pod := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
-			Namespace: "namespace",
-		},
+		Name:      "name",
+		Namespace: "namespace",
 	}
 	accessor, err := meta.Accessor(&pod)
 	require.NoError(t, err)
@@ -111,11 +107,11 @@ func TestNewPodLabels(t *testing.T) {
 				ssetName: "sset",
 				ver:      version.From(7, 1, 0),
 				nodeRoles: &v1.Node{
-					Master:    ptr.To[bool](false),
-					Data:      ptr.To[bool](false),
-					Ingest:    ptr.To[bool](false),
-					ML:        ptr.To[bool](false),
-					Transform: ptr.To[bool](false),
+					Master:    new(false),
+					Data:      new(false),
+					Ingest:    new(false),
+					ML:        new(false),
+					Transform: new(false),
 				},
 				scheme: "https",
 			},
@@ -139,12 +135,12 @@ func TestNewPodLabels(t *testing.T) {
 				ssetName: "sset",
 				ver:      version.From(7, 3, 0),
 				nodeRoles: &v1.Node{
-					Master:     ptr.To[bool](false),
-					Data:       ptr.To[bool](true),
-					Ingest:     ptr.To[bool](false),
-					ML:         ptr.To[bool](false),
-					Transform:  ptr.To[bool](true),
-					VotingOnly: ptr.To[bool](true),
+					Master:     new(false),
+					Data:       new(true),
+					Ingest:     new(false),
+					ML:         new(false),
+					Transform:  new(true),
+					VotingOnly: new(true),
 				},
 				scheme: "https",
 			},
@@ -169,11 +165,11 @@ func TestNewPodLabels(t *testing.T) {
 				ssetName: "sset",
 				ver:      version.From(7, 7, 0),
 				nodeRoles: &v1.Node{
-					Master:    ptr.To[bool](false),
-					Data:      ptr.To[bool](true),
-					Ingest:    ptr.To[bool](false),
-					ML:        ptr.To[bool](false),
-					Transform: ptr.To[bool](true),
+					Master:    new(false),
+					Data:      new(true),
+					Ingest:    new(false),
+					ML:        new(false),
+					Transform: new(true),
 				},
 				scheme: "https",
 			},

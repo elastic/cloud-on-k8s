@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestHashObject(t *testing.T) {
@@ -17,13 +16,11 @@ func TestHashObject(t *testing.T) {
 	require.Equal(t, HashObject(nil), HashObject(nil))
 
 	pod := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "name",
-			Labels: map[string]string{
-				"a": "b",
-				"c": "d",
-			},
+		Namespace: "ns",
+		Name:      "name",
+		Labels: map[string]string{
+			"a": "b",
+			"c": "d",
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
@@ -40,13 +37,11 @@ func TestHashObject(t *testing.T) {
 		},
 	}
 	samePod := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "name",
-			Labels: map[string]string{
-				"a": "b",
-				"c": "d",
-			},
+		Namespace: "ns",
+		Name:      "name",
+		Labels: map[string]string{
+			"a": "b",
+			"c": "d",
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{

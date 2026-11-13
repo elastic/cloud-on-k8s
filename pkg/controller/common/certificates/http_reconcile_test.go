@@ -5,6 +5,7 @@
 package certificates
 
 import (
+	"bytes"
 	"context"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
@@ -13,6 +14,7 @@ import (
 	"encoding/pem"
 	"net"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -20,7 +22,11 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -56,12 +62,10 @@ var (
 	testCA            *CA
 	testRSAPrivateKey *rsa.PrivateKey
 	cert, pemTLS      []byte
-	testES            = esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"}}
+	testES            = esv1.Elasticsearch{Name: "test-es-name", Namespace: "test-namespace"}
 	testSvc           = corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-service",
-			Namespace: "default",
-		},
+		Name:      "test-service",
+		Namespace: "default",
 		Spec: corev1.ServiceSpec{
 			ClusterIP: "2.2.3.3",
 		},
@@ -91,7 +95,7 @@ func init() {
 	validatedCertificateTemplate := createValidatedHTTPCertificateTemplate(
 		k8s.ExtractNamespacedName(&testES),
 		esv1.ESNamer,
-		testES.Spec.HTTP.TLS,
+		testES.Spec.HTTP.TLS.TLSOptions,
 		[]commonv1.SubjectAlternativeName{},
 		[]corev1.Service{testSvc},
 		testCSR,
@@ -113,17 +117,15 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 	key := loadFileBytes("tls.key")
 
 	owner := &esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
-		TypeMeta:   metav1.TypeMeta{Kind: esv1.Kind},
+		Name: "test-es-name", Namespace: "test-namespace",
+		Kind: esv1.Kind,
 	}
 
 	certificate := &CertificatesSecret{
-		Secret: corev1.Secret{
-			Data: map[string][]byte{
-				CAFileName:   ca,
-				CertFileName: tls,
-				KeyFileName:  key,
-			},
+		Data: map[string][]byte{
+			CAFileName:   ca,
+			CertFileName: tls,
+			KeyFileName:  key,
 		},
 	}
 
@@ -135,20 +137,19 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 	}
 
 	labels := map[string]string{
-		"expected":                         "default-labels",
-		reconciler.SoftOwnerKindLabel:      owner.Kind,
-		reconciler.SoftOwnerNamespaceLabel: owner.Namespace,
-		reconciler.SoftOwnerNameLabel:      owner.Name,
+		"expected": "default-labels",
+		commonv1.RestrictWatchedResourcesLabelName: "true",
+		reconciler.SoftOwnerKindLabel:              owner.Kind,
+		reconciler.SoftOwnerNamespaceLabel:         owner.Namespace,
+		reconciler.SoftOwnerNameLabel:              owner.Name,
 	}
 
 	mkWantedSecret := func(t *testing.T) *corev1.Secret {
 		t.Helper()
 		wantSecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: namespacedSecretName.Namespace,
-				Name:      namespacedSecretName.Name,
-				Labels:    labels,
-			},
+			Namespace: namespacedSecretName.Namespace,
+			Name:      namespacedSecretName.Name,
+			Labels:    labels,
 			Data: map[string][]byte{
 				CertFileName: tls,
 				CAFileName:   ca,
@@ -222,10 +223,11 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			client := tt.client(t)
 			err := Reconciler{
-				K8sClient: client,
-				Owner:     owner,
-				Namer:     esv1.ESNamer,
-				Metadata:  metadata.Metadata{Labels: labels},
+				K8sClient:      client,
+				DynamicWatches: watches.NewDynamicWatches(),
+				Owner:          owner,
+				Namer:          esv1.ESNamer,
+				Metadata:       metadata.Metadata{Labels: labels},
 			}.ReconcilePublicHTTPCerts(context.Background(), certificate)
 			if tt.wantErr {
 				require.Error(t, err, "Failed to reconcile")
@@ -245,21 +247,33 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 func TestReconcileInternalHTTPCerts(t *testing.T) {
 	tls := loadFileBytes("tls.crt")
 	key := loadFileBytes("tls.key")
-	testCA2, err := NewSelfSignedCA(CABuilderOptions{
-		Subject:    pkix.Name{CommonName: "test-common-name"},
-		PrivateKey: testRSAPrivateKey,
+	// Create a CA with a DIFFERENT SKI to simulate custom CA rotation
+	// where the SKI changes even though the private key is the same
+	differentSKI := []byte{
+		0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+		0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10,
+	}
+	testCAWithDifferentSKI, err := NewSelfSignedCA(CABuilderOptions{
+		Subject:      pkix.Name{CommonName: "test-common-name"},
+		PrivateKey:   testRSAPrivateKey,
+		SubjectKeyID: differentSKI, // Force a different SKI
 	})
-	assert.NoError(t, err, "Failed to create new self signed CA")
+	assert.NoError(t, err, "Failed to create new self signed CA with different SKI")
+	// Create a CA with the SAME SKI to simulate ECK-managed CA rotation with SKI pinning
+	testCAWithSameSKI, err := NewSelfSignedCA(CABuilderOptions{
+		Subject:      pkix.Name{CommonName: "test-common-name"},
+		PrivateKey:   testRSAPrivateKey,
+		SubjectKeyID: testCA.Cert.SubjectKeyId, // Same SKI as original
+	})
+	assert.NoError(t, err, "Failed to create new self signed CA with same SKI")
 	testPrivateKey, err := EncodePEMPrivateKey(testRSAPrivateKey)
 	assert.NoError(t, err, "Failed to encode private key")
 
 	customCertFixture := CertificatesSecret{
-		Secret: corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "my-cert", Namespace: "test-namespace"},
-			Data: map[string][]byte{
-				CertFileName: tls,
-				KeyFileName:  key,
-			},
+		Name: "my-cert", Namespace: "test-namespace",
+		Data: map[string][]byte{
+			CertFileName: tls,
+			KeyFileName:  key,
 		},
 	}
 	type args struct {
@@ -277,43 +291,95 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "should update CA in es-http-certs-public",
+			name: "should reissue certificate when CA rotates with different SKI",
 			args: args{
 				initialObjects: []client.Object{
-					// es-http-ca-internal uses a new CA
+					// es-http-ca-internal uses a new CA (rotated with same private key but different SKI)
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      testES.Name + "-es-http-ca-internal",
-							Namespace: testES.Namespace,
-						},
+						Name:      testES.Name + "-es-http-ca-internal",
+						Namespace: testES.Namespace,
 						Data: map[string][]byte{
 							"tls.key": testPrivateKey,
-							"tls.crt": EncodePEMCert(testCA2.Cert.Raw), // new CA
+							"tls.crt": EncodePEMCert(testCAWithDifferentSKI.Cert.Raw), // new CA with different SKI
 						},
 					},
-					// es-http-certs-internal holds the old CA
+					// es-http-certs-internal holds cert signed by old CA
 					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      testES.Name + "-es-http-certs-internal",
-							Namespace: testES.Namespace,
-						},
+						Name:      testES.Name + "-es-http-certs-internal",
+						Namespace: testES.Namespace,
 						Data: map[string][]byte{
 							"tls.key": testPrivateKey,
-							"tls.crt": pemTLS, // PEM TLS with the OLD CA
+							"tls.crt": pemTLS, // PEM TLS with the OLD CA in chain
 						},
 					},
 				},
 				es:       testES,
-				ca:       testCA2, // es-http-certs-internal should be updated with the new CA
+				ca:       testCAWithDifferentSKI, // new CA with different SKI - certificate should be reissued
 				services: []corev1.Service{testSvc},
 			},
 			want: func(t *testing.T, c k8s.Client, cs *CertificatesSecret) {
 				t.Helper()
 				assert.NotNil(t, cs)
 				if cs != nil {
+					// Private key should remain the same
 					assert.Equal(t, testPrivateKey, cs.Data["tls.key"], "Private key should not have been updated")
-					assert.Equal(t, EncodePEMCert(cert, testCA2.Cert.Raw), cs.Data["tls.crt"], "Unexpected tls.crt content in *-es-http-certs-public")
-					assert.Equal(t, EncodePEMCert(testCA2.Cert.Raw), cs.Data["ca.crt"], "Unexpected CA certificate in *-es-http-certs-public")
+					// CA certificate should be the new CA
+					assert.Equal(t, EncodePEMCert(testCAWithDifferentSKI.Cert.Raw), cs.Data["ca.crt"], "Unexpected CA certificate in *-es-http-certs-public")
+					// Certificate should have been reissued (new cert with new CA in chain)
+					certs, err := ParsePEMCerts(cs.Data["tls.crt"])
+					assert.NoError(t, err)
+					assert.GreaterOrEqual(t, len(certs), 1, "Should have at least one certificate")
+					// Find the CA in the chain
+					var foundCA bool
+					for _, c := range certs {
+						if c.IsCA && c.Equal(testCAWithDifferentSKI.Cert) {
+							foundCA = true
+							break
+						}
+					}
+					assert.True(t, foundCA, "New CA should be in the certificate chain")
+				}
+			},
+		},
+		{
+			name: "should NOT reissue leaf certificate when CA rotates with same SKI",
+			args: args{
+				initialObjects: []client.Object{
+					// es-http-ca-internal uses a new CA (rotated with same private key AND same SKI)
+					&corev1.Secret{
+						Name:      testES.Name + "-es-http-ca-internal",
+						Namespace: testES.Namespace,
+						Data: map[string][]byte{
+							"tls.key": testPrivateKey,
+							"tls.crt": EncodePEMCert(testCAWithSameSKI.Cert.Raw), // new CA with same SKI
+						},
+					},
+					// es-http-certs-internal holds cert signed by old CA (but same SKI)
+					&corev1.Secret{
+						Name:      testES.Name + "-es-http-certs-internal",
+						Namespace: testES.Namespace,
+						Data: map[string][]byte{
+							"tls.key": testPrivateKey,
+							"tls.crt": pemTLS, // PEM TLS with the OLD CA in chain (same SKI)
+						},
+					},
+				},
+				es:       testES,
+				ca:       testCAWithSameSKI, // new CA with same SKI - leaf certificate should NOT be reissued
+				services: []corev1.Service{testSvc},
+			},
+			want: func(t *testing.T, c k8s.Client, cs *CertificatesSecret) {
+				t.Helper()
+				assert.NotNil(t, cs)
+				if cs != nil {
+					// Private key should remain the same
+					assert.Equal(t, testPrivateKey, cs.Data["tls.key"], "Private key should not have been updated")
+					// Leaf cert should NOT be reissued (same cert bytes)
+					// but tls.crt should be updated to include the new CA in the chain
+					expectedTLSCrt := EncodePEMCert(cert, testCAWithSameSKI.Cert.Raw)
+					assert.Equal(t, expectedTLSCrt, cs.Data["tls.crt"], "tls.crt should have updated CA in chain but same leaf cert")
+					// ca.crt should be updated to the new CA
+					assert.Equal(t, EncodePEMCert(testCAWithSameSKI.Cert.Raw), cs.Data["ca.crt"], "ca.crt should be updated to new CA")
 				}
 			},
 		},
@@ -335,10 +401,12 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
 					Spec: esv1.ElasticsearchSpec{
-						HTTP: commonv1.HTTPConfig{
-							TLS: commonv1.TLSOptions{
-								Certificate: commonv1.SecretRef{
-									SecretName: "my-cert",
+						HTTP: commonv1.HTTPConfigWithClientOptions{
+							TLS: commonv1.TLSWithClientOptions{
+								TLSOptions: commonv1.TLSOptions{
+									Certificate: commonv1.SecretRef{
+										SecretName: "my-cert",
+									},
 								},
 							},
 						},
@@ -370,10 +438,12 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
 					Spec: esv1.ElasticsearchSpec{
-						HTTP: commonv1.HTTPConfig{
-							TLS: commonv1.TLSOptions{
-								Certificate: commonv1.SecretRef{
-									SecretName: "my-cert",
+						HTTP: commonv1.HTTPConfigWithClientOptions{
+							TLS: commonv1.TLSWithClientOptions{
+								TLSOptions: commonv1.TLSOptions{
+									Certificate: commonv1.SecretRef{
+										SecretName: "my-cert",
+									},
 								},
 							},
 						},
@@ -405,10 +475,12 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
 					Spec: esv1.ElasticsearchSpec{
-						HTTP: commonv1.HTTPConfig{
-							TLS: commonv1.TLSOptions{
-								Certificate: commonv1.SecretRef{
-									SecretName: "my-cert",
+						HTTP: commonv1.HTTPConfigWithClientOptions{
+							TLS: commonv1.TLSWithClientOptions{
+								TLSOptions: commonv1.TLSOptions{
+									Certificate: commonv1.SecretRef{
+										SecretName: "my-cert",
+									},
 								},
 							},
 						},
@@ -416,13 +488,11 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				},
 				ca: testCA,
 				custCerts: &CertificatesSecret{
-					Secret: corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Name: "my-cert", Namespace: "test-namespace"},
-						Data: map[string][]byte{
-							CAFileName:   EncodePEMCert(testCA.Cert.Raw),
-							CertFileName: tls,
-							KeyFileName:  key,
-						},
+					Name: "my-cert", Namespace: "test-namespace",
+					Data: map[string][]byte{
+						CAFileName:   EncodePEMCert(testCA.Cert.Raw),
+						CertFileName: tls,
+						KeyFileName:  key,
 					},
 				},
 			},
@@ -440,6 +510,50 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				assert.Equal(t, internalSecret.Data[CAFileName], EncodePEMCert(testCA.Cert.Raw))
 			},
 		},
+		{
+			name: "should add watched label to internal cert secret even when custom cert data is unchanged",
+			args: args{
+				es: esv1.Elasticsearch{
+					Name:      "test-es-name",
+					Namespace: "test-namespace",
+					Spec: esv1.ElasticsearchSpec{
+						HTTP: commonv1.HTTPConfigWithClientOptions{
+							TLS: commonv1.TLSWithClientOptions{
+								TLSOptions: commonv1.TLSOptions{
+									Certificate: commonv1.SecretRef{SecretName: "my-cert"},
+								},
+							},
+						},
+					},
+				},
+				ca:        testCA,
+				custCerts: &customCertFixture,
+				// Pre-existing internal cert secret with the correct cert data but without the watched label.
+				// Simulates an upgrade scenario where the label was never applied because needsUpdate was
+				// incorrectly overwritten by populateFromCustomCertificateContents.
+				initialObjects: []client.Object{
+					&corev1.Secret{
+						Name:      "test-es-name-es-http-certs-internal",
+						Namespace: "test-namespace",
+						Labels: map[string]string{
+							"common.k8s.elastic.co/type": "elasticsearch",
+						},
+						Data: map[string][]byte{
+							CertFileName: tls,
+							KeyFileName:  key,
+							CAFileName:   EncodePEMCert(testCA.Cert.Raw),
+						},
+					},
+				},
+			},
+			want: func(t *testing.T, c k8s.Client, cs *CertificatesSecret) {
+				t.Helper()
+				internalSecret := &corev1.Secret{}
+				assert.NoError(t, c.Get(context.Background(), k8s.ExtractNamespacedName(cs), internalSecret))
+				assert.Equal(t, commonv1.RestrictWatchedResourcesLabelValue, internalSecret.Labels[commonv1.RestrictWatchedResourcesLabelName],
+					"watched label must be present even when cert data is unchanged")
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -449,7 +563,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				K8sClient:      c,
 				DynamicWatches: w,
 				Owner:          &tt.args.es,
-				TLSOptions:     tt.args.es.Spec.HTTP.TLS,
+				TLSOptions:     tt.args.es.Spec.HTTP.TLS.TLSOptions,
 				Namer:          esv1.ESNamer,
 				Metadata:       metadata.Metadata{},
 				Services:       tt.args.services,
@@ -491,21 +605,23 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
 					Spec: esv1.ElasticsearchSpec{
-						HTTP: commonv1.HTTPConfig{
-							TLS: commonv1.TLSOptions{
-								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-									SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
-										{
-											DNS: sanDNS1,
-										},
-										{
-											DNS: sanDNS2,
-										},
-										{
-											IP: sanIP1,
-										},
-										{
-											IP: sanIPv6,
+						HTTP: commonv1.HTTPConfigWithClientOptions{
+							TLS: commonv1.TLSWithClientOptions{
+								TLSOptions: commonv1.TLSOptions{
+									SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+										SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
+											{
+												DNS: sanDNS1,
+											},
+											{
+												DNS: sanDNS2,
+											},
+											{
+												IP: sanIP1,
+											},
+											{
+												IP: sanIPv6,
+											},
 										},
 									},
 								},
@@ -515,10 +631,8 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 				},
 				svcs: []corev1.Service{
 					{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: "svc-namespace",
-							Name:      "svc-name",
-						},
+						Namespace: "svc-namespace",
+						Name:      "svc-name",
 						Spec: corev1.ServiceSpec{
 							ClusterIP: "10.11.12.13",
 						},
@@ -553,7 +667,7 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 			got := createValidatedHTTPCertificateTemplate(
 				k8s.ExtractNamespacedName(&tt.args.es),
 				esv1.ESNamer,
-				tt.args.es.Spec.HTTP.TLS,
+				tt.args.es.Spec.HTTP.TLS.TLSOptions,
 				tt.args.extraHTTPSANs,
 				tt.args.svcs,
 				&x509.CertificateRequest{},
@@ -568,12 +682,14 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 
 func Test_getHTTPCertificate(t *testing.T) {
 	esWithSAN := testES.DeepCopy()
-	esWithSAN.Spec.HTTP = commonv1.HTTPConfig{
-		TLS: commonv1.TLSOptions{
-			SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-				SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
-					{
-						DNS: "search.example.com",
+	esWithSAN.Spec.HTTP = commonv1.HTTPConfigWithClientOptions{
+		TLS: commonv1.TLSWithClientOptions{
+			TLSOptions: commonv1.TLSOptions{
+				SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+					SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
+						{
+							DNS: "search.example.com",
+						},
 					},
 				},
 			},
@@ -658,7 +774,7 @@ func Test_getHTTPCertificate(t *testing.T) {
 				context.Background(),
 				k8s.ExtractNamespacedName(&tt.args.es),
 				esv1.ESNamer,
-				tt.args.es.Spec.HTTP.TLS,
+				tt.args.es.Spec.HTTP.TLS.TLSOptions,
 				tt.args.controllerSANs,
 				&tt.args.secret,
 				[]corev1.Service{testSvc},
@@ -667,6 +783,276 @@ func Test_getHTTPCertificate(t *testing.T) {
 			); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("shouldIssueNewCertificate() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func Test_ensureInternalSelfSignedCertificateSecretContents_UpdatesCAChainWhenLeafIsReused(t *testing.T) {
+	// Build a rotated CA that keeps the same private key + same SKI.
+	// In this setup the existing leaf can still be considered valid by AKI->SKI checks,
+	// so reconcile may decide to reuse the leaf certificate bytes.
+	rotatedCA, err := NewSelfSignedCA(CABuilderOptions{
+		Subject:      pkix.Name{CommonName: "test-common-name"},
+		PrivateKey:   testRSAPrivateKey,
+		SubjectKeyID: testCA.Cert.SubjectKeyId,
+	})
+	require.NoError(t, err)
+	require.False(t, testCA.Cert.Equal(rotatedCA.Cert), "rotated CA should be a different certificate")
+	assert.Equal(t, testCA.Cert.SubjectKeyId, rotatedCA.Cert.SubjectKeyId, "rotated CA should preserve SKI")
+
+	privateKey, err := EncodePEMPrivateKey(testRSAPrivateKey)
+	require.NoError(t, err)
+
+	// Seed the secret with OLD CA material:
+	// - ca.crt points to old CA
+	// - tls.crt contains a leaf signed by old CA and old CA in chain
+	secret := &corev1.Secret{
+		Name:      InternalCertsSecretName(esv1.ESNamer, testES.Name),
+		Namespace: testES.Namespace,
+		Data: map[string][]byte{
+			KeyFileName:  privateKey,
+			CAFileName:   EncodePEMCert(testCA.Cert.Raw),
+			CertFileName: pemTLS, // leaf signed by testCA with testCA in chain
+		},
+	}
+
+	// Reconcile against the rotated CA.
+	// Expected behavior:
+	// - leaf may be reused (same key + same SKI path is still valid),
+	// - but CA material in secret should still be refreshed to rotated CA.
+	changed, err := ensureInternalSelfSignedCertificateSecretContents(
+		context.Background(),
+		secret,
+		k8s.ExtractNamespacedName(&testES),
+		esv1.ESNamer,
+		testES.Spec.HTTP.TLS.TLSOptions,
+		nil,
+		[]corev1.Service{testSvc},
+		rotatedCA,
+		RotationParams{
+			Validity:     DefaultCertValidity,
+			RotateBefore: DefaultRotateBefore,
+		},
+	)
+	require.NoError(t, err)
+
+	// ca.crt and tls.crt chain should be rewritten with the current CA.
+	assert.True(t, changed, "CA data should be refreshed even when leaf certificate is reused")
+	assert.Equal(t, EncodePEMCert(rotatedCA.Cert.Raw), secret.Data[CAFileName], "ca.crt should be updated to rotated CA")
+
+	chain, err := ParsePEMCerts(secret.Data[CertFileName])
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(chain), 2, "tls.crt should include leaf + CA chain")
+	assert.True(t, chain[1].Equal(rotatedCA.Cert), "tls.crt chain should include rotated CA")
+}
+
+func TestReconcilePublicHTTPCerts_AdditionalCAs(t *testing.T) {
+	owner := &esv1.Elasticsearch{Name: "test-es-name", Namespace: "test-namespace"}
+	ownerNSN := k8s.ExtractNamespacedName(owner)
+	publicSecretNSN := PublicCertsSecretRef(esv1.ESNamer, ownerNSN)
+	watchKey := AdditionalCAWatchKey(esv1.ESNamer, ownerNSN)
+
+	internal := &CertificatesSecret{Data: map[string][]byte{
+		CertFileName: pemTLS,
+		CAFileName:   EncodePEMCert(testCA.Cert.Raw),
+	}}
+	internalWithoutCA := &CertificatesSecret{Data: map[string][]byte{CertFileName: pemTLS}}
+	extraCA := EncodePEMCert(testCA.Cert.Raw)
+	extraCANoNewline := bytes.TrimSuffix(extraCA, []byte("\n"))
+	extraCAWithKey := append(append([]byte{}, extraCA...), []byte(testPemPrivateKey)...)
+
+	configMap := func(data map[string]string) *corev1.ConfigMap {
+		return &corev1.ConfigMap{
+			Namespace: ownerNSN.Namespace, Name: "extra-cas",
+			Data: data,
+		}
+	}
+	ref := commonv1.ConfigMapRef{ConfigMapName: "extra-cas"}
+	tlsDisabled := &commonv1.SelfSignedCertificate{Disabled: true}
+
+	tests := []struct {
+		name         string
+		tls          commonv1.TLSOptions
+		objs         []client.Object
+		noInternalCA bool
+		wantCA       []byte
+		wantErr      string
+		wantWatch    bool
+	}{
+		{
+			name:   "no additional CAs: CA unchanged",
+			wantCA: internal.CAPem(),
+		},
+		{
+			name:      "additional CAs are appended",
+			tls:       commonv1.TLSOptions{CertificateAuthorities: ref},
+			objs:      []client.Object{configMap(map[string]string{CAFileName: string(extraCA)})},
+			wantCA:    append(append([]byte{}, internal.CAPem()...), extraCA...),
+			wantWatch: true,
+		},
+		{
+			name:         "additional CAs without internal CA",
+			tls:          commonv1.TLSOptions{CertificateAuthorities: ref},
+			objs:         []client.Object{configMap(map[string]string{CAFileName: string(extraCA)})},
+			noInternalCA: true,
+			wantCA:       extraCA,
+			wantWatch:    true,
+		},
+		{
+			name:      "missing trailing newline is handled",
+			tls:       commonv1.TLSOptions{CertificateAuthorities: ref},
+			objs:      []client.Object{configMap(map[string]string{CAFileName: string(extraCANoNewline)})},
+			wantCA:    append(append([]byte{}, internal.CAPem()...), extraCA...),
+			wantWatch: true,
+		},
+		{
+			name:      "non-certificate PEM blocks such as private keys are dropped",
+			tls:       commonv1.TLSOptions{CertificateAuthorities: ref},
+			objs:      []client.Object{configMap(map[string]string{CAFileName: string(extraCAWithKey)})},
+			wantCA:    append(append([]byte{}, internal.CAPem()...), extraCA...),
+			wantWatch: true,
+		},
+		{
+			name:      "missing config map",
+			tls:       commonv1.TLSOptions{CertificateAuthorities: ref},
+			wantErr:   "could not retrieve config map",
+			wantWatch: true,
+		},
+		{
+			name:      "config map without ca.crt",
+			tls:       commonv1.TLSOptions{CertificateAuthorities: ref},
+			objs:      []client.Object{configMap(map[string]string{"other": "x"})},
+			wantErr:   "must contain ca.crt",
+			wantWatch: true,
+		},
+		{
+			name:      "certificate block with invalid content",
+			tls:       commonv1.TLSOptions{CertificateAuthorities: ref},
+			objs:      []client.Object{configMap(map[string]string{CAFileName: string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("garbage")}))})},
+			wantErr:   "contains invalid certificates",
+			wantWatch: true,
+		},
+		{
+			name:      "no PEM block",
+			tls:       commonv1.TLSOptions{CertificateAuthorities: ref},
+			objs:      []client.Object{configMap(map[string]string{CAFileName: "not a certificate"})},
+			wantErr:   "no certificate found",
+			wantWatch: true,
+		},
+		{
+			name:   "stale reference is ignored if TLS is disabled",
+			tls:    commonv1.TLSOptions{CertificateAuthorities: ref, SelfSignedCertificate: tlsDisabled},
+			wantCA: internal.CAPem(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := k8s.NewFakeClient(tt.objs...)
+			dw := watches.NewDynamicWatches()
+			r := Reconciler{
+				K8sClient:      c,
+				DynamicWatches: dw,
+				Owner:          owner,
+				Namer:          esv1.ESNamer,
+				TLSOptions:     tt.tls,
+			}
+			certs := internal
+			if tt.noInternalCA {
+				certs = internalWithoutCA
+			}
+			err := r.ReconcilePublicHTTPCerts(t.Context(), certs)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+				var got corev1.Secret
+				require.NoError(t, c.Get(t.Context(), publicSecretNSN, &got))
+				assert.Equal(t, string(tt.wantCA), string(got.Data[CAFileName]))
+				assert.Equal(t, pemTLS, got.Data[CertFileName])
+			}
+			assert.Equal(t, tt.wantWatch, slices.Contains(dw.ConfigMaps.Registrations(), watchKey))
+		})
+	}
+}
+
+func TestReconcilePublicHTTPCerts_AdditionalCAsWatchRelease(t *testing.T) {
+	owner := &esv1.Elasticsearch{Name: "test-es-name", Namespace: "test-namespace"}
+	ownerNSN := k8s.ExtractNamespacedName(owner)
+	watchKey := AdditionalCAWatchKey(esv1.ESNamer, ownerNSN)
+	internal := &CertificatesSecret{Data: map[string][]byte{CertFileName: pemTLS, CAFileName: EncodePEMCert(testCA.Cert.Raw)}}
+	cm := &corev1.ConfigMap{Namespace: ownerNSN.Namespace, Name: "extra-cas", Data: map[string]string{CAFileName: string(EncodePEMCert(testCA.Cert.Raw))}}
+
+	newReconciler := func(dw watches.DynamicWatches, tls commonv1.TLSOptions) Reconciler {
+		return Reconciler{
+			K8sClient:      k8s.NewFakeClient(cm),
+			DynamicWatches: dw,
+			Owner:          owner,
+			Namer:          esv1.ESNamer,
+			TLSOptions:     tls,
+		}
+	}
+	withRef := commonv1.TLSOptions{CertificateAuthorities: commonv1.ConfigMapRef{ConfigMapName: "extra-cas"}}
+
+	t.Run("watch enqueues the owner when the referenced config map changes", func(t *testing.T) {
+		dw := watches.NewDynamicWatches()
+		require.NoError(t, newReconciler(dw, withRef).ReconcilePublicHTTPCerts(t.Context(), internal))
+
+		q := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[reconcile.Request]())
+		defer q.ShutDown()
+
+		other := &corev1.ConfigMap{Namespace: ownerNSN.Namespace, Name: "other"}
+		dw.ConfigMaps.Create(t.Context(), event.TypedCreateEvent[*corev1.ConfigMap]{Object: other}, q)
+		assert.Equal(t, 0, q.Len())
+
+		dw.ConfigMaps.Create(t.Context(), event.TypedCreateEvent[*corev1.ConfigMap]{Object: cm}, q)
+		require.Equal(t, 1, q.Len())
+		req, _ := q.Get()
+		assert.Equal(t, reconcile.Request{NamespacedName: ownerNSN}, req)
+	})
+
+	t.Run("watch is removed when the reference is removed", func(t *testing.T) {
+		dw := watches.NewDynamicWatches()
+		require.NoError(t, newReconciler(dw, withRef).ReconcilePublicHTTPCerts(t.Context(), internal))
+		require.Contains(t, dw.ConfigMaps.Registrations(), watchKey)
+
+		require.NoError(t, newReconciler(dw, commonv1.TLSOptions{}).ReconcilePublicHTTPCerts(t.Context(), internal))
+		assert.NotContains(t, dw.ConfigMaps.Registrations(), watchKey)
+	})
+
+	t.Run("watch is removed when TLS is disabled", func(t *testing.T) {
+		dw := watches.NewDynamicWatches()
+		require.NoError(t, newReconciler(dw, withRef).ReconcilePublicHTTPCerts(t.Context(), internal))
+		require.Contains(t, dw.ConfigMaps.Registrations(), watchKey)
+
+		disabled := withRef
+		disabled.SelfSignedCertificate = &commonv1.SelfSignedCertificate{Disabled: true}
+		require.NoError(t, newReconciler(dw, disabled).ReconcilePublicHTTPCerts(t.Context(), internal))
+		assert.NotContains(t, dw.ConfigMaps.Registrations(), watchKey)
+	})
+
+	t.Run("watch is removed together with the certificate secrets", func(t *testing.T) {
+		dw := watches.NewDynamicWatches()
+		r := newReconciler(dw, withRef)
+		require.NoError(t, r.ReconcilePublicHTTPCerts(t.Context(), internal))
+		require.Contains(t, dw.ConfigMaps.Registrations(), watchKey)
+
+		require.NoError(t, r.removeCAAndHTTPCertsSecrets(t.Context()))
+		assert.NotContains(t, dw.ConfigMaps.Registrations(), watchKey)
+	})
+}
+
+func TestWatchKeys_NamespaceScoped(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b types.NamespacedName
+	}{
+		{name: "same name, different namespaces", a: types.NamespacedName{Namespace: "ns1", Name: "es"}, b: types.NamespacedName{Namespace: "ns2", Name: "es"}},
+		{name: "dash shifted between namespace and name", a: types.NamespacedName{Namespace: "team-a", Name: "es"}, b: types.NamespacedName{Namespace: "team", Name: "a-es"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.NotEqual(t, AdditionalCAWatchKey(esv1.ESNamer, tt.a), AdditionalCAWatchKey(esv1.ESNamer, tt.b))
+			assert.NotEqual(t, CertificateWatchKey(esv1.ESNamer, tt.a), CertificateWatchKey(esv1.ESNamer, tt.b))
 		})
 	}
 }

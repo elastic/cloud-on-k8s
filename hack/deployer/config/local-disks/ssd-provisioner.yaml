@@ -71,18 +71,76 @@ data:
     echo "NVMe SSD provisioning is done"
   entrypoint.sh: |-
     #!/bin/sh
-    for i in $(seq 1 10);
-    do
-    disk_name="/mnt/disks/ssd0/disk-$i"
-    mount_point="/mnt/disks/pvs/pv-$i"
-    echo "Creating pv-$i"
-    mkdir -p "${disk_name}" "${mount_point}"
-    if mountpoint -q -- "${mount_point}"; then
-      echo "${mount_point} already mounted"
-    else
-      echo "Binding ${disk_name} to ${mount_point}"
-      mount --bind "${disk_name}" "${mount_point}"
-    fi
+    # Each PV is a fixed-size (default 10Gi) loop-backed ext4 filesystem so that df (and thus
+    # "remaining space" as seen by Pods) reflects the constraint, not the whole disk.
+    # Requires the first NVMe instance store device to have at least (PV_COUNT * PV_SIZE_GB) GiB
+    # free (e.g. 110Gi for default 10x11Gi). No runtime check is performed; use instance types
+    # with sufficient NVMe capacity (e.g. c5d.2xlarge has 200GB).
+    # PV_SIZE_GB is the backing file size; usable space is ~10Gi after ext4 metadata (default 11G).
+    # IMPORTANT: truncate creates sparse files: they report size PV_SIZE_GB but do not allocate that much
+    # on disk upfront. Actual disk usage grows only as data is written (via the loop-mounted
+    # ext4). So e.g. 10×11G can fit on a 64G volume (e.g. Azure temp disk) until usage grows.
+    set -e
+    PV_SIZE_GB="${PV_SIZE_GB:-11}"
+    PV_COUNT="${PV_COUNT:-10}"
+    loop=""
+    # On mkfs or mount failure (set -e), detach the current loop device so a DaemonSet pod restart
+    # does not see a stale attachment. We set loop= before each losetup; the trap runs when a
+    # command fails (shell ERR) and runs losetup -d on that device if it is still a block device.
+    trap 'if [ -n "$loop" ] && [ -b "$loop" ]; then losetup -d "$loop" 2>/dev/null || true; fi' ERR
+    # losetup wrapper: creates missing /dev/loop* device nodes on demand.
+    # On VMs, /dev is devtmpfs and the kernel auto-creates nodes — this is a no-op.
+    # In Kind, nodes are Docker containers where /dev is a plain tmpfs populated with a
+    # static snapshot at container start. When losetup -f asks /dev/loop-control for a new
+    # device number, the kernel creates the node on the host's devtmpfs but not in the
+    # container's tmpfs. See https://github.com/kubernetes-sigs/kind/issues/1248
+    # Retries handle races when Kind nodes (containers on one kernel) compete for the same
+    # loop device pool: another pod can grab a device between probe and attach.
+    losetup_attach() {
+      local out dev minor attempt=0
+      while [ $attempt -lt 5 ]; do
+        out=$(losetup -f 2>&1) || true
+        dev=$(printf '%s' "$out" | grep -o '/dev/loop[0-9]*' | head -1) || true
+        if [ -n "$dev" ] && [ ! -e "$dev" ]; then
+          minor="${dev#/dev/loop}"
+          echo "Device node $dev missing in container (tmpfs /dev), creating it" >&2
+          mknod "$dev" b 7 "$minor" 2>/dev/null || true
+        fi
+        # The attach may get a different device than the one we probed (TOCTOU: another
+        # pod on the same kernel can grab it in between). If that happens the attach fails
+        # and the retry loop re-probes, creating the new device node on the next iteration.
+        if losetup -f --show "$1" 2>/dev/null; then
+          return 0
+        fi
+        attempt=$((attempt + 1))
+        echo "losetup_attach: attempt $attempt failed, retrying..." >&2
+      done
+      losetup -f --show "$1"
+    }
+    # When format.sh is skipped (GKE/AKS kustomize overlay), ssd0 does not exist; pvs is created by the loop.
+    mkdir -p /mnt/disks/ssd0
+    for i in $(seq 1 $PV_COUNT); do
+      img="/mnt/disks/ssd0/disk-$i.img"
+      mount_point="/mnt/disks/pvs/pv-$i"
+      echo "Setting up pv-$i (${PV_SIZE_GB}Gi per PV)"
+      mkdir -p "${mount_point}"
+      if mountpoint -q -- "${mount_point}"; then
+        echo "${mount_point} already mounted"
+        continue
+      fi
+      if [ ! -f "${img}" ]; then
+        echo "Creating sparse file ${img} size ${PV_SIZE_GB}G"
+        truncate -s "${PV_SIZE_GB}G" "${img}"
+        loop=$(losetup_attach "${img}")
+        echo "Formatting ${loop} as ext4"
+        mkfs.ext4 -m 0 -F "${loop}"
+        # Flush ext4 superblock to the backing file before detach so the kernel sees it on reattach.
+        sync
+        losetup -d "${loop}"
+      fi
+      loop=$(losetup_attach "${img}")
+      mount -t ext4 -o defaults,noatime,nobarrier "${loop}" "${mount_point}"
+      echo "Mounted ${loop} at ${mount_point}"
     done
 ---
 apiVersion: apps/v1
@@ -117,18 +175,30 @@ spec:
             name: e2e-default
             mountPropagation: Bidirectional
       - name: disk-mounts
-        image: busybox
+        image: cgr.dev/chainguard/wolfi-base:latest
         securityContext:
           privileged: true
         command:
-        - "/bin/entrypoint.sh"
+        - sh
+        - -c
+        - |
+          apk update \
+            && apk add e2fsprogs losetup mount util-linux \
+            && /bin/entrypoint.sh
+        env:
+        - name: PV_SIZE_GB
+          value: "11"
+        - name: PV_COUNT
+          value: "10"
         volumeMounts:
           - mountPath: /bin/entrypoint.sh
             name: setup-disks
             subPath: entrypoint.sh
-          - mountPath:  /mnt/disks
+          - mountPath: /mnt/disks
             name: e2e-default
             mountPropagation: Bidirectional
+          - mountPath: /dev
+            name: host-dev
       containers:
         - image: "k8s.gcr.io/sig-storage/local-volume-provisioner:v2.4.0"
           imagePullPolicy: "Always"
@@ -161,6 +231,10 @@ spec:
           configMap:
             defaultMode: 0700
             name: setup-disks
+        - name: host-dev
+          hostPath:
+            path: /dev
+            type: Directory
 ---
 apiVersion: v1
 kind: ServiceAccount

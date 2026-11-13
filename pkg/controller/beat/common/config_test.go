@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -32,18 +32,14 @@ func merge(cs ...*settings.CanonicalConfig) *settings.CanonicalConfig {
 func Test_buildBeatConfig(t *testing.T) {
 	clientWithSecret := k8s.NewFakeClient(
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "secret",
-				Namespace: "ns",
-			},
-			Data: map[string][]byte{"elastic": []byte("123")},
+			Name:      "secret",
+			Namespace: "ns",
+			Data:      map[string][]byte{"elastic": []byte("123")},
 		},
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "secret2",
-				Namespace: "ns",
-			},
-			Data: map[string][]byte{"elastic": []byte("123")},
+			Name:      "secret2",
+			Namespace: "ns",
+			Data:      map[string][]byte{"elastic": []byte("123")},
 		},
 	)
 
@@ -60,9 +56,7 @@ func Test_buildBeatConfig(t *testing.T) {
     username: elastic
 `))
 	withAssoc := beatv1beta1.Beat{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-		},
+		Namespace: "ns",
 	}
 	esAssoc := beatv1beta1.BeatESAssociation{Beat: &withAssoc}
 	esAssoc.SetAssociationConf(&commonv1.AssociationConf{
@@ -85,6 +79,27 @@ func Test_buildBeatConfig(t *testing.T) {
 	assocConf, err := esAssocWithCA.AssociationConf()
 	require.NoError(t, err)
 	assocConf.CACertProvided = true
+
+	withAssocWithClientCert := *withAssocWithCA.DeepCopy()
+	esAssocWithClientCert := beatv1beta1.BeatESAssociation{Beat: &withAssocWithClientCert}
+	esAssocWithClientCert.SetAssociationConf(&commonv1.AssociationConf{
+		AuthSecretName:       "secret",
+		AuthSecretKey:        "elastic",
+		CACertProvided:       true,
+		CASecretName:         "secret2",
+		URL:                  "url",
+		ClientCertSecretName: "client-cert-secret",
+	})
+
+	withAssocPKIAuth := *withAssocWithCA.DeepCopy()
+	esAssocPKIAuth := beatv1beta1.BeatESAssociation{Beat: &withAssocPKIAuth}
+	esAssocPKIAuth.SetAssociationConf(&commonv1.AssociationConf{
+		AuthSecretName:       commonv1.NoAuthRequiredValue,
+		CACertProvided:       true,
+		CASecretName:         "secret2",
+		URL:                  "url",
+		ClientCertSecretName: "client-cert-secret",
+	})
 
 	withAssocWithCAWithConfig := *withAssocWithCA.DeepCopy()
 	withAssocWithCAWithConfig.Spec.Config = userCfg
@@ -181,6 +196,46 @@ func Test_buildBeatConfig(t *testing.T) {
 			want:          merge(userCanonicalCfg, managedCfg, outputYaml, outputCAYaml),
 		},
 		{
+			name:   "association with ca and client cert",
+			client: clientWithSecret,
+			beat:   withAssocWithClientCert,
+			want: merge(outputYaml, outputCAYaml, settings.MustParseConfig([]byte(`output.elasticsearch.ssl.certificate: /mnt/elastic-internal/elasticsearch-client-certs/tls.crt
+output.elasticsearch.ssl.key: /mnt/elastic-internal/elasticsearch-client-certs/tls.key`))),
+		},
+		{
+			name:   "association with client cert only, no CA",
+			client: clientWithSecret,
+			beat: func() beatv1beta1.Beat {
+				b := *withAssoc.DeepCopy()
+				assoc := beatv1beta1.BeatESAssociation{Beat: &b}
+				assoc.SetAssociationConf(&commonv1.AssociationConf{
+					AuthSecretName:       "secret",
+					AuthSecretKey:        "elastic",
+					CACertProvided:       false,
+					URL:                  "url",
+					ClientCertSecretName: "client-cert-secret",
+				})
+				return b
+			}(),
+			want: merge(outputYaml, settings.MustParseConfig([]byte(`output.elasticsearch.ssl.certificate: /mnt/elastic-internal/elasticsearch-client-certs/tls.crt
+output.elasticsearch.ssl.key: /mnt/elastic-internal/elasticsearch-client-certs/tls.key`))),
+		},
+		{
+			name:   "PKI auth: no username/password, only ssl cert paths",
+			client: k8s.NewFakeClient(),
+			beat:   withAssocPKIAuth,
+			want: merge(
+				settings.MustParseConfig([]byte(`output:
+  elasticsearch:
+    hosts:
+    - url
+`)),
+				outputCAYaml,
+				settings.MustParseConfig([]byte(`output.elasticsearch.ssl.certificate: /mnt/elastic-internal/elasticsearch-client-certs/tls.crt
+output.elasticsearch.ssl.key: /mnt/elastic-internal/elasticsearch-client-certs/tls.key`)),
+			),
+		},
+		{
 			name: "no association, user config, with metrics monitoring enabled",
 			beat: beatv1beta1.Beat{
 				ObjectMeta: metav1.ObjectMeta{
@@ -242,11 +297,9 @@ func Test_buildBeatConfig(t *testing.T) {
 
 func TestBuildKibanaConfig(t *testing.T) {
 	secretFixture := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "auth-secret",
-			Namespace: "test-ns",
-		},
-		Data: map[string][]byte{"elastic": []byte("123")},
+		Name:      "auth-secret",
+		Namespace: "test-ns",
+		Data:      map[string][]byte{"elastic": []byte("123")},
 	}
 	kibanaAssocConf := commonv1.AssociationConf{
 		AuthSecretName: "auth-secret",
@@ -261,10 +314,8 @@ func TestBuildKibanaConfig(t *testing.T) {
 
 	associationFixture := func(conf commonv1.AssociationConf) beatv1beta1.BeatKibanaAssociation {
 		assoc := beatv1beta1.BeatKibanaAssociation{Beat: &beatv1beta1.Beat{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "beat",
-				Namespace: "test-ns",
-			},
+			Name:      "beat",
+			Namespace: "test-ns",
 			Spec: beatv1beta1.BeatSpec{
 				KibanaRef: commonv1.ObjectSelector{
 					Name:      "auth-secret",
@@ -369,9 +420,7 @@ func Test_getUserConfig(t *testing.T) {
 		{
 			name: "configref populated - no secret",
 			configRef: &commonv1.ConfigSource{
-				SecretRef: commonv1.SecretRef{
-					SecretName: "my-secret-config",
-				},
+				SecretName: "my-secret-config",
 			},
 			client:  k8s.NewFakeClient(),
 			wantErr: true,
@@ -379,28 +428,20 @@ func Test_getUserConfig(t *testing.T) {
 		{
 			name: "configref populated - no secret key",
 			configRef: &commonv1.ConfigSource{
-				SecretRef: commonv1.SecretRef{
-					SecretName: "my-secret-config",
-				},
+				SecretName: "my-secret-config",
 			},
 			client: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "my-secret-config",
-				},
+				Name: "my-secret-config",
 			}),
 			wantErr: true,
 		},
 		{
 			name: "configref populated - malformed config",
 			configRef: &commonv1.ConfigSource{
-				SecretRef: commonv1.SecretRef{
-					SecretName: "my-secret-config-2",
-				},
+				SecretName: "my-secret-config-2",
 			},
 			client: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "my-secret-config-2",
-				},
+				Name: "my-secret-config-2",
 				Data: map[string][]byte{"beat.yml": []byte("filebeat:bad:value")},
 			}),
 			wantErr: true,
@@ -408,14 +449,10 @@ func Test_getUserConfig(t *testing.T) {
 		{
 			name: "configref populated",
 			configRef: &commonv1.ConfigSource{
-				SecretRef: commonv1.SecretRef{
-					SecretName: "my-secret-config-2",
-				},
+				SecretName: "my-secret-config-2",
 			},
 			client: k8s.NewFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "my-secret-config-2",
-				},
+				Name: "my-secret-config-2",
 				Data: map[string][]byte{"beat.yml": []byte(`filebeat: "true"`)},
 			}),
 			want: settings.MustParseConfig([]byte(`filebeat: "true"`)),
@@ -425,7 +462,7 @@ func Test_getUserConfig(t *testing.T) {
 			params := DriverParams{
 				Context:       context.Background(),
 				Client:        tt.client,
-				EventRecorder: &record.FakeRecorder{},
+				EventRecorder: &toolsevents.FakeRecorder{},
 				Watches:       watches.NewDynamicWatches(),
 				Beat: beatv1beta1.Beat{
 					Spec: beatv1beta1.BeatSpec{

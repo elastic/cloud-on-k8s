@@ -29,13 +29,13 @@ func Test_newStatusBuilder(t *testing.T) {
 			args: args{
 				autoscalingPolicies: []v1alpha1.AutoscalingPolicySpec{
 					{
-						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "policy1", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"role1", "role2", "remote_cluster_client"}}},
+						Name: "policy1", Roles: []string{"role1", "role2", "remote_cluster_client"},
 					},
 					{
-						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "policy2", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"role2", "role3", "role5", "remote_cluster_client"}}},
+						Name: "policy2", Roles: []string{"role2", "role3", "role5", "remote_cluster_client"},
 					},
 					{
-						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "policy3", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"role4", "role2", "role3", "remote_cluster_client"}}},
+						Name: "policy3", Roles: []string{"role4", "role2", "role3", "remote_cluster_client"},
 					},
 				},
 			},
@@ -76,13 +76,13 @@ func Test_newStatusBuilder(t *testing.T) {
 			args: args{
 				autoscalingPolicies: []v1alpha1.AutoscalingPolicySpec{
 					{
-						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "policy1", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"role1", "role2"}}},
+						Name: "policy1", Roles: []string{"role1", "role2"},
 					},
 					{
-						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "policy2", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"role3"}}},
+						Name: "policy2", Roles: []string{"role3"},
 					},
 					{
-						NamedAutoscalingPolicy: v1alpha1.NamedAutoscalingPolicy{Name: "policy3", AutoscalingPolicy: v1alpha1.AutoscalingPolicy{Roles: []string{"role4"}}},
+						Name: "policy3", Roles: []string{"role4"},
 					},
 				},
 			},

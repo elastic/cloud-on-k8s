@@ -5,12 +5,14 @@
 package v1
 
 import (
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/blang/semver/v4"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
@@ -44,7 +46,23 @@ const (
 	// TransportCertDisabledAnnotationName is the annotation that indicates that ECK-managed transport certs have been disabled for the Pod.
 	TransportCertDisabledAnnotationName = "elasticsearch.k8s.elastic.co/self-signed-transport-cert-disabled"
 
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// RestartTriggerAnnotation allows users to trigger a graceful rolling restart by setting or changing this
+	// annotation value on the Elasticsearch resource. The value is propagated to pod annotations, causing the
+	// StatefulSet template hash to change and all pods to become upgrade candidates.
+	RestartTriggerAnnotation = "eck.k8s.elastic.co/restart-trigger"
+	// RestartAllocationDelayAnnotation configures the allocation_delay passed to the Elasticsearch node shutdown
+	// API during rolling restarts and upgrades. The value must be a valid Go duration string (e.g. "5m", "1h").
+	RestartAllocationDelayAnnotation = "eck.k8s.elastic.co/restart-allocation-delay"
+
+	// FileBasedSecureSettingsAnnotation enables delivery of spec.secureSettings via cluster_secrets in
+	// file-based settings (ES ≥ 9.5 only) instead of the keystore init container. This is an opt-in feature
+	// because some settings (e.g. OIDC client_secret, SAML key passphrase, Watcher encryption_key) must be
+	// present in the keystore at startup and cannot be delivered via the reload path.
+	// Set this annotation to "true" only when all your secure settings are reloadable (S3/Azure/GCS
+	// credentials, remote-cluster API keys, etc.).
+	FileBasedSecureSettingsAnnotation = "eck.k8s.elastic.co/file-based-secure-settings"
+
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Elasticsearch"
 )
@@ -62,6 +80,37 @@ func AreServiceAccountsSupported(version string) (bool, error) {
 	return esVersion.GTE(ServiceAccountMinVersion), nil
 }
 
+// GetRestartAllocationDelayAnnotation reads the RestartAllocationDelayAnnotation from the given annotations
+// and returns the parsed duration. Returns nil if the annotation is absent or empty.
+// Returns an error if the value is not a valid Go duration string or is negative.
+func GetRestartAllocationDelayAnnotation(annotations map[string]string) (*time.Duration, error) {
+	v, found := annotations[RestartAllocationDelayAnnotation]
+	if !found || v == "" {
+		return nil, nil
+	}
+
+	d, err := time.ParseDuration(v)
+	switch {
+	case err != nil:
+		return nil, fmt.Errorf("error while parsing restart-allocation-delay annotation %s: %w", v, err)
+	case d < 0:
+		return nil, fmt.Errorf("negative restart-allocation-delay annotation: %s", v)
+	case d >= 0:
+		return &d, nil
+	}
+
+	return nil, nil
+}
+
+// HasFileBasedSecureSettingsAnnotation returns true when the Elasticsearch object carries
+// the FileBasedSecureSettingsAnnotation set to "true".
+func (es *Elasticsearch) HasFileBasedSecureSettingsAnnotation() bool {
+	if es == nil {
+		return false
+	}
+	return es.Annotations[FileBasedSecureSettingsAnnotation] == "true"
+}
+
 // +kubebuilder:object:root=true
 
 // ElasticsearchList contains a list of Elasticsearch clusters
@@ -69,10 +118,6 @@ type ElasticsearchList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Elasticsearch `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&Elasticsearch{}, &ElasticsearchList{})
 }
 
 // ElasticsearchSpec holds the specification of an Elasticsearch cluster.
@@ -90,14 +135,20 @@ type ElasticsearchSpec struct {
 
 	// HTTP holds HTTP layer settings for Elasticsearch.
 	// +kubebuilder:validation:Optional
-	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
+	HTTP commonv1.HTTPConfigWithClientOptions `json:"http,omitempty"`
 
 	// Transport holds transport layer settings for Elasticsearch.
 	// +kubebuilder:validation:Optional
 	Transport TransportConfig `json:"transport,omitempty"`
 
 	// NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
+	// The list is keyed by nodeSet name so that Server-Side Apply tracks field ownership per nodeSet
+	// and per field. Without this the list would default to atomic, and any write by the operator
+	// (for example the autoscaling controller updating a node count) would claim ownership of the
+	// whole nodeSets tree, conflicting with tools such as Helm that manage the rest of the spec.
 	// +kubebuilder:validation:MinItems=1
+	// +listType=map
+	// +listMapKey=name
 	NodeSets []NodeSet `json:"nodeSets"`
 
 	// UpdateStrategy specifies how updates to the cluster should be performed.
@@ -143,7 +194,7 @@ type ElasticsearchSpec struct {
 	VolumeClaimDeletePolicy VolumeClaimDeletePolicy `json:"volumeClaimDeletePolicy,omitempty"`
 
 	// Monitoring enables you to collect and ship log and monitoring data of this Elasticsearch cluster.
-	// See https://www.elastic.co/guide/en/elasticsearch/reference/current/monitor-elasticsearch-cluster.html.
+	// See https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring.
 	// Metricbeat and Filebeat are deployed in the same Pod as sidecars and each one sends data to one or two different
 	// Elasticsearch monitoring clusters running in the same Kubernetes cluster.
 	// +kubebuilder:validation:Optional
@@ -227,12 +278,11 @@ type RemoteCluster struct {
 	// ElasticsearchRef is a reference to an Elasticsearch cluster running within the same k8s cluster.
 	ElasticsearchRef commonv1.LocalObjectSelector `json:"elasticsearchRef,omitempty"`
 
-	// APIKey can be used to enable remote cluster access using Cross-Cluster API keys: https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-cross-cluster-api-key.html
+	// APIKey can be used to enable remote cluster access using Cross-Cluster API keys: https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-security-create-cross-cluster-api-key
 	// +kubebuilder:validation:Optional
 	APIKey *RemoteClusterAPIKey `json:"apiKey,omitempty"`
 
 	// TODO: Allow the user to specify some options (transport.compress, transport.ping_schedule)
-
 }
 
 func (r RemoteCluster) ConfigHash() string {
@@ -263,6 +313,16 @@ type Auth struct {
 	FileRealm []FileRealmSource `json:"fileRealm,omitempty"`
 	// DisableElasticUser disables the default elastic user that is created by ECK.
 	DisableElasticUser bool `json:"disableElasticUser,omitempty"`
+	// PKI configures the ECK-managed PKI realm.
+	PKI PKIRealm `json:"pki,omitempty"`
+}
+
+// PKIRealm configures the ECK-managed PKI realm.
+type PKIRealm struct {
+	// Enabled specifies whether to configure the ECK-managed PKI realm, which components with
+	// elasticsearchRef.authenticationMode: PKI use to authenticate with their TLS client certificate.
+	// Requires Elasticsearch 9.6.0+ and spec.http.tls.client.authentication.
+	Enabled bool `json:"enabled,omitempty"`
 }
 
 // RoleSource references roles to create in the Elasticsearch cluster.
@@ -270,7 +330,7 @@ type RoleSource struct {
 	// SecretName references a Kubernetes secret in the same namespace as the Elasticsearch resource.
 	// Multiple roles can be specified in a Kubernetes secret, under a single "roles.yml" entry.
 	// The secret value must match the expected file-based specification as described in
-	// https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html#roles-management-file.
+	// https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/defining-roles#roles-management-file.
 	//
 	// Example:
 	// ---
@@ -300,10 +360,10 @@ type FileRealmSource struct {
 	// SecretName references a Kubernetes secret in the same namespace as the Elasticsearch resource.
 	// Multiple users and their roles mapping can be specified in a Kubernetes secret.
 	// The secret should contain 2 entries:
-	// - users: contain all users and the hash of their password (https://www.elastic.co/guide/en/elasticsearch/reference/current/security-settings.html#password-hashing-algorithms)
+	// - users: contain all users and the hash of their password (https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/security-settings#password-hashing-algorithms)
 	// - users_roles: contain the role to users mapping
 	// The format of those 2 entries must correspond to the expected file realm format, as specified in Elasticsearch
-	// documentation: https://www.elastic.co/guide/en/elasticsearch/reference/7.5/file-realm.html#file-realm-configuration.
+	// documentation: https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/file-based#file-realm-configuration.
 	//
 	// Example:
 	// ---
@@ -341,7 +401,16 @@ type NodeSet struct {
 	// +kubebuilder:validation:Optional
 	Count int32 `json:"count"`
 
-	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
+	// Resources specifies the resource requests and limits (CPU and Memory only) for the Elasticsearch nodes in this NodeSet. When set, these override the resource requests and limits set in the PodTemplate for the primary Elasticsearch container. To set the resources for other containers, use the PodTemplate.Spec.Containers[].Resources field.
+	// It also carries the storage request applied to this NodeSet's data volume claim.
+	// +kubebuilder:validation:Optional
+	Resources NodeSetResources `json:"resources,omitzero"`
+
+	// ZoneAwareness enables automatic topology-aware scheduling and shard-awareness configuration.
+	// +kubebuilder:validation:Optional
+	ZoneAwareness *ZoneAwareness `json:"zoneAwareness,omitempty"`
+
+	// PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
@@ -353,6 +422,76 @@ type NodeSet struct {
 	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
 }
 
+// NodeSetResources extends the shared CPU/memory shorthand with the storage request applied to
+// this NodeSet's data volume claim.
+//
+// Storage deliberately sits alongside Requests and Limits rather than inside them. Every field of
+// commonv1.ResourceAllocations is a main container override, applied via
+// PodTemplateBuilder.WithResourcesAndOverrides, whereas Storage targets a volume claim. Keeping
+// them apart also avoids a meaningless limits.storage, since a PersistentVolumeClaim has no
+// storage limit.
+type NodeSetResources struct {
+	// The omitzero JSON tag on the parent NodeSet.Resources field, and on the embedded Limits and
+	// Requests, matters beyond tidiness: without it an unset shorthand round-trips as
+	// `{"limits":{},"requests":{}}`, and under Server-Side Apply adding those empty objects counts
+	// as a change, which transfers field ownership to whichever manager wrote them.
+	commonv1.Resources `json:",inline"`
+
+	// Storage overrides the storage request of this NodeSet's data volume claim: the claim named
+	// "elasticsearch-data" if present, otherwise the single claim when exactly one is declared. A
+	// nil value means "do not override", so any storage request already set in
+	// VolumeClaimTemplates is passed through unchanged. A non-nil value wins over the claim's own
+	// request.
+	//
+	// This is the field the autoscaling controller writes. Keeping it out of VolumeClaimTemplates
+	// leaves that list, and therefore the storage class and access modes, owned solely by whoever
+	// declares it.
+	// +kubebuilder:validation:Optional
+	Storage *resource.Quantity `json:"storage,omitempty"`
+}
+
+// IsEmpty reports whether r carries no resource constraints at all.
+func (r NodeSetResources) IsEmpty() bool {
+	return r.Resources.IsEmpty() && r.Storage == nil
+}
+
+// ContainerResources returns the CPU/memory shorthand applied to the main Elasticsearch container.
+func (r NodeSetResources) ContainerResources() commonv1.Resources {
+	return r.Resources
+}
+
+const (
+	// DefaultZoneAwarenessTopologyKey is used when topologyKey is not specified.
+	DefaultZoneAwarenessTopologyKey = corev1.LabelTopologyZone
+)
+
+// ZoneAwareness configures topology-aware scheduling and shard-awareness defaults for a NodeSet.
+// The operator provides sensible defaults for topology spread constraints (maxSkew=1,
+// whenUnsatisfiable=DoNotSchedule). To customize these, provide a matching topology spread
+// constraint via podTemplate.spec.topologySpreadConstraints with the same topologyKey.
+type ZoneAwareness struct {
+	// TopologyKey is the key of node labels used for zone-aware placement.
+	// Defaults to "topology.kubernetes.io/zone".
+	// +kubebuilder:validation:Optional
+	TopologyKey string `json:"topologyKey,omitempty"`
+
+	// Zones optionally restrict scheduling to the listed topology values.
+	// If empty, Pods can be scheduled in any topology value for the selected topologyKey.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:MinItems=1
+	// +listType=set
+	Zones []string `json:"zones,omitempty"`
+}
+
+// TopologyKeyOrDefault returns the configured topology key or the default.
+func (za ZoneAwareness) TopologyKeyOrDefault() string {
+	topologyKey := strings.TrimSpace(za.TopologyKey)
+	if topologyKey == "" {
+		return DefaultZoneAwarenessTopologyKey
+	}
+	return topologyKey
+}
+
 // +kubebuilder:object:generate=false
 type NodeSetList []NodeSet
 
@@ -362,6 +501,30 @@ func (nsl NodeSetList) Names() []string {
 		names[i] = nsl[i].Name
 	}
 	return names
+}
+
+// HasZoneAwareness returns true when any NodeSet enables zone awareness.
+func (nsl NodeSetList) HasZoneAwareness() bool {
+	for _, nodeSet := range nsl {
+		if nodeSet.ZoneAwareness != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// ZoneAwarenessTopologyKey returns the topology key from the first zone-aware NodeSet,
+// used as a fallback for non-zone-aware NodeSets in the same cluster.
+// When a non-zone-aware NodeSet exists, validation guarantees all zone-aware
+// NodeSets share the same topology key, so iteration order is irrelevant.
+func (nsl NodeSetList) ZoneAwarenessTopologyKey() string {
+	for _, nodeSet := range nsl {
+		if nodeSet.ZoneAwareness == nil {
+			continue
+		}
+		return nodeSet.ZoneAwareness.TopologyKeyOrDefault()
+	}
+	return DefaultZoneAwarenessTopologyKey
 }
 
 // GetESContainerTemplate returns the Elasticsearch container (if set) from the NodeSet's PodTemplate
@@ -397,7 +560,7 @@ type ChangeBudget struct {
 // most cases.
 var DefaultChangeBudget = ChangeBudget{
 	MaxSurge:       nil,
-	MaxUnavailable: ptr.To[int32](1),
+	MaxUnavailable: new(int32(1)),
 }
 
 func (cb ChangeBudget) GetMaxSurgeOrDefault() *int32 {
@@ -452,17 +615,73 @@ type Elasticsearch struct {
 	AssocConfs map[commonv1.ObjectSelector]commonv1.AssociationConf `json:"-"`
 }
 
-// DownwardNodeLabels returns the set of expected node labels to be copied as annotations on the Elasticsearch Pods.
+// downwardNodeLabelsAnnotationValue returns the raw downward node labels annotation value.
+func (es Elasticsearch) downwardNodeLabelsAnnotationValue() string {
+	return es.Annotations[DownwardNodeLabelsAnnotation]
+}
+
+// ParseDownwardNodeLabels normalizes a comma-separated node labels annotation value.
+func ParseDownwardNodeLabels(annotationValue string) set.StringSet {
+	labels := set.Make()
+	for label := range strings.SplitSeq(annotationValue, ",") {
+		label = strings.TrimSpace(label)
+		if label == "" {
+			continue
+		}
+		labels.Add(label)
+	}
+	return labels
+}
+
+// DownwardNodeLabels returns the expected node labels to be copied as annotations on the Elasticsearch Pods.
+// The result is sorted alphabetically and deduplicated for two reasons: it matches the ordering used
+// by the pre-zone-awareness code path (set.Make().AsSortedSlice()), keeping the rendered init script
+// content stable across operator upgrades; and it guarantees a deterministic order regardless of
+// annotation formatting or NodeSet ordering in the spec.
 func (es Elasticsearch) DownwardNodeLabels() []string {
-	expectedAnnotations, exist := es.Annotations[DownwardNodeLabelsAnnotation]
-	expectedAnnotations = strings.TrimSpace(expectedAnnotations)
-	if !exist || expectedAnnotations == "" {
+	labels := ParseDownwardNodeLabels(es.downwardNodeLabelsAnnotationValue())
+
+	for _, nodeSet := range es.Spec.NodeSets {
+		if nodeSet.ZoneAwareness == nil {
+			continue
+		}
+		labels.Add(nodeSet.ZoneAwareness.TopologyKeyOrDefault())
+	}
+
+	if labels.Count() == 0 {
 		return nil
 	}
-	return strings.Split(expectedAnnotations, ",")
+	return labels.AsSortedSlice()
+}
+
+// DownwardNodeLabelsHashInput returns the pod-template hash input for downward node labels.
+// It preserves the exact annotation value when present and appends zone-awareness-derived
+// labels that were not explicitly configured in the annotation.
+func (es Elasticsearch) DownwardNodeLabelsHashInput() string {
+	annotationValue := es.downwardNodeLabelsAnnotationValue()
+	hashInput := annotationValue
+
+	annotationLabels := ParseDownwardNodeLabels(annotationValue)
+	var derived []string
+	for _, label := range es.DownwardNodeLabels() {
+		if annotationLabels.Has(label) {
+			continue
+		}
+		derived = append(derived, label)
+	}
+	if len(derived) == 0 {
+		return hashInput
+	}
+	if hashInput != "" {
+		hashInput += ","
+	}
+	return hashInput + strings.Join(derived, ",")
 }
 
 // HasDownwardNodeLabels returns true if some node labels are expected on the Elasticsearch Pods.
+// This includes labels derived from zone-awareness configuration, not only those explicitly set via
+// the downward-node-labels annotation. Callers that need to distinguish between annotation-provided
+// and zone-awareness-derived labels should inspect DownwardNodeLabels() directly.
 func (es Elasticsearch) HasDownwardNodeLabels() bool {
 	return len(es.DownwardNodeLabels()) > 0
 }
@@ -522,12 +741,12 @@ func setFromAnnotations(annotationKey string, annotations map[string]string) set
 
 // -- associations
 
-var _ commonv1.Associated = &Elasticsearch{}
+var _ commonv1.Associated = (*Elasticsearch)(nil)
 
 func (es *Elasticsearch) GetAssociations() []commonv1.Association {
 	associations := make([]commonv1.Association, 0)
 	for _, ref := range es.Spec.Monitoring.Metrics.ElasticsearchRefs {
-		if ref.IsDefined() {
+		if ref.IsSet() {
 			associations = append(associations, &EsMonitoringAssociation{
 				Elasticsearch: es,
 				ref:           ref.WithDefaultNamespace(es.Namespace),
@@ -535,7 +754,7 @@ func (es *Elasticsearch) GetAssociations() []commonv1.Association {
 		}
 	}
 	for _, ref := range es.Spec.Monitoring.Logs.ElasticsearchRefs {
-		if ref.IsDefined() {
+		if ref.IsSet() {
 			associations = append(associations, &EsMonitoringAssociation{
 				Elasticsearch: es,
 				ref:           ref.WithDefaultNamespace(es.Namespace),
@@ -555,7 +774,7 @@ type EsMonitoringAssociation struct {
 	ref commonv1.ObjectSelector
 }
 
-var _ commonv1.Association = &EsMonitoringAssociation{}
+var _ commonv1.Association = (*EsMonitoringAssociation)(nil)
 
 func (ema *EsMonitoringAssociation) Associated() commonv1.Associated {
 	if ema == nil {
@@ -575,7 +794,7 @@ func (ema *EsMonitoringAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.EsMonitoringAssociationType
 }
 
-func (ema *EsMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
+func (ema *EsMonitoringAssociation) AssociationRef() commonv1.AssociationRef {
 	return ema.ref
 }
 

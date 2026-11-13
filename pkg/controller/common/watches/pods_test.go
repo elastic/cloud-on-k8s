@@ -10,8 +10,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -27,25 +25,22 @@ func Test_objToReconcileRequest(t *testing.T) {
 	}{
 		{
 			name: "reconcile based on the Pod label",
-			obj: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+			obj: &corev1.Pod{
 				Namespace: "ns", Name: "my-pod",
-				Labels: map[string]string{labelName: "my-obj-name"},
-			}},
-			want: []reconcile.Request{{NamespacedName: types.NamespacedName{Namespace: "ns", Name: "my-obj-name"}}},
+				Labels: map[string]string{labelName: "my-obj-name"}},
+			want: []reconcile.Request{{Namespace: "ns", Name: "my-obj-name"}},
 		},
 		{
 			name: "don't reconcile if no labels",
-			obj: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns", Name: "my-pod",
-			}},
+			obj: &corev1.Pod{
+				Namespace: "ns", Name: "my-pod"},
 			want: nil,
 		},
 		{
 			name: "don't reconcile if label not set",
-			obj: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+			obj: &corev1.Pod{
 				Namespace: "ns", Name: "my-pod",
-				Labels: map[string]string{"other": "label"},
-			}},
+				Labels: map[string]string{"other": "label"}},
 			want: nil,
 		},
 	}

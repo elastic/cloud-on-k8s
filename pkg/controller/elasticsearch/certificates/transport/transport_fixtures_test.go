@@ -15,7 +15,6 @@ import (
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -48,14 +47,12 @@ var (
 
 	testIP = "1.2.3.4"
 	testES = esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Name: testEsName, Namespace: testNamespace},
+		Name: testEsName, Namespace: testNamespace,
 	}
 	testPod = corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-pod-name",
-			Labels: map[string]string{
-				label.StatefulSetNameLabelName: "test-sset",
-			},
+		Name: "test-pod-name",
+		Labels: map[string]string{
+			label.StatefulSetNameLabelName: "test-sset",
 		},
 		Status: corev1.PodStatus{
 			PodIP: testIP,
@@ -201,10 +198,8 @@ func (tcb *transportCertsSecretBuilder) forPodIndices(indices ...int) *transport
 
 func (tcb *transportCertsSecretBuilder) build() *corev1.Secret {
 	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: testNamespace,
-			Name:      esv1.StatefulSetTransportCertificatesSecret(tcb.statefulset),
-		},
+		Namespace: testNamespace,
+		Name:      esv1.StatefulSetTransportCertificatesSecret(tcb.statefulset),
 	}
 	secret.Data = tcb.data
 	return secret
@@ -251,16 +246,14 @@ func (pb *podBuilder) withAnnotations(a map[string]string) *podBuilder {
 
 func (pb *podBuilder) build() *corev1.Pod {
 	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: testNamespace,
-			Name:      fmt.Sprintf("%s-%d", esv1.StatefulSet(pb.es, pb.nodeSet), pb.index),
-			Labels: map[string]string{
-				label.StatefulSetNameLabelName: esv1.StatefulSet(pb.es, pb.nodeSet),
-				label.ClusterNameLabelName:     pb.es,
-			},
-			Annotations: pb.annotations,
-			UID:         uuid.NewUUID(),
+		Namespace: testNamespace,
+		Name:      fmt.Sprintf("%s-%d", esv1.StatefulSet(pb.es, pb.nodeSet), pb.index),
+		Labels: map[string]string{
+			label.StatefulSetNameLabelName: esv1.StatefulSet(pb.es, pb.nodeSet),
+			label.ClusterNameLabelName:     pb.es,
 		},
+		Annotations: pb.annotations,
+		UID:         uuid.NewUUID(),
 	}
 	if len(pb.ip) > 0 {
 		pod.Status.PodIP = pb.ip
@@ -279,14 +272,12 @@ func getSecret(list corev1.SecretList, name string) *corev1.Secret {
 
 func newStatefulSet(esName, ssetName string) *v1.StatefulSet {
 	return &v1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: testNamespace,
-			Name:      ssetName,
-			Labels: map[string]string{
-				"elasticsearch.k8s.elastic.co/statefulset-name": ssetName,
-				"common.k8s.elastic.co/type":                    "elasticsearch",
-				"elasticsearch.k8s.elastic.co/cluster-name":     esName,
-			},
+		Namespace: testNamespace,
+		Name:      ssetName,
+		Labels: map[string]string{
+			"elasticsearch.k8s.elastic.co/statefulset-name": ssetName,
+			"common.k8s.elastic.co/type":                    "elasticsearch",
+			"elasticsearch.k8s.elastic.co/cluster-name":     esName,
 		},
 	}
 }

@@ -1,0 +1,12 @@
+# OCP: same as local-disks (non-AWS patch) plus smaller PVs for root disk
+# and a ClusterRoleBinding to grant the privileged SCC to the service account.
+resources:
+  - ../local-disks
+  - ocp-scc-patch.yaml
+patches:
+  - target:
+      group: apps
+      version: v1
+      kind: DaemonSet
+      name: local-volume-provisioner
+    path: ocp-pv-size-patch.yaml

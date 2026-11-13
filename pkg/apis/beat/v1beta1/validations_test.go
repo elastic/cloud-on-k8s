@@ -10,7 +10,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -125,7 +124,7 @@ func Test_checkAssociations(t *testing.T) {
 			args: args{
 				b: &Beat{
 					Spec: BeatSpec{
-						ElasticsearchRef: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+						ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"}},
 						KibanaRef:        commonv1.ObjectSelector{SecretName: "bli"},
 					},
 				},
@@ -137,7 +136,7 @@ func Test_checkAssociations(t *testing.T) {
 			args: args{
 				b: &Beat{
 					Spec: BeatSpec{
-						ElasticsearchRef: commonv1.ObjectSelector{SecretName: "bla", Name: "bla"},
+						ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Name: "bla"}},
 					},
 				},
 			},
@@ -149,6 +148,33 @@ func Test_checkAssociations(t *testing.T) {
 				b: &Beat{
 					Spec: BeatSpec{
 						KibanaRef: commonv1.ObjectSelector{SecretName: "bli", Namespace: "blub"},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "named ref with clientCertificateSecretName: OK",
+			args: args{
+				b: &Beat{
+					Spec: BeatSpec{
+						ElasticsearchRef: commonv1.ElasticsearchSelector{
+							ObjectSelector:              commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+							ClientCertificateSecretName: "my-client-cert",
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "clientCertificateSecretName without name: NOK",
+			args: args{
+				b: &Beat{
+					Spec: BeatSpec{
+						ElasticsearchRef: commonv1.ElasticsearchSelector{
+							ClientCertificateSecretName: "my-client-cert",
+						},
 					},
 				},
 			},
@@ -225,9 +251,9 @@ func Test_checkNoDowngrade(t *testing.T) {
 			name: "Downgrade with override OK",
 			args: args{
 				prev: &Beat{Spec: BeatSpec{Version: "8.2.0"}},
-				curr: &Beat{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+				curr: &Beat{Annotations: map[string]string{
 					commonv1.DisableDowngradeValidationAnnotation: "true",
-				}}, Spec: BeatSpec{Version: "8.1.0"}},
+				}, Spec: BeatSpec{Version: "8.1.0"}},
 			},
 			want: nil,
 		},
@@ -248,10 +274,8 @@ func Test_checkMonitoring(t *testing.T) {
 		{
 			name: "stack monitoring not enabled returns nil",
 			beat: &Beat{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "testbeat",
-					Namespace: "test",
-				},
+				Name:      "testbeat",
+				Namespace: "test",
 				Spec: BeatSpec{
 					Type:      "filebeat",
 					Version:   "8.2.3",
@@ -263,10 +287,8 @@ func Test_checkMonitoring(t *testing.T) {
 		{
 			name: "stack monitoring enabled with only metrics ref is valid",
 			beat: &Beat{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "testbeat",
-					Namespace: "test",
-				},
+				Name:      "testbeat",
+				Namespace: "test",
 				Spec: BeatSpec{
 					Type:      "filebeat",
 					Version:   "8.2.3",
@@ -288,10 +310,8 @@ func Test_checkMonitoring(t *testing.T) {
 		{
 			name: "stack monitoring enabled with only logs ref is valid",
 			beat: &Beat{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "testbeat",
-					Namespace: "test",
-				},
+				Name:      "testbeat",
+				Namespace: "test",
 				Spec: BeatSpec{
 					Type:      "filebeat",
 					Version:   "8.2.3",
@@ -313,10 +333,8 @@ func Test_checkMonitoring(t *testing.T) {
 		{
 			name: "stack monitoring enabled with both logs and metrics ref is valid",
 			beat: &Beat{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "testbeat",
-					Namespace: "test",
-				},
+				Name:      "testbeat",
+				Namespace: "test",
 				Spec: BeatSpec{
 					Type:      "filebeat",
 					Version:   "8.2.3",

@@ -5,38 +5,15 @@
 package runner
 
 import (
-	"errors"
-	"os"
+	"context"
+	"fmt"
+	"os/exec"
 )
 
-const defaultDockerSocket = "/var/run/docker.sock"
-
-var homeDockerSocket = os.ExpandEnv("${HOME}/.docker/run/docker.sock")
-
-func getDockerSocket() (string, error) {
-	sck, err := followLink(defaultDockerSocket)
-	if err == nil { // if *not* error, return the socket
-		return sck, nil
+// checkDockerAvailable verifies that the Docker daemon is reachable.
+func checkDockerAvailable() error {
+	if err := exec.CommandContext(context.Background(), "docker", "info").Run(); err != nil {
+		return fmt.Errorf("docker not available (is the daemon running?): %w", err)
 	}
-
-	hsc, hErr := followLink(homeDockerSocket)
-	if hErr != nil {
-		return "", errors.Join(err, hErr)
-	}
-
-	return hsc, nil
-}
-
-func followLink(path string) (string, error) {
-	info, err := os.Lstat(path)
-	if err != nil {
-		return path, err
-	}
-
-	// if the file is not link, return the path.
-	if info.Mode()&os.ModeSymlink == 0 {
-		return path, nil
-	}
-
-	return os.Readlink(path)
+	return nil
 }

@@ -11,9 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
@@ -101,9 +102,9 @@ func Test_secureSettingsVolume(t *testing.T) {
 			testDriver := driver.TestDriver{
 				Client:       tt.c,
 				Watches:      tt.w,
-				FakeRecorder: record.NewFakeRecorder(1000),
+				FakeRecorder: toolsevents.NewFakeRecorder(1000),
 			}
-			vol, hash, err := secureSettingsVolume(context.Background(), testDriver, &tt.kb, metadata.Metadata{}, kbNamer)
+			vol, hash, err := secureSettingsVolume(context.Background(), testDriver, &tt.kb, metadata.Metadata{}, kbNamer, "")
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantVolume, vol)
 			assert.Equal(t, tt.wantHash, hash)
@@ -134,14 +135,15 @@ func Test_reconcileSecureSettings(t *testing.T) {
 		namer       name.Namer
 	}
 	kibanaFixture := &kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "kb",
-			Namespace: "ns",
-		},
+		Name:      "kb",
+		Namespace: "ns",
 	}
 	expectedMeta := metav1.ObjectMeta{
 		Name:      "kb-kb-secure-settings",
 		Namespace: "ns",
+		Labels: map[string]string{
+			commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
+		},
 		OwnerReferences: []metav1.OwnerReference{
 			{
 				APIVersion:         "kibana.k8s.elastic.co/v1",
@@ -181,7 +183,8 @@ func Test_reconcileSecureSettings(t *testing.T) {
 					{
 						Data: map[string][]byte{
 							"key1": []byte("value1"),
-						}},
+						},
+					},
 				},
 				namer: kbNamer,
 			},
@@ -189,7 +192,8 @@ func Test_reconcileSecureSettings(t *testing.T) {
 				ObjectMeta: expectedMeta,
 				Data: map[string][]byte{
 					"key1": []byte("value1"),
-				}},
+				},
+			},
 			wantErr: false,
 		},
 		{
@@ -215,7 +219,8 @@ func Test_reconcileSecureSettings(t *testing.T) {
 				ObjectMeta: expectedMeta,
 				Data: map[string][]byte{
 					"key1": []byte("value1"),
-				}},
+				},
+			},
 			wantErr: false,
 		},
 		{
@@ -316,10 +321,8 @@ func Test_reconcileSecureSettings(t *testing.T) {
 func Test_retrieveUserSecrets(t *testing.T) {
 	testSecretName := "some-user-secret"
 	testSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      testSecretName,
-		},
+		Namespace: "ns",
+		Name:      testSecretName,
 		Data: map[string][]byte{
 			"key1": []byte("value1"),
 			"key2": []byte("value2"),
@@ -327,10 +330,8 @@ func Test_retrieveUserSecrets(t *testing.T) {
 		},
 	}
 	testKibana := &kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "kb",
-			Namespace: "ns",
-		},
+		Name:      "kb",
+		Namespace: "ns",
 		Spec: kbv1.KibanaSpec{
 			SecureSettings: []commonv1.SecretSource{},
 		},
@@ -387,10 +388,8 @@ func Test_retrieveUserSecrets(t *testing.T) {
 				},
 			},
 			want: []corev1.Secret{{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "ns",
-					Name:      testSecretName,
-				},
+				Namespace: "ns",
+				Name:      testSecretName,
 				Data: map[string][]byte{
 					"key2": []byte("value2"),
 				},
@@ -409,10 +408,8 @@ func Test_retrieveUserSecrets(t *testing.T) {
 				},
 			},
 			want: []corev1.Secret{{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "ns",
-					Name:      testSecretName,
-				},
+				Namespace: "ns",
+				Name:      testSecretName,
 				Data: map[string][]byte{
 					"key1":   []byte("value1"),
 					"newKey": []byte("value3"),
@@ -422,7 +419,7 @@ func Test_retrieveUserSecrets(t *testing.T) {
 		},
 	}
 
-	recorder := record.NewFakeRecorder(100)
+	recorder := toolsevents.NewFakeRecorder(100)
 	client := k8s.NewFakeClient(&testSecret)
 	hasKeystore := testKibana
 
@@ -440,4 +437,97 @@ func Test_retrieveUserSecrets(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_BuildSecureSettingsData(t *testing.T) {
+	kb := &kbv1.Kibana{
+		Name: "kb", Namespace: "ns",
+	}
+	recorder := toolsevents.NewFakeRecorder(100)
+
+	t.Run("no secrets: returns empty string_secrets", func(t *testing.T) {
+		client := k8s.NewFakeClient(kb)
+		got, err := BuildSecureSettingsData(context.Background(), client, recorder, kb, nil)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]any{"string_secrets": map[string]any{}}, got)
+	})
+
+	t.Run("flat keys", func(t *testing.T) {
+		secret := &corev1.Secret{
+			Name: "s1", Namespace: "ns",
+			Data: map[string][]byte{"MY_KEY": []byte("my_value")},
+		}
+		client := k8s.NewFakeClient(kb, secret)
+		sources := []commonv1.NamespacedSecretSource{{Namespace: "ns", SecretName: "s1"}}
+		got, err := BuildSecureSettingsData(context.Background(), client, recorder, kb, sources)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]any{"string_secrets": map[string]any{"MY_KEY": "my_value"}}, got)
+	})
+
+	t.Run("dotted keys are passed through as flat keys", func(t *testing.T) {
+		secret := &corev1.Secret{
+			Name: "s1", Namespace: "ns",
+			Data: map[string][]byte{
+				"s3.client.default.access_key": []byte("AKIA"),
+				"s3.client.default.secret_key": []byte("secret"),
+			},
+		}
+		client := k8s.NewFakeClient(kb, secret)
+		sources := []commonv1.NamespacedSecretSource{{Namespace: "ns", SecretName: "s1"}}
+		got, err := BuildSecureSettingsData(context.Background(), client, recorder, kb, sources)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]any{"string_secrets": map[string]any{
+			"s3.client.default.access_key": "AKIA",
+			"s3.client.default.secret_key": "secret",
+		}}, got)
+	})
+
+	t.Run("multiple secrets are merged", func(t *testing.T) {
+		s1 := &corev1.Secret{
+			Name: "s1", Namespace: "ns",
+			Data: map[string][]byte{"s3.client.default.access_key": []byte("AKIA")},
+		}
+		s2 := &corev1.Secret{
+			Name: "s2", Namespace: "ns",
+			Data: map[string][]byte{"gcs.credentials": []byte("creds")},
+		}
+		client := k8s.NewFakeClient(kb, s1, s2)
+		sources := []commonv1.NamespacedSecretSource{
+			{Namespace: "ns", SecretName: "s1"},
+			{Namespace: "ns", SecretName: "s2"},
+		}
+		got, err := BuildSecureSettingsData(context.Background(), client, recorder, kb, sources)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]any{"string_secrets": map[string]any{
+			"s3.client.default.access_key": "AKIA",
+			"gcs.credentials":              "creds",
+		}}, got)
+	})
+}
+
+func TestDeleteSecureSettingsSecret(t *testing.T) {
+	namer := name.NewNamer("es")
+	kb := &kbv1.Kibana{Namespace: "ns", Name: "mykb"}
+
+	t.Run("no-op when secret does not exist", func(t *testing.T) {
+		client := k8s.NewFakeClient()
+		err := DeleteSecureSettingsSecret(context.Background(), client, namer, kb)
+		require.NoError(t, err)
+	})
+
+	t.Run("deletes the secret when it exists", func(t *testing.T) {
+		secretName := namer.Suffix(kb.Name, secureSettingsSecretSuffix)
+		existing := &corev1.Secret{
+			Namespace: kb.Namespace, Name: secretName,
+			Data: map[string][]byte{"key": []byte("value")},
+		}
+		client := k8s.NewFakeClient(existing)
+		err := DeleteSecureSettingsSecret(context.Background(), client, namer, kb)
+		require.NoError(t, err)
+
+		var stored corev1.Secret
+		err = client.Get(context.Background(), types.NamespacedName{Namespace: kb.Namespace, Name: secretName}, &stored)
+		require.Error(t, err)
+		assert.True(t, apierrors.IsNotFound(err))
+	})
 }

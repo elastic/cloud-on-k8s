@@ -5,11 +5,16 @@
 package elasticsearch
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"io"
+	"net/http"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
@@ -38,31 +43,43 @@ func (p *potentialNetworkError) Unwrap() error {
 func NewElasticsearchClient(es esv1.Elasticsearch, k *test.K8sClient) (client.Client, error) {
 	password, err := k.GetElasticPassword(k8s.ExtractNamespacedName(&es))
 	if err != nil {
-		return nil, err
+		return nil, classifyK8sClientError(err)
 	}
 	user := client.BasicAuth{Name: esuser.ElasticUserName, Password: password}
 	client, err := NewElasticsearchClientWithUser(es, k, user)
 	if err != nil {
-		// according to https://github.com/kubernetes/client-go/blob/fb61a7c88cb9f599363919a34b7c54a605455ffc/rest/request.go#L959-L960,
-		// client-go requests may return *errors.StatusError or *errors.UnexpectedObjectError, or http client errors.
-		// It turns out catching network errors (timeout, connection refused, dns problem) is not trivial
-		// (see https://stackoverflow.com/questions/22761562/portable-way-to-detect-different-kinds-of-network-error-in-golang),
-		// so here we do the opposite: catch expected apiserver errors, and consider the rest as network errors.
-		switch err.(type) { //nolint:errorlint
-		case *k8serrors.StatusError, *k8serrors.UnexpectedObjectError:
-			// explicit apiserver error, consider as a failure for most checks
-			return nil, err
-		default:
-			// likely a network error, can be acceptable as a transient state depending on the check
-			return nil, &potentialNetworkError{err: err}
-		}
+		return nil, classifyK8sClientError(err)
 	}
 	return client, nil
 }
 
+// classifyK8sClientError classifies errors from Kubernetes API calls made during ES client construction.
+// according to https://github.com/kubernetes/client-go/blob/fb61a7c88cb9f599363919a34b7c54a605455ffc/rest/request.go#L959-L960,
+// client-go requests may return *errors.StatusError or *errors.UnexpectedObjectError, or http client errors.
+// It turns out catching network errors (timeout, connection refused, dns problem) is not trivial
+// (see https://stackoverflow.com/questions/22761562/portable-way-to-detect-different-kinds-of-network-error-in-golang),
+// so here we do the opposite: catch expected apiserver errors, and consider the rest as network errors.
+func classifyK8sClientError(err error) error {
+	switch err.(type) { //nolint:errorlint
+	case *k8serrors.StatusError:
+		// Transient API server errors (500, 503, 504, 429) are infrastructure-level
+		// failures, treat them the same as network errors.
+		if k8serrors.IsInternalError(err) || k8serrors.IsServerTimeout(err) || k8serrors.IsServiceUnavailable(err) ||
+			k8serrors.IsTooManyRequests(err) || k8serrors.IsTimeout(err) {
+			return &potentialNetworkError{err: err}
+		}
+		return err
+	case *k8serrors.UnexpectedObjectError:
+		return err
+	default:
+		// likely a network error, can be acceptable as a transient state depending on the check
+		return &potentialNetworkError{err: err}
+	}
+}
+
 // NewElasticsearchClientWithUser returns an ES client for the given ES cluster with the given basic auth user.
 func NewElasticsearchClientWithUser(es esv1.Elasticsearch, k *test.K8sClient, user client.BasicAuth) (client.Client, error) {
-	caCert, err := k.GetHTTPCerts(esv1.ESNamer, es.Namespace, es.Name)
+	caCerts, err := k.GetHTTPCerts(esv1.ESNamer, es.Namespace, es.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -74,15 +91,47 @@ func NewElasticsearchClientWithUser(es esv1.Elasticsearch, k *test.K8sClient, us
 	if err != nil {
 		return nil, err
 	}
+
+	// Try to get operator client certificate if it exists
+	clientCert, err := certificates.LoadOperatorClientCertIfExists(context.Background(), k.Client, esv1.ESNamer, es.Namespace, es.Name)
+	if err != nil {
+		return nil, err
+	}
+
 	esClient := client.NewElasticsearchClient(
 		dialer,
 		k8s.ExtractNamespacedName(&es),
 		services.NewElasticsearchURLProvider(es, k.Client),
 		user,
 		v,
-		caCert,
+		caCerts,
+		clientCert,
 		client.Timeout(context.Background(), es),
 		true,
 	)
 	return esClient, nil
+}
+
+// DoRequest sends a request with the given JSON body (may be nil) to Elasticsearch and returns the response body.
+// It returns an error if the response status code is not 2xx.
+func DoRequest(ctx context.Context, esClient client.Client, method, path string, body []byte) ([]byte, error) {
+	if esClient == nil {
+		return nil, errors.New("nil Elasticsearch client")
+	}
+	req, err := http.NewRequestWithContext(ctx, method, path, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	resp, err := esClient.Request(ctx, req)
+	if resp != nil {
+		// the response is also returned with an error if the status code is not 2xx
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return nil, err
+	}
+	if resp == nil {
+		return nil, nil
+	}
+	return io.ReadAll(resp.Body)
 }

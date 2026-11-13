@@ -47,7 +47,10 @@ func validations() []validation {
 		checkSingleConfigSource,
 		checkESRefsNamed,
 		checkAssociations,
+		checkConsistentESRefAuthentication,
 		checkSinglePipelineSource,
+		checkPipelinesRefSource,
+		commonv1.PauseOrchestrationAnnotationCheck[*lsv1alpha1.Logstash](),
 	}
 }
 
@@ -86,8 +89,12 @@ func checkAssociations(l *lsv1alpha1.Logstash) field.ErrorList {
 	monitoringPath := field.NewPath("spec").Child("monitoring")
 	err1 := commonv1.CheckAssociationRefs(monitoringPath.Child("metrics"), l.GetMonitoringMetricsRefs()...)
 	err2 := commonv1.CheckAssociationRefs(monitoringPath.Child("logs"), l.GetMonitoringLogsRefs()...)
-	err3 := commonv1.CheckAssociationRefs(field.NewPath("spec").Child("elasticsearchRefs"), l.ElasticsearchRefs()...)
+	err3 := commonv1.CheckElasticsearchSelectorRefs(field.NewPath("spec").Child("elasticsearchRefs"), l.ElasticsearchRefs()...)
 	return append(append(err1, err2...), err3...)
+}
+
+func checkConsistentESRefAuthentication(l *lsv1alpha1.Logstash) field.ErrorList {
+	return commonv1.CheckConsistentESRefAuthentication(field.NewPath("spec").Child("elasticsearchRefs"), l.Namespace, l.ElasticsearchRefs()...)
 }
 
 func checkSinglePipelineSource(a *lsv1alpha1.Logstash) field.ErrorList {
@@ -99,6 +106,21 @@ func checkSinglePipelineSource(a *lsv1alpha1.Logstash) field.ErrorList {
 		}
 	}
 
+	return nil
+}
+
+func checkPipelinesRefSource(a *lsv1alpha1.Logstash) field.ErrorList {
+	if a.Spec.PipelinesRef == nil {
+		return nil
+	}
+	ref := a.Spec.PipelinesRef
+	if ref.SecretName != "" && ref.ConfigMapName != "" {
+		msg := "Specify at most one of [`secretName`, `configMapName`] in pipelinesRef, not both"
+		return field.ErrorList{
+			field.Forbidden(field.NewPath("spec").Child("pipelinesRef").Child("secretName"), msg),
+			field.Forbidden(field.NewPath("spec").Child("pipelinesRef").Child("configMapName"), msg),
+		}
+	}
 	return nil
 }
 

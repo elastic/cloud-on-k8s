@@ -18,11 +18,13 @@
 
 # Version of Elasticsearch.
 #
-version: 9.4.0-SNAPSHOT
+version: 9.6.0-SNAPSHOT
 
-# Elasticsearch Docker image to deploy
-#
-# image:
+# Elasticsearch Docker image to deploy.
+# Supports both tag and digest formats.
+# image: docker.elastic.co/elasticsearch/elasticsearch:9.6.0-SNAPSHOT
+# image: docker.elastic.co/elasticsearch/elasticsearch:9.6.0-SNAPSHOT@sha256:<digest>
+# image: docker.elastic.co/elasticsearch/elasticsearch@sha256:<digest>
 
 # Labels that will be applied to Elasticsearch.
 #
@@ -167,6 +169,11 @@ volumeClaimDeletePolicy: ""
 #
 nodeSets:
 - name: default
+  # Omit count when an ElasticsearchAutoscaler policy targets this nodeSet's roles: the autoscaler
+  # owns it, and a chart that also declares it will fail `helm upgrade --server-side` with a
+  # conflict on spec.nodeSets[name=...].count. This mirrors what Kubernetes prescribes for a
+  # Deployment managed by a HorizontalPodAutoscaler, where spec.replicas is left out of the
+  # manifest. See examples/autoscaling.yaml.
   count: 1
   config:
     # Comment out when setting the vm.max_map_count via initContainer, as these are mutually exclusive.
@@ -175,6 +182,27 @@ nodeSets:
     # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
     #
     node.store.allow_mmap: false
+  # CPU/memory shorthand for the elasticsearch container. This is equivalent to
+  # podTemplate.spec.containers[name=elasticsearch].resources but avoids the four
+  # levels of nesting. When both are set, this shorthand wins for CPU/memory keys
+  # and an admission warning is emitted; non-CPU/memory keys (e.g. ephemeral-storage)
+  # in podTemplate are preserved.
+  #
+  # storage sets the size of this nodeSet's data volume claim. Keep it here rather than in
+  # volumeClaimTemplates when the nodeSet is autoscaled: a PersistentVolumeClaim cannot be tracked
+  # field by field, so the autoscaler writing into volumeClaimTemplates would take ownership of the
+  # storage class and access modes along with the size.
+  #
+  # As with count, omit whichever of these an autoscaling policy manages for this nodeSet. The
+  # storage class and access modes stay in volumeClaimTemplates and remain yours.
+  # resources:
+  #   limits:
+  #     cpu: 1
+  #     memory: 2Gi
+  #   requests:
+  #     cpu: 1
+  #     memory: 2Gi
+  #   storage: 10Gi
   podTemplate:
     # The following spec is exactly the Kubernetes Core V1 PodTemplateSpec. Any fields within the PodTemplateSpec
     # are supported within the 'spec' field below.  Please see below documentation for the exhaustive list of fields.
@@ -334,7 +362,7 @@ ingress:
   enabled: false
 
   # Annotations that will be applied to the Ingress resource. Note that some ingress controllers are controlled via annotations.
-  # 
+  #
   # Nginx Annotations: https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/
   #
   # Common annotations:
@@ -394,11 +422,21 @@ ingress:
 
 # extraObjects allows injecting additional Kubernetes resources into the chart.
 # These resources will be created/deleted alongside the chart release.
-# The value is a list of strings, each string is a YAML manifest.
+# The value can be a list or a map of strings, each string is a YAML manifest.
 # Helm templating is supported within each manifest.
-# Example:
+# Example (list):
 # extraObjects:
 #   - |
+#     apiVersion: v1
+#     kind: ConfigMap
+#     metadata:
+#       name: {{ include "elasticsearch.fullname" . }}-extra-config
+#       namespace: {{ .Release.Namespace }}
+#     data:
+#       key: value
+# Example (map):
+# extraObjects:
+#   myConfigMap: |
 #     apiVersion: v1
 #     kind: ConfigMap
 #     metadata:

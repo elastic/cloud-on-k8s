@@ -24,13 +24,9 @@ type fakeClientProvider func() kubernetes.Interface
 
 func Test_subjectAccessReviewer_AccessAllowed(t *testing.T) {
 	es := &esv1.Elasticsearch{
-		TypeMeta: metav1.TypeMeta{
-			Kind: esv1.Kind,
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es",
-			Namespace: "elasticsearch-ns",
-		},
+		Kind:      esv1.Kind,
+		Name:      "es",
+		Namespace: "elasticsearch-ns",
 	}
 
 	type fields struct {
@@ -79,13 +75,9 @@ func Test_subjectAccessReviewer_AccessAllowed(t *testing.T) {
 			args: args{
 				sourceNamespace: "kibana-ns",
 				object: &esv1.Elasticsearch{
-					TypeMeta: metav1.TypeMeta{
-						Kind: esv1.Kind,
-					},
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "es",
-						Namespace: "kibana-ns",
-					},
+					Kind:      esv1.Kind,
+					Name:      "es",
+					Namespace: "kibana-ns",
 				},
 			},
 			fields: fields{
@@ -221,14 +213,10 @@ func Test_subjectAccessReviewer_AccessAllowed(t *testing.T) {
 
 func Test_newSubjectAccessReview(t *testing.T) {
 	es := &esv1.Elasticsearch{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Elasticsearch",
-			APIVersion: "elasticsearch.k8s.elastic.co/v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es-sample",
-			Namespace: "es-ns",
-		},
+		Kind:       "Elasticsearch",
+		APIVersion: "elasticsearch.k8s.elastic.co/v1",
+		Name:       "es-sample",
+		Namespace:  "es-ns",
 	}
 	type args struct {
 		metaObject      metav1.Object

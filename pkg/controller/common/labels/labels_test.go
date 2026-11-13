@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	agent "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	apm "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
@@ -194,9 +193,7 @@ func TestGetIdentityLabels(t *testing.T) {
 		{
 			name: "Agent returns the correct labels",
 			obj: &agent.Agent{
-				ObjectMeta: v1.ObjectMeta{
-					Name: "test-agent",
-				},
+				Name: "test-agent",
 			},
 			wantLabels: map[string]string{
 				commonv1.TypeLabelName:      "agent",
@@ -206,9 +203,7 @@ func TestGetIdentityLabels(t *testing.T) {
 		{
 			name: "ApmServer returns the correct labels",
 			obj: &apm.ApmServer{
-				ObjectMeta: v1.ObjectMeta{
-					Name: "test-apmserver",
-				},
+				Name: "test-apmserver",
 			},
 			wantLabels: map[string]string{
 				commonv1.TypeLabelName:    "apm-server",
@@ -218,9 +213,7 @@ func TestGetIdentityLabels(t *testing.T) {
 		{
 			name: "Beat returns the correct labels",
 			obj: &beat.Beat{
-				ObjectMeta: v1.ObjectMeta{
-					Name: "test-beat",
-				},
+				Name: "test-beat",
 			},
 			wantLabels: map[string]string{
 				commonv1.TypeLabelName:     "beat",
@@ -230,9 +223,7 @@ func TestGetIdentityLabels(t *testing.T) {
 		{
 			name: "Elasticsearch returns the correct labels",
 			obj: &es.Elasticsearch{
-				ObjectMeta: v1.ObjectMeta{
-					Name: "test-elasticsearch",
-				},
+				Name: "test-elasticsearch",
 			},
 			wantLabels: map[string]string{
 				commonv1.TypeLabelName:                      "elasticsearch",
@@ -242,9 +233,7 @@ func TestGetIdentityLabels(t *testing.T) {
 		{
 			name: "EnterpriseSearch returns the correct labels",
 			obj: &enterprisesearch.EnterpriseSearch{
-				ObjectMeta: v1.ObjectMeta{
-					Name: "test-es",
-				},
+				Name: "test-es",
 			},
 			wantLabels: map[string]string{
 				commonv1.TypeLabelName:                 "enterprise-search",
@@ -254,9 +243,7 @@ func TestGetIdentityLabels(t *testing.T) {
 		{
 			name: "Kibana returns the correct labels",
 			obj: &kibana.Kibana{
-				ObjectMeta: v1.ObjectMeta{
-					Name: "test-kb",
-				},
+				Name: "test-kb",
 			},
 			wantLabels: map[string]string{
 				commonv1.TypeLabelName:       "kibana",
@@ -266,9 +253,7 @@ func TestGetIdentityLabels(t *testing.T) {
 		{
 			name: "Maps returns the correct labels",
 			obj: &maps.ElasticMapsServer{
-				ObjectMeta: v1.ObjectMeta{
-					Name: "test-ems",
-				},
+				Name: "test-ems",
 			},
 			wantLabels: map[string]string{
 				commonv1.TypeLabelName:     "maps",

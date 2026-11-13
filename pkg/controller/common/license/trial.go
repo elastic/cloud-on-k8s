@@ -15,10 +15,10 @@ import (
 
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/chrono"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
@@ -124,13 +124,14 @@ func ExpectedTrialStatus(operatorNamespace string, license types.NamespacedName,
 		return corev1.Secret{}, err
 	}
 	secret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: operatorNamespace,
-			Name:      TrialStatusSecretKey,
-			Annotations: map[string]string{
-				TrialLicenseSecretName:      license.Name,
-				TrialLicenseSecretNamespace: license.Namespace,
-			},
+		Namespace: operatorNamespace,
+		Name:      TrialStatusSecretKey,
+		Annotations: map[string]string{
+			TrialLicenseSecretName:      license.Name,
+			TrialLicenseSecretNamespace: license.Namespace,
+		},
+		Labels: map[string]string{
+			commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
 		},
 		Data: map[string][]byte{
 			TrialPubkeyKey: pubkeyBytes,

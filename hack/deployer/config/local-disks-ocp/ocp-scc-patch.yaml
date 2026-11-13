@@ -1,0 +1,15 @@
+# Grant the privileged SCC to the local-storage-admin service account on OCP.
+# Required because the DaemonSet needs privileged containers, hostPath volumes,
+# and Bidirectional mount propagation — all blocked by OCP's default restricted SCC.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: local-storage-provisioner-scc-privileged
+subjects:
+- kind: ServiceAccount
+  name: local-storage-admin
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: system:openshift:scc:privileged
+  apiGroup: rbac.authorization.k8s.io

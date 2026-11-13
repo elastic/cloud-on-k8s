@@ -11,11 +11,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
@@ -24,14 +25,15 @@ type Unbinder interface {
 	Unbind(ctx context.Context, association commonv1.Association) error
 }
 
-// CheckAndUnbind checks if a reference is allowed and unbinds the association if it is not the case
+// CheckAndUnbind checks whether the association's service account has access to referencedObject.
+// On denial, it always logs and emits a Warning event. If unbinder is non-nil it also calls Unbinder.Unbind.
 func CheckAndUnbind(
 	ctx context.Context,
 	accessReviewer rbac.AccessReviewer,
 	association commonv1.Association,
 	referencedObject runtime.Object,
 	unbinder Unbinder,
-	eventRecorder record.EventRecorder,
+	eventRecorder toolsevents.EventRecorder,
 ) (bool, error) {
 	allowed, err := accessReviewer.AccessAllowed(ctx, association.ServiceAccountName(), association.GetNamespace(), referencedObject)
 	if err != nil {
@@ -51,14 +53,19 @@ func CheckAndUnbind(
 			"remote_namespace", metaObject.GetNamespace(),
 			"remote_name", metaObject.GetName(),
 		)
-		eventRecorder.Eventf(
+		k8s.EmitEventf(
+			eventRecorder,
 			association,
 			corev1.EventTypeWarning,
 			events.EventAssociationError,
+			events.EventActionAccessCheck,
 			"Association not allowed: %s/%s to %s/%s",
 			association.GetNamespace(), association.GetName(), metaObject.GetNamespace(), metaObject.GetName(),
 		)
-		return false, unbinder.Unbind(ctx, association)
+		if unbinder != nil {
+			return false, unbinder.Unbind(ctx, association)
+		}
+		return false, nil
 	}
 	return true, nil
 }

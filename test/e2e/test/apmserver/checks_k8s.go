@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/go-cmp/cmp"
+
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -23,6 +25,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		checks.CheckServicesEndpoints(b, k),
 		CheckSecrets(b, k),
 		CheckStatus(b, k),
+		test.CheckFieldsNotOwnedByOperator(&b.ApmServer, k, nil),
 	}
 }
 
@@ -62,17 +65,23 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 						"elasticsearch.k8s.elastic.co/cluster-name": b.ApmServer.Spec.ElasticsearchRef.Name,
 					},
 				},
-				test.ExpectedSecret{
-					Name: apmName + "-apm-user",
-					Keys: []string{b.ApmServer.Namespace + "-" + apmName + "-apm-user"},
-					Labels: map[string]string{
-						"apmassociation.k8s.elastic.co/name":        apmName,
-						"apmassociation.k8s.elastic.co/namespace":   apmNamespace,
-						"eck.k8s.elastic.co/credentials":            "true",
-						"elasticsearch.k8s.elastic.co/cluster-name": b.ApmServer.Spec.ElasticsearchRef.Name,
-					},
-				},
 			)
+			// In PKI mode the component authenticates with its client certificate and no credentials Secret is created;
+			// skip the check to avoid a hang in CheckSecretsContent.
+			if b.ApmServer.Spec.ElasticsearchRef.AuthenticationMode != commonv1.AuthenticationModePKI {
+				expected = append(expected,
+					test.ExpectedSecret{
+						Name: apmName + "-apm-user",
+						Keys: []string{b.ApmServer.Namespace + "-" + apmName + "-apm-user"},
+						Labels: map[string]string{
+							"apmassociation.k8s.elastic.co/name":        apmName,
+							"apmassociation.k8s.elastic.co/namespace":   apmNamespace,
+							"eck.k8s.elastic.co/credentials":            "true",
+							"elasticsearch.k8s.elastic.co/cluster-name": b.ApmServer.Spec.ElasticsearchRef.Name,
+						},
+					},
+				)
+			}
 		}
 		if b.ApmServer.Spec.HTTP.TLS.Enabled() {
 			expected = append(expected,
@@ -140,9 +149,10 @@ func CheckStatus(b Builder, k *test.K8sClient) test.Step {
 					AvailableNodes: b.ApmServer.Spec.Count,
 					Version:        b.ApmServer.Spec.Version,
 					Health:         "green",
+					Conditions:     as.Status.Conditions, // Ignore Conditions whose LastTransitionTime is unpredictable
 				},
 			}
-			if as.Status != expected {
+			if !cmp.Equal(as.Status, expected) {
 				return fmt.Errorf("expected status %+v but got %+v", expected, as.Status)
 			}
 			return nil

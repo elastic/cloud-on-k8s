@@ -20,7 +20,7 @@ func WarnUnsupportedDistro(pods []corev1.Pod, recorder *events.Recorder) {
 			if s.Name == initcontainer.PrepareFilesystemContainerName &&
 				state != nil && state.ExitCode == initcontainer.UnsupportedDistroExitCode {
 				recorder.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected,
-					"Unsupported distribution")
+					events.EventActionDistributionCheck, "Unsupported distribution")
 			}
 		}
 	}

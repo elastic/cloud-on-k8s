@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.23.0
   name: stackconfigpolicies.stackconfigpolicy.k8s.elastic.co
 spec:
   group: stackconfigpolicy.k8s.elastic.co
@@ -153,6 +153,12 @@ spec:
                       (/_security/role_mapping)
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  securityRoles:
+                    description: |-
+                      SecurityRoles holds the Role definitions (/_security/role).
+                      Roles defined here are merged into the roles.yml file mounted into Elasticsearch pods.
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   snapshotLifecyclePolicies:
                     description: SnapshotLifecyclePolicies holds the Snapshot Lifecycle
                       Policies settings (/_slm/policy)
@@ -289,6 +295,54 @@ spec:
                       type: string
                   required:
                   - secretName
+                  type: object
+                type: array
+              variablesFrom:
+                description: |-
+                  VariablesFrom references ConfigMaps or Secrets from which substitution variables are loaded.
+                  Each source's keys become variables that can be referenced as ${VAR} in the Elasticsearch and Kibana spec fields.
+                  Sources without a namespace default to the policy's namespace; cross-namespace sources are only
+                  permitted for policies deployed in the operator namespace.
+                  Later entries take precedence over earlier ones on key conflicts.
+                  If no sources are specified, no variable substitution is performed and ${VAR} expressions are left as-is.
+                  Only keys present in a source are substituted; any other ${...} expression (including native
+                  ES references such as ${ENV} or ${foo.bar}) is left verbatim so it can be resolved by
+                  Elasticsearch at runtime. Use ${VAR:-default} to supply a fallback for an optional key.
+                  Values from sources are JSON-escaped before substitution and are limited to string-typed
+                  fields: numeric, boolean, and object fields cannot be templated because ConfigMap and Secret
+                  values are always strings and the intended target type cannot be inferred.
+                items:
+                  description: VariableSource references a ConfigMap or Secret from
+                    which variables are loaded for substitution.
+                  properties:
+                    kind:
+                      description: Kind is the type of the source, either ConfigMap
+                        or Secret.
+                      enum:
+                      - ConfigMap
+                      - Secret
+                      type: string
+                    name:
+                      description: Name is the name of the ConfigMap or Secret.
+                      minLength: 1
+                      type: string
+                    namespace:
+                      description: |-
+                        Namespace is the namespace of the ConfigMap or Secret.
+                        When empty, the StackConfigPolicy's own namespace is used.
+                        Cross-namespace references are only permitted for policies
+                        deployed in the operator namespace; all other policies must
+                        reference sources in their own namespace.
+                      type: string
+                    optional:
+                      description: |-
+                        Optional indicates whether the source is optional. When true,
+                        a missing ConfigMap or Secret is silently ignored instead of
+                        causing a reconciliation error.
+                      type: boolean
+                  required:
+                  - kind
+                  - name
                   type: object
                 type: array
               weight:

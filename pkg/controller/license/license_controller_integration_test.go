@@ -29,6 +29,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/chrono"
@@ -43,14 +44,17 @@ func TestMain(m *testing.M) {
 func TestReconcile(t *testing.T) {
 	c, stop := test.StartManager(t, func(mgr manager.Manager, p operator.Parameters) error {
 		r := &ReconcileLicenses{
-			Client:  mgr.GetClient(),
+			Client: mgr.GetClient(),
+			Parameters: operator.Parameters{
+				NamespaceMatcher: nsmatch.NewNamespaceMatcher(nil, "elastic-system"),
+			},
 			checker: license.MockLicenseChecker{EnterpriseEnabled: true},
 		}
 		c, err := common.NewController(mgr, name, r, p)
 		if err != nil {
 			return err
 		}
-		return addWatches(mgr, c, r.Client)
+		return addWatches(mgr, c, r)
 
 	}, operator.Parameters{})
 	defer stop()

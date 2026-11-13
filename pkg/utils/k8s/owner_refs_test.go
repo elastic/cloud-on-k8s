@@ -46,10 +46,8 @@ func TestOverrideControllerReference(t *testing.T) {
 			name: "replace existing controller",
 			args: args{
 				obj: &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						OwnerReferences: []metav1.OwnerReference{
-							ownerRefFixture("obj1", true),
-						},
+					OwnerReferences: []metav1.OwnerReference{
+						ownerRefFixture("obj1", true),
 					},
 				},
 				newOwner: ownerRefFixture("obj2", true),
@@ -63,11 +61,9 @@ func TestOverrideControllerReference(t *testing.T) {
 			name: "replace existing controller preserving existing references",
 			args: args{
 				obj: &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						OwnerReferences: []metav1.OwnerReference{
-							ownerRefFixture("other", false),
-							ownerRefFixture("obj1", true),
-						},
+					OwnerReferences: []metav1.OwnerReference{
+						ownerRefFixture("other", false),
+						ownerRefFixture("obj1", true),
 					},
 				},
 				newOwner: ownerRefFixture("obj2", true),
@@ -90,8 +86,8 @@ func TestOverrideControllerReference(t *testing.T) {
 func sampleOwner() *corev1.Secret {
 	// we use a secret here but it could be any Elasticsearch | Kibana | ApmServer | etc.
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "owner-name", UID: "owner-id"},
-		TypeMeta:   metav1.TypeMeta{Kind: "Secret"},
+		Namespace: "ns", Name: "owner-name", UID: "owner-id",
+		Kind: "Secret",
 	}
 }
 
@@ -186,7 +182,7 @@ func Test_removeOwner(t *testing.T) {
 				resource: addOwner(&corev1.Secret{}, sampleOwner().Name, sampleOwner().UID),
 				owner:    sampleOwner(),
 			},
-			wantResource: &corev1.Secret{ObjectMeta: metav1.ObjectMeta{OwnerReferences: []metav1.OwnerReference{}}},
+			wantResource: &corev1.Secret{OwnerReferences: []metav1.OwnerReference{}},
 		},
 		{
 			name: "remove the owner from a list of owners",

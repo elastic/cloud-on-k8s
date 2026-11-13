@@ -18,7 +18,7 @@
 
 # Version of AutoOps Agent Policy.
 #
-version: 9.4.0-SNAPSHOT
+version: 9.6.0-SNAPSHOT
 
 # Labels that will be applied to AutoOps Agent Policy.
 #
@@ -37,8 +37,6 @@ annotations: {}
 # - `cloud-connected-mode-api-key`: the Cloud Connected Mode API key. This is used to register the Agent with Elastic Cloud AutoOps.
 # - `autoops-otel-url`: the URL of the AutoOps OTel endpoint. This is used to send Agent data to the AutoOps platform and is region specific.
 #     Example: "https://otel-auto-ops.us-east-2.aws.svc.elastic.cloud"
-# - `autoops-token`: the token to authenticate against the AutoOps platform and is how AutoOps knows how to connect Agent data to the
-#     relevant Elastic Cloud organization
 # - `cloud-connected-mode-api-url`: the URL of the Cloud Connected Mode API (optional)
 #
 autoOpsRef: {}
@@ -51,7 +49,10 @@ autoOpsRef: {}
 # config: {}
 
 # Image is the AutoOps Agent Docker image to deploy.
-# image: "docker.elastic.co/elastic-agent/elastic-otel-collector-wolfi:9.3.0-SNAPSHOT"
+# Supports both tag and digest formats.
+# image: "docker.elastic.co/elastic-agent/elastic-otel-collector-wolfi:9.6.0-SNAPSHOT"
+# image: "docker.elastic.co/elastic-agent/elastic-otel-collector-wolfi:9.6.0-SNAPSHOT@sha256:<digest>"
+# image: "docker.elastic.co/elastic-agent/elastic-otel-collector-wolfi@sha256:<digest>"
 
 # RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying Deployment.
 # revisionHistoryLimit: 2
@@ -96,11 +97,21 @@ resourceSelector:
 
 # extraObjects allows injecting additional Kubernetes resources into the chart.
 # These resources will be created/deleted alongside the chart release.
-# The value is a list of strings, each string is a YAML manifest.
+# The value can be a list or a map of strings, each string is a YAML manifest.
 # Helm templating is supported within each manifest.
-# Example:
+# Example (list):
 # extraObjects:
 #   - |
+#     apiVersion: v1
+#     kind: ConfigMap
+#     metadata:
+#       name: {{ include "autoops.fullname" . }}-extra-config
+#       namespace: {{ .Release.Namespace }}
+#     data:
+#       key: value
+# Example (map):
+# extraObjects:
+#   myConfigMap: |
 #     apiVersion: v1
 #     kind: ConfigMap
 #     metadata:

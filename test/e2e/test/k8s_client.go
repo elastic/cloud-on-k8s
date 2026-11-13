@@ -10,12 +10,14 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
+	"time"
 
 	computeclassv1 "github.com/googlecloudplatform/compute-class-api/api/cloud.google.com/v1"
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
+	eventsv1 "k8s.io/api/events/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -51,6 +53,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/maps"
 	eprlabels "github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/retry"
 )
 
 type K8sClient struct {
@@ -227,8 +230,8 @@ func endpointSliceMatches(slice discoveryv1.EndpointSlice, filters ...func(slice
 	return true
 }
 
-func (k *K8sClient) GetEvents(opts ...k8sclient.ListOption) ([]corev1.Event, error) {
-	var eventList corev1.EventList
+func (k *K8sClient) GetEvents(opts ...k8sclient.ListOption) ([]eventsv1.Event, error) {
+	var eventList eventsv1.EventList
 	if err := k.Client.List(context.Background(), &eventList, opts...); err != nil {
 		return nil, err
 	}
@@ -340,7 +343,15 @@ func (k *K8sClient) GetPVCsByPods(pods []corev1.Pod) ([]corev1.PersistentVolumeC
 }
 
 // Exec runs the given cmd into the given pod.
+// If the pod has multiple containers, Kubernetes chooses the first container; prefer ExecInContainer when the target
+// container is known.
 func (k *K8sClient) Exec(pod types.NamespacedName, cmd []string) (string, string, error) {
+	return k.ExecInContainer(pod, "", cmd)
+}
+
+// ExecInContainer runs the given cmd in the named pod container. If container is empty, Kubernetes uses its default
+// (first container in the pod spec).
+func (k *K8sClient) ExecInContainer(pod types.NamespacedName, container string, cmd []string) (string, string, error) {
 	// create the exec client
 	cfg, err := config.GetConfig()
 	if err != nil {
@@ -351,6 +362,15 @@ func (k *K8sClient) Exec(pod types.NamespacedName, cmd []string) (string, string
 		return "", "", err
 	}
 
+	opts := &corev1.PodExecOptions{
+		Command: cmd,
+		Stdout:  true,
+		Stderr:  true,
+	}
+	if container != "" {
+		opts.Container = container
+	}
+
 	// build the exec url
 	req := clientset.CoreV1().RESTClient().Post().
 		Resource("pods").
@@ -358,11 +378,7 @@ func (k *K8sClient) Exec(pod types.NamespacedName, cmd []string) (string, string
 		Namespace(pod.Namespace).
 		SubResource("exec").
 		VersionedParams(
-			&corev1.PodExecOptions{
-				Command: cmd,
-				Stdout:  true,
-				Stderr:  true,
-			},
+			opts,
 			runtime.NewParameterCodec(scheme.Scheme),
 		)
 	exec, err := remotecommand.NewSPDYExecutor(cfg, "POST", req.URL())
@@ -379,6 +395,23 @@ func (k *K8sClient) Exec(pod types.NamespacedName, cmd []string) (string, string
 		Tty:    false,
 	})
 	return stdout.String(), stderr.String(), err
+}
+
+// GetPodLogs returns the logs of the current instance of the named container, starting from the beginning of the logs
+// and limited to limitBytes.
+func (k *K8sClient) GetPodLogs(ctx context.Context, pod types.NamespacedName, container string, limitBytes int64) ([]byte, error) {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+	clientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return clientset.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &corev1.PodLogOptions{
+		Container:  container,
+		LimitBytes: &limitBytes,
+	}).DoRaw(ctx)
 }
 
 func (k *K8sClient) CheckSecretsRemoved(secretRefs []types.NamespacedName) error {
@@ -415,10 +448,58 @@ func (k *K8sClient) DeleteSecrets(secrets ...corev1.Secret) error {
 	return nil
 }
 
+// IsRetryableError reports whether err represents a transient Kubernetes API
+// server response for which retrying the request may succeed.
+func IsRetryableError(err error) bool {
+	return apierrors.IsInternalError(err) ||
+		apierrors.IsServerTimeout(err) ||
+		apierrors.IsServiceUnavailable(err) ||
+		apierrors.IsTooManyRequests(err) ||
+		apierrors.IsTimeout(err)
+}
+
+// CreateWithRetry creates each object independently, retrying errors accepted by
+// shouldRetry for up to timeout. An existing object is considered a successful
+// outcome. The caller's objects are not modified.
+func (k *K8sClient) CreateWithRetry(
+	shouldRetry func(error) bool,
+	timeout time.Duration,
+	objs ...k8sclient.Object,
+) error {
+	for _, desired := range objs {
+		err := retry.OnError(func() error {
+			obj := k8s.DeepCopyObject(desired)
+			err := k.Client.Create(context.Background(), obj)
+			if apierrors.IsAlreadyExists(err) {
+				return nil
+			}
+			return err
+		}, shouldRetry, timeout, DefaultRetryDelay)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (k *K8sClient) CreateOrUpdate(objs ...k8sclient.Object) error {
 	for _, obj := range objs {
 		// create a copy to ensure that the original object is not modified
 		obj := k8s.DeepCopyObject(obj)
+
+		switch obj.(type) {
+		case *corev1.Secret, *corev1.Service, *corev1.ConfigMap:
+			// add watch labels in Services, Secrets and ConfigMaps
+			lbs := obj.GetLabels()
+			if lbs == nil {
+				lbs = make(map[string]string)
+			}
+			if _, exists := lbs[commonv1.RestrictWatchedResourcesLabelName]; !exists {
+				lbs[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
+			}
+			obj.SetLabels(lbs)
+		}
+
 		// optimistic creation
 		err := k.Client.Create(context.Background(), obj)
 		if err != nil {
@@ -483,7 +564,7 @@ func AgentPodListOptions(agentNamespace, agentName string) []k8sclient.ListOptio
 	ns := k8sclient.InNamespace(agentNamespace)
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
 		commonv1.TypeLabelName: agent.TypeLabelValue,
-		agent.NameLabelName:    agent.Name(agentName),
+		agent.NameLabelName:    agentName,
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
 }
@@ -497,11 +578,11 @@ func LogstashPodListOptions(logstashNamespace, logstashName string) []k8sclient.
 	return []k8sclient.ListOption{ns, matchLabels}
 }
 
-func BeatPodListOptions(beatNamespace, beatName, beatType string) []k8sclient.ListOption {
+func BeatPodListOptions(beatNamespace, beatName string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(beatNamespace)
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
 		commonv1.TypeLabelName:   beatcommon.TypeLabelValue,
-		beatcommon.NameLabelName: beatcommon.Name(beatName, beatType),
+		beatcommon.NameLabelName: beatName,
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
 }
@@ -535,8 +616,8 @@ func OperatorPodListOptions(opNs string) []k8sclient.ListOption {
 func EventListOptions(namespace, name string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(namespace)
 	matchFields := k8sclient.MatchingFields(map[string]string{
-		"involvedObject.name":      name,
-		"involvedObject.namespace": namespace,
+		"regarding.name":      name,
+		"regarding.namespace": namespace,
 	})
 	return []k8sclient.ListOption{ns, matchFields}
 }
@@ -550,6 +631,8 @@ func GetFirstPodMatching(pods []corev1.Pod, predicate func(pod corev1.Pod) bool)
 	return corev1.Pod{}, false
 }
 
+// OnAllPods runs f on every pod in parallel and returns an error if any invocation fails.
+// All pods are exercised regardless of individual failures; the last error seen is returned.
 func OnAllPods(pods []corev1.Pod, f func(corev1.Pod) error) error {
 	// map phase: execute a function on all pods in parallel
 	fResults := make(chan error, len(pods))
@@ -567,6 +650,39 @@ func OnAllPods(pods []corev1.Pod, f func(corev1.Pod) error) error {
 		}
 	}
 	return err
+}
+
+// OnAnyPod runs f on every pod in parallel and returns nil if at least one invocation succeeds.
+// If every invocation fails, the last error seen is returned.
+// Returns an error if pods is empty so callers cannot silently pass with nothing checked.
+func OnAnyPod(pods []corev1.Pod, f func(corev1.Pod) error) error {
+	if len(pods) == 0 {
+		return errors.New("OnAnyPod: no pods to check")
+	}
+	// map phase: execute a function on all pods in parallel
+	fResults := make(chan error, len(pods))
+	for _, p := range pods {
+		go func(pod corev1.Pod) {
+			fResults <- f(pod)
+		}(p)
+	}
+	// reduce phase: aggregate errors (simply return the last one seen)
+	var err error
+	allErrored := true
+	for range pods {
+		podErr := <-fResults
+		if podErr != nil {
+			err = podErr
+		} else {
+			allErrored = false
+		}
+	}
+
+	if allErrored {
+		return err
+	}
+
+	return nil
 }
 
 // GetFirstNodeExternalIP gets the external IP address of the first k8s node in the current k8s cluster.

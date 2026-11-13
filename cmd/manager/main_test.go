@@ -7,44 +7,72 @@ package manager
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 
+	"github.com/go-logr/logr"
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/config"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	ctrlmgr "sigs.k8s.io/controller-runtime/pkg/manager"
+	ctrlrecorder "sigs.k8s.io/controller-runtime/pkg/recorder"
+	ctrlwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
+	webhookconversion "sigs.k8s.io/controller-runtime/pkg/webhook/conversion"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	controllerscheme "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
 
 func ownedSecret(namespace, name, ownerNs, ownerName, ownerKind string) *corev1.Secret {
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name, Labels: map[string]string{
+		Namespace: namespace, Name: name, Labels: map[string]string{
 			reconciler.SoftOwnerNameLabel:      ownerName,
 			reconciler.SoftOwnerNamespaceLabel: ownerNs,
 			reconciler.SoftOwnerKindLabel:      ownerKind,
-		}}}
+		},
+	}
 }
 
-//nolint:thelper
+func TestRunnableLeaderElection(t *testing.T) {
+	assert.True(t, (&gcRunnable{}).NeedLeaderElection(), "gcRunnable must only run on the leader")
+	assert.False(t, (&licenseCheckRunnable{}).NeedLeaderElection(), "licenseCheckRunnable must run on every replica")
+}
+
 func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 	log = logf.Log.WithName("test")
 	tests := []struct {
 		name        string
 		runtimeObjs []client.Object
-		assert      func(c k8s.Client, t *testing.T)
+		assert      func(t *testing.T, c k8s.Client)
 	}{
 		{
 			name: "don't gc secrets owned by a different Kind of resource",
@@ -52,7 +80,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 				// secret referencing another resource (a Secret) that does not exist anymore
 				ownedSecret("ns", "secret-1", "ns", "a-secret", "Secret"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// secret still there
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
 			},
@@ -61,12 +90,13 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			name: "no Elasticsearch soft-owned secrets to gc",
 			runtimeObjs: []client.Object{
 				&esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
-					TypeMeta:   metav1.TypeMeta{Kind: "Elasticsearch"},
+					Namespace: "ns", Name: "es",
+					Kind: "Elasticsearch",
 				},
 				ownedSecret("ns", "secret-1", "ns", "es", "Elasticsearch"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// es + the secret are still there
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "es"}, &esv1.Elasticsearch{}))
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
@@ -78,7 +108,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 				// secret referencing ES that does not exist anymore
 				ownedSecret("ns", "secret-1", "ns", "es", "Elasticsearch"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// secret has been removed
 				require.True(t, apierrors.IsNotFound(c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{})))
 			},
@@ -87,12 +118,13 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			name: "no Kibana soft-owned secrets to gc",
 			runtimeObjs: []client.Object{
 				&kbv1.Kibana{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
-					TypeMeta:   metav1.TypeMeta{Kind: "Kibana"},
+					Namespace: "ns", Name: "es",
+					Kind: "Kibana",
 				},
 				ownedSecret("ns", "secret-1", "ns", "es", "Kibana"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// kibana + the secret are still there
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "es"}, &kbv1.Kibana{}))
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
@@ -104,7 +136,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 				// secret referencing Kibana that does not exist anymore
 				ownedSecret("ns", "secret-1", "ns", "es", "Kibana"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// secret has been removed
 				require.True(t, apierrors.IsNotFound(c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{})))
 			},
@@ -113,12 +146,13 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			name: "no ApmServer soft-owned secrets to gc",
 			runtimeObjs: []client.Object{
 				&apmv1.ApmServer{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
-					TypeMeta:   metav1.TypeMeta{Kind: "ApmServer"},
+					Namespace: "ns", Name: "es",
+					Kind: "ApmServer",
 				},
 				ownedSecret("ns", "secret-1", "ns", "es", "ApmServer"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// ApmServer + the secret are still there
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "es"}, &apmv1.ApmServer{}))
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
@@ -130,7 +164,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 				// secret referencing ApmServer that does not exist anymore
 				ownedSecret("ns", "secret-1", "ns", "es", "ApmServer"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// secret has been removed
 				require.True(t, apierrors.IsNotFound(c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{})))
 			},
@@ -139,12 +174,13 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			name: "no EnterpriseSearch soft-owned secrets to gc",
 			runtimeObjs: []client.Object{
 				&entv1.EnterpriseSearch{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
-					TypeMeta:   metav1.TypeMeta{Kind: "EnterpriseSearch"},
+					Namespace: "ns", Name: "es",
+					Kind: "EnterpriseSearch",
 				},
 				ownedSecret("ns", "secret-1", "ns", "es", "EnterpriseSearch"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// EnterpriseSearch + the secret are still there
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "es"}, &entv1.EnterpriseSearch{}))
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
@@ -156,7 +192,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 				// secret referencing EnterpriseSearch that does not exist anymore
 				ownedSecret("ns", "secret-1", "ns", "es", "EnterpriseSearch"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// secret has been removed
 				require.True(t, apierrors.IsNotFound(c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{})))
 			},
@@ -165,12 +202,13 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 			name: "no Beat soft-owned secrets to gc",
 			runtimeObjs: []client.Object{
 				&beatv1beta1.Beat{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
-					TypeMeta:   metav1.TypeMeta{Kind: "Beat"},
+					Namespace: "ns", Name: "es",
+					Kind: "Beat",
 				},
 				ownedSecret("ns", "secret-1", "ns", "es", "Beat"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// Beat + the secret are still there
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "es"}, &beatv1beta1.Beat{}))
 				require.NoError(t, c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{}))
@@ -182,7 +220,8 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 				// secret referencing Beat that does not exist anymore
 				ownedSecret("ns", "secret-1", "ns", "es", "Beat"),
 			},
-			assert: func(c k8s.Client, t *testing.T) {
+			assert: func(t *testing.T, c k8s.Client) {
+				t.Helper()
 				// secret has been removed
 				require.True(t, apierrors.IsNotFound(c.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "secret-1"}, &corev1.Secret{})))
 			},
@@ -192,7 +231,7 @@ func Test_garbageCollectSoftOwnedSecrets(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.NewFakeClient(tt.runtimeObjs...)
 			garbageCollectSoftOwnedSecrets(context.Background(), c)
-			tt.assert(c, t)
+			tt.assert(t, c)
 		})
 	}
 }
@@ -268,7 +307,8 @@ func Test_determineSetDefaultSecurityContext(t *testing.T) {
 			},
 			true,
 			false,
-		}, {
+		},
+		{
 			"false set, returning no error, will not set security context",
 			args{
 				"false",
@@ -276,7 +316,8 @@ func Test_determineSetDefaultSecurityContext(t *testing.T) {
 			},
 			false,
 			false,
-		}, {
+		},
+		{
 			"invalid bool set, returns error",
 			args{
 				"invalid",
@@ -302,16 +343,16 @@ func Test_determineSetDefaultSecurityContext(t *testing.T) {
 
 type fakeClientset struct {
 	kubernetes.Interface
-	discovery discovery.DiscoveryInterface
+	discovery discovery.DiscoveryInterfaces
 }
 
 type fakeDiscovery struct {
-	discovery.DiscoveryInterface
+	discovery.DiscoveryInterfaces
 	resources                         []*metav1.APIResourceList
 	errServerResourcesForGroupVersion error
 }
 
-func (c *fakeClientset) Discovery() discovery.DiscoveryInterface {
+func (c *fakeClientset) Discovery() discovery.DiscoveryInterfaces {
 	return c.discovery
 }
 
@@ -336,4 +377,170 @@ func newFakeK8sClientsetWithDiscovery(resources []*metav1.APIResourceList, disco
 		discovery: discoveryClient,
 	}
 	return client
+}
+
+func TestBuildByObject(t *testing.T) {
+	labelScopedExpected := commonv1.RestrictWatchedResourcesLabelName + `=true`
+
+	tests := []struct {
+		name                         string
+		restrictWatchedResources     bool
+		expectedLabelQueryByTypeName map[reflect.Type]string
+	}{
+		{
+			name:                     "without label scope",
+			restrictWatchedResources: false,
+			expectedLabelQueryByTypeName: map[reflect.Type]string{
+				reflect.TypeFor[*corev1.Pod]():                   commonv1.TypeLabelName,
+				reflect.TypeFor[*policyv1.PodDisruptionBudget](): commonv1.TypeLabelName,
+				reflect.TypeFor[*appsv1.Deployment]():            commonv1.TypeLabelName,
+				reflect.TypeFor[*appsv1.StatefulSet]():           commonv1.TypeLabelName,
+				reflect.TypeFor[*appsv1.DaemonSet]():             commonv1.TypeLabelName,
+			},
+		},
+		{
+			name:                     "with label scope",
+			restrictWatchedResources: true,
+			expectedLabelQueryByTypeName: map[reflect.Type]string{
+				reflect.TypeFor[*corev1.Pod]():                   commonv1.TypeLabelName,
+				reflect.TypeFor[*policyv1.PodDisruptionBudget](): commonv1.TypeLabelName,
+				reflect.TypeFor[*appsv1.Deployment]():            commonv1.TypeLabelName,
+				reflect.TypeFor[*appsv1.StatefulSet]():           commonv1.TypeLabelName,
+				reflect.TypeFor[*appsv1.DaemonSet]():             commonv1.TypeLabelName,
+				reflect.TypeFor[*corev1.Secret]():                labelScopedExpected,
+				reflect.TypeFor[*corev1.Service]():               labelScopedExpected,
+				reflect.TypeFor[*corev1.ConfigMap]():             labelScopedExpected,
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := buildByObject(tc.restrictWatchedResources)
+			require.NoError(t, err)
+			require.Len(t, got, len(tc.expectedLabelQueryByTypeName), "not expected number of items")
+
+			for obj, cnf := range got {
+				tp := reflect.TypeOf(obj)
+				query := cnf.Label.String()
+				expected, found := tc.expectedLabelQueryByTypeName[tp]
+				assert.True(t, found, "object not found in expected, %s", tp.String())
+				assert.Equal(t, expected, query)
+			}
+		})
+	}
+}
+
+func Test_parseNSSelector(t *testing.T) {
+	tests := []struct {
+		name        string
+		rawSelector any // value set for operator.NamespaceSelectorFlag, unset if nil
+		wantSel     labels.Selector
+		wantErr     bool
+	}{
+		{
+			name:        "flag not set returns nil selector",
+			rawSelector: nil,
+			wantSel:     nil,
+		},
+		{
+			name:        "empty selector ({}) returns nil selector",
+			rawSelector: map[string]any{},
+			wantSel:     nil,
+		},
+		{
+			name: "matchLabels is parsed into a selector",
+			rawSelector: map[string]any{
+				"matchLabels": map[string]any{
+					"environment": "prod",
+				},
+			},
+			wantSel: labels.SelectorFromSet(labels.Set{"environment": "prod"}),
+		},
+		{
+			name: "matchExpressions is parsed into a selector",
+			rawSelector: map[string]any{
+				"matchExpressions": []any{
+					map[string]any{
+						"key":      "environment",
+						"operator": "In",
+						"values":   []any{"prod", "staging"},
+					},
+				},
+			},
+			wantSel: func() labels.Selector {
+				req, err := labels.NewRequirement("environment", selection.In, []string{"prod", "staging"})
+				require.NoError(t, err)
+				return labels.NewSelector().Add(*req)
+			}(),
+		},
+		{
+			name:        "malformed selector value returns an error",
+			rawSelector: "not-a-label-selector",
+			wantErr:     true,
+		},
+		{
+			name: "invalid matchExpressions operator returns an error",
+			rawSelector: map[string]any{
+				"matchExpressions": []any{
+					map[string]any{
+						"key":      "environment",
+						"operator": "NotAValidOperator",
+						"values":   []any{"prod"},
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v := viper.New()
+			if tt.rawSelector != nil {
+				v.Set(operator.NamespaceSelectorFlag, tt.rawSelector)
+			}
+
+			got, err := parseNSSelector(v, logr.Discard())
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantSel, got)
+		})
+	}
+}
+
+// fakeManager implements manager.Manager with just enough behavior for registerControllers
+// to succeed: a fully populated scheme (for GVK lookups and owner-reference handlers),
+// SkipNameValidation to avoid the global controller-name uniqueness registry, and nil/no-op
+// returns for everything that is only stored and never called during controller setup.
+type fakeManager struct {
+	ctrlmgr.Manager // embed to satisfy unimplemented methods — panics if unexpectedly called
+}
+
+func (fakeManager) GetScheme() *runtime.Scheme        { return clientgoscheme.Scheme }
+func (fakeManager) GetClient() client.Client          { return nil }
+func (fakeManager) GetCache() cache.Cache             { return nil }
+func (fakeManager) GetRESTMapper() apimeta.RESTMapper { return nil }
+func (fakeManager) GetLogger() logr.Logger            { return logr.Discard() }
+func (fakeManager) GetControllerOptions() config.Controller {
+	return config.Controller{Logger: logr.Discard(), SkipNameValidation: new(true)}
+}
+func (fakeManager) Add(ctrlmgr.Runnable) error                         { return nil }
+func (fakeManager) GetEventRecorderFor(string) record.EventRecorder    { return nil }
+func (fakeManager) GetEventRecorder(string) ctrlrecorder.EventRecorder { return nil }
+func (fakeManager) AddHealthzCheck(string, healthz.Checker) error      { return nil }
+func (fakeManager) AddReadyzCheck(string, healthz.Checker) error       { return nil }
+func (fakeManager) GetWebhookServer() ctrlwebhook.Server               { return nil }
+func (fakeManager) GetConverterRegistry() webhookconversion.Registry   { return nil }
+
+// TestRegisterControllers verifies that registerControllers succeeds with a fake manager.
+// It acts as a registration smoke-test: if any controller's AssociationInfo violates
+// ValidateAssociationInfo (e.g. ElasticsearchUserCreation set but ElasticsearchRef nil),
+// this test catches it before the operator starts.
+func TestRegisterControllers(t *testing.T) {
+	controllerscheme.SetupScheme()
+	require.NoError(t, registerControllers(fakeManager{}, operator.Parameters{}, rbac.NewPermissiveAccessReviewer()))
 }

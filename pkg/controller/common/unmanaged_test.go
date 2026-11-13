@@ -10,18 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-type testcase struct {
-	name string
-
-	// annotationSequence is list of annotations that are simulated.
-	annotationSequence []map[string]string
-
-	// Expected (un)managed state.
-	expectedState []bool
-}
 
 func TestUnmanagedCondition(t *testing.T) {
 	var tests = []testcase{
@@ -79,11 +68,10 @@ func TestUnmanagedCondition(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			for i, expectedState := range test.expectedState {
 				// testing with a secret, but could be any kind
-				obj := corev1.Secret{ObjectMeta: v1.ObjectMeta{
+				obj := corev1.Secret{
 					Name:        "bar",
 					Namespace:   "foo",
-					Annotations: test.annotationSequence[i],
-				}}
+					Annotations: test.annotationSequence[i]}
 				actualPauseState := IsUnmanaged(context.Background(), &obj)
 				assert.Equal(t, expectedState, actualPauseState, test.annotationSequence[i])
 			}

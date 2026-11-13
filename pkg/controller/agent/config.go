@@ -15,7 +15,6 @@ import (
 	"path"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
@@ -46,12 +45,10 @@ func reconcileConfig(params Params, configHash hash.Hash) *reconciler.Results {
 	}
 
 	expected := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   params.Agent.Namespace,
-			Name:        ConfigSecretName(params.Agent.Name),
-			Labels:      labels.AddCredentialsLabel(maps.Clone(params.Meta.Labels)),
-			Annotations: params.Meta.Annotations,
-		},
+		Namespace:   params.Agent.Namespace,
+		Name:        ConfigSecretName(params.Agent.Name),
+		Labels:      labels.AddCredentialsLabel(maps.Clone(params.Meta.Labels)),
+		Annotations: params.Meta.Annotations,
 		Data: map[string][]byte{
 			ConfigFileName: cfgBytes,
 		},
@@ -139,12 +136,17 @@ func buildOutputConfig(params Params) (*settings.CanonicalConfig, error) {
 				return settings.NewCanonicalConfig(), fmt.Errorf("error at decoding api-key from secret %s: %w", assocConf.AuthSecretName, err)
 			}
 			output["api_key"] = string(decodedAPIKey)
-		} else {
+		} else if !assocConf.NoAuthRequired() {
 			output["username"] = credentials.Username
 			output["password"] = credentials.Password
 		}
 		if assocConf.GetCACertProvided() {
-			output["ssl.certificate_authorities"] = []string{path.Join(certificatesDir(assoc), CAFileName)}
+			output["ssl.certificate_authorities"] = []string{path.Join(CertificatesDir(assoc), CAFileName)}
+		}
+		if assocConf.ClientCertIsConfigured() {
+			clientCertDir := associationClientCertificatesDir(assoc)
+			output["ssl.certificate"] = path.Join(clientCertDir, certificates.CertFileName)
+			output["ssl.key"] = path.Join(clientCertDir, certificates.KeyFileName)
 		}
 
 		outputName := params.Agent.Spec.ElasticsearchRefs[i].OutputName
@@ -202,7 +204,7 @@ func extractPodConnectionSettings(
 
 	ca := ""
 	if assocConf.GetCACertProvided() {
-		ca = path.Join(certificatesDir(assoc), CAFileName)
+		ca = path.Join(CertificatesDir(assoc), CAFileName)
 	}
 
 	return connectionSettings{

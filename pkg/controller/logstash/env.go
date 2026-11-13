@@ -19,7 +19,7 @@ import (
 )
 
 func buildEnv(params Params, esAssociations []commonv1.Association) ([]corev1.EnvVar, error) {
-	var envs []corev1.EnvVar //nolint:prealloc
+	var envs []corev1.EnvVar
 	for _, assoc := range esAssociations {
 		assocConf, err := assoc.AssociationConf()
 		if err != nil {
@@ -39,22 +39,28 @@ func buildEnv(params Params, esAssociations []commonv1.Association) ([]corev1.En
 		normalizedClusterName := normalize(clusterName)
 
 		envs = append(envs, createEnvVar(normalizedClusterName+"_ES_HOSTS", assocConf.GetURL()))
-		envs = append(envs, createEnvVar(normalizedClusterName+"_ES_USER", credentials.Username))
-		envs = append(envs, corev1.EnvVar{
-			Name: normalizedClusterName + "_ES_PASSWORD",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
+		if !assocConf.NoAuthRequired() {
+			envs = append(envs, createEnvVar(normalizedClusterName+"_ES_USER", credentials.Username))
+			envs = append(envs, corev1.EnvVar{
+				Name: normalizedClusterName + "_ES_PASSWORD",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
 						Name: assocConf.AuthSecretName,
+						Key:  assocConf.AuthSecretKey,
 					},
-					Key: assocConf.AuthSecretKey,
 				},
-			},
-		})
+			})
+		}
 
 		if assocConf.GetCACertProvided() {
 			caPath := filepath.Join(volume.CertificatesDir(assoc), certificates.CAFileName)
 			envs = append(envs, createEnvVar(normalizedClusterName+"_ES_SSL_CERTIFICATE_AUTHORITY", caPath))
+		}
+		if assocConf.ClientCertIsConfigured() {
+			certPath := filepath.Join(volume.ClientCertificatesDir(assoc), certificates.CertFileName)
+			keyPath := filepath.Join(volume.ClientCertificatesDir(assoc), certificates.KeyFileName)
+			envs = append(envs, createEnvVar(normalizedClusterName+"_ES_SSL_CERTIFICATE", certPath))
+			envs = append(envs, createEnvVar(normalizedClusterName+"_ES_SSL_KEY", keyPath))
 		}
 	}
 
@@ -66,7 +72,7 @@ func getClusterName(assoc commonv1.Association) (string, error) {
 	if !ok {
 		return "", errors.New("cannot cast association to LogstashESAssociation")
 	}
-	return lses.ClusterName, nil
+	return lses.ElasticsearchCluster.ClusterName, nil
 }
 
 func normalize(nn string) string {

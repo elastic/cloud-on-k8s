@@ -18,7 +18,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -30,7 +29,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/stackconfig"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -85,15 +86,13 @@ func (esb *esSampleBuilder) withTransportCertsDisabled(disabled bool) *esSampleB
 }
 
 var sampleES = esv1.Elasticsearch{
-	ObjectMeta: metav1.ObjectMeta{
-		Namespace: "namespace",
-		Name:      "name",
-		Labels: map[string]string{
-			"cluster-label-name": "cluster-label-value",
-		},
-		Annotations: map[string]string{
-			"cluster-annotation-name": "cluster-annotation-value",
-		},
+	Namespace: "namespace",
+	Name:      "name",
+	Labels: map[string]string{
+		"cluster-label-name": "cluster-label-value",
+	},
+	Annotations: map[string]string{
+		"cluster-annotation-name": "cluster-annotation-value",
 	},
 	Spec: esv1.ElasticsearchSpec{
 		Version: "7.2.0",
@@ -168,8 +167,8 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 			name:                "pre-8.0, setting off, user context",
 			version:             version.MustParse("7.8.0"),
 			setDefaultFSGroup:   false,
-			userSecurityContext: &corev1.PodSecurityContext{FSGroup: ptr.To[int64](123)},
-			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: ptr.To[int64](123)},
+			userSecurityContext: &corev1.PodSecurityContext{FSGroup: new(int64(123))},
+			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: new(int64(123))},
 		},
 		{
 			name:                "pre-8.0, setting on, no user context",
@@ -182,8 +181,8 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 			name:                "pre-8.0, setting on, user context",
 			version:             version.MustParse("7.8.0"),
 			setDefaultFSGroup:   true,
-			userSecurityContext: &corev1.PodSecurityContext{FSGroup: ptr.To[int64](123)},
-			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: ptr.To[int64](123)},
+			userSecurityContext: &corev1.PodSecurityContext{FSGroup: new(int64(123))},
+			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: new(int64(123))},
 		},
 		{
 			name:                "8.0+, setting off, no user context",
@@ -196,8 +195,8 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 			name:                "8.0+, setting off, user context",
 			version:             version.MustParse("8.0.0"),
 			setDefaultFSGroup:   false,
-			userSecurityContext: &corev1.PodSecurityContext{FSGroup: ptr.To[int64](123)},
-			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: ptr.To[int64](123)},
+			userSecurityContext: &corev1.PodSecurityContext{FSGroup: new(int64(123))},
+			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: new(int64(123))},
 		},
 		{
 			name:                "8.0+, setting on, no user context",
@@ -205,7 +204,7 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 			setDefaultFSGroup:   true,
 			userSecurityContext: nil,
 			wantSecurityContext: &corev1.PodSecurityContext{
-				FSGroup: ptr.To[int64](1000),
+				FSGroup: new(int64(1000)),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: corev1.SeccompProfileTypeRuntimeDefault,
 				},
@@ -215,8 +214,8 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 			name:                "8.0+, setting on, user context",
 			version:             version.MustParse("8.0.0"),
 			setDefaultFSGroup:   true,
-			userSecurityContext: &corev1.PodSecurityContext{FSGroup: ptr.To[int64](123)},
-			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: ptr.To[int64](123)},
+			userSecurityContext: &corev1.PodSecurityContext{FSGroup: new(int64(123))},
+			wantSecurityContext: &corev1.PodSecurityContext{FSGroup: new(int64(123))},
 		},
 		{
 			name:                "8.0+, setting on, empty user context",
@@ -231,11 +230,11 @@ func TestBuildPodTemplateSpecWithDefaultSecurityContext(t *testing.T) {
 			es.Spec.Version = tt.version.String()
 			es.Spec.NodeSets[0].PodTemplate.Spec.SecurityContext = tt.userSecurityContext
 
-			cfg, err := settings.NewMergedESConfig(es.Name, tt.version, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config, nil, false, false)
+			cfg, err := settings.NewMergedESConfig(es.Name, tt.version, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config, nil, false, false, false, false, false)
 			require.NoError(t, err)
 
-			client := k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)}})
-			actual, err := BuildPodTemplateSpec(context.Background(), client, es, es.Spec.NodeSets[0], cfg, nil, tt.setDefaultFSGroup, PolicyConfig{}, metadata.Metadata{})
+			client := k8s.NewFakeClient(&corev1.ConfigMap{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)})
+			actual, err := BuildPodTemplateSpec(context.Background(), client, es, es.Spec.NodeSets[0], cfg, nil, tt.setDefaultFSGroup, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantSecurityContext, actual.Spec.SecurityContext)
 		})
@@ -253,7 +252,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 		MountPath:  "/usr/test",
 	}}
 	elasticsearchConfigAndMountsHash := hash.HashObject([]any{policyEsConfig, secretMounts})
-	policyConfig := PolicyConfig{
+	policyConfig := stackconfig.PolicyConfig{
 		ElasticsearchConfig: policyEsConfig,
 		AdditionalVolumes: []volume.VolumeLike{
 			volume.NewSecretVolumeWithMountPath("test-es-secretname", "test-es-secretname", "/usr/test"),
@@ -263,14 +262,14 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 		},
 	}
 	// shared fixture
-	scriptsConfigMap := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: sampleES.Namespace, Name: esv1.ScriptsConfigMap(sampleES.Name)}}
+	scriptsConfigMap := &corev1.ConfigMap{Namespace: sampleES.Namespace, Name: esv1.ScriptsConfigMap(sampleES.Name)}
 
 	type args struct {
 		client                    k8s.Client
 		es                        esv1.Elasticsearch
 		keystoreResources         *keystore.Resources
 		setDefaultSecurityContext bool
-		policyConfig              PolicyConfig
+		policyConfig              stackconfig.PolicyConfig
 	}
 	tests := []struct {
 		name    string
@@ -314,10 +313,10 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 			ver, err := version.Parse(es.Spec.Version)
 			require.NoError(t, err)
 
-			cfg, err := settings.NewMergedESConfig(es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP, *nodeSet.Config, tt.args.policyConfig.ElasticsearchConfig, false, false)
+			cfg, err := settings.NewMergedESConfig(es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP, *nodeSet.Config, tt.args.policyConfig.ElasticsearchConfig, false, false, nodeSet.ZoneAwareness != nil, false, false)
 			require.NoError(t, err)
 
-			actual, err := BuildPodTemplateSpec(context.Background(), tt.args.client, es, es.Spec.NodeSets[0], cfg, tt.args.keystoreResources, tt.args.setDefaultSecurityContext, tt.args.policyConfig, metadata.Metadata{})
+			actual, err := BuildPodTemplateSpec(context.Background(), tt.args.client, es, es.Spec.NodeSets[0], cfg, tt.args.keystoreResources, tt.args.setDefaultSecurityContext, tt.args.policyConfig, metadata.Metadata{}, "", false)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildPodTemplateSpec wantErr %v got %v", tt.wantErr, err)
 			}
@@ -332,18 +331,20 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 
 func Test_buildAnnotations(t *testing.T) {
 	type args struct {
-		cfg                    map[string]any
-		esAnnotations          map[string]string
-		keystoreResources      *keystore.Resources
-		scriptsContent         string
-		policyAnnotations      map[string]string
-		transportCertsDisabled bool
+		cfg                          map[string]any
+		esAnnotations                map[string]string
+		keystoreResources            *keystore.Resources
+		scriptsContent               string
+		policyAnnotations            map[string]string
+		transportCertsDisabled       bool
+		podsRestartTriggerAnnotation string
 	}
 	tests := []struct {
-		name                string
-		args                args
-		expectedAnnotations map[string]string
-		wantErr             bool
+		name                   string
+		args                   args
+		expectedAnnotations    map[string]string
+		notExpectedAnnotations []string
+		wantErr                bool
 	}{
 		{
 			name: "Sample Elasticsearch resource",
@@ -383,6 +384,25 @@ func Test_buildAnnotations(t *testing.T) {
 			},
 		},
 		{
+			name: "hash stable with rendered script and non-alphabetical downward node labels",
+			args: args{
+				esAnnotations: map[string]string{"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/zone,topology.kubernetes.io/region"},
+				scriptsContent: func() string {
+					es := newEsSampleBuilder().addEsAnnotations(map[string]string{
+						"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/zone,topology.kubernetes.io/region",
+					}).build()
+					script, err := initcontainer.RenderPrepareFsScript(es.DownwardNodeLabels())
+					if err != nil {
+						panic(err)
+					}
+					return script
+				}(),
+			},
+			expectedAnnotations: map[string]string{
+				"elasticsearch.k8s.elastic.co/config-hash": "3933275242",
+			},
+		},
+		{
 			name: "With keystore and scripts content",
 			args: args{
 				keystoreResources: &keystore.Resources{
@@ -419,6 +439,32 @@ func Test_buildAnnotations(t *testing.T) {
 			},
 		},
 		{
+			name: "With keystore password secret hash",
+			args: args{
+				keystoreResources: &keystore.Resources{
+					Hash:                       "42",
+					KeystorePasswordSecretHash: "100",
+				},
+				scriptsContent: "scripts content",
+			},
+			expectedAnnotations: map[string]string{
+				"elasticsearch.k8s.elastic.co/config-hash": "2418629362",
+			},
+		},
+		{
+			name: "With another keystore password secret hash",
+			args: args{
+				keystoreResources: &keystore.Resources{
+					Hash:                       "42",
+					KeystorePasswordSecretHash: "101",
+				},
+				scriptsContent: "scripts content",
+			},
+			expectedAnnotations: map[string]string{
+				"elasticsearch.k8s.elastic.co/config-hash": "2435406981",
+			},
+		},
+		{
 			name: "With policy annotations",
 			args: args{
 				policyAnnotations: map[string]string{
@@ -439,6 +485,61 @@ func Test_buildAnnotations(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "with restart-trigger annotation",
+			args: args{
+				esAnnotations: map[string]string{esv1.RestartTriggerAnnotation: "2026-01-14T12:00:00Z"},
+			},
+			expectedAnnotations: map[string]string{
+				esv1.RestartTriggerAnnotation: "2026-01-14T12:00:00Z",
+			},
+		},
+		{
+			name: "restart-trigger annotation not set",
+			args: args{
+				esAnnotations: map[string]string{},
+			},
+			expectedAnnotations:    map[string]string{},
+			notExpectedAnnotations: []string{esv1.RestartTriggerAnnotation},
+		},
+		{
+			name: "restart-trigger annotation set to empty string",
+			args: args{
+				esAnnotations: map[string]string{esv1.RestartTriggerAnnotation: ""},
+			},
+			expectedAnnotations:    map[string]string{},
+			notExpectedAnnotations: []string{esv1.RestartTriggerAnnotation},
+		},
+		{
+			name: "restart-trigger preserved from currentPods when missing on ES",
+			args: args{
+				esAnnotations:                map[string]string{},
+				podsRestartTriggerAnnotation: "2026-01-14T12:00:00Z",
+			},
+			expectedAnnotations: map[string]string{
+				esv1.RestartTriggerAnnotation: "2026-01-14T12:00:00Z",
+			},
+		},
+		{
+			name: "restart-trigger preserved from currentPods when empty on ES",
+			args: args{
+				esAnnotations:                map[string]string{esv1.RestartTriggerAnnotation: ""},
+				podsRestartTriggerAnnotation: "preserved-from-pod",
+			},
+			expectedAnnotations: map[string]string{
+				esv1.RestartTriggerAnnotation: "preserved-from-pod",
+			},
+		},
+		{
+			name: "restart-trigger from ES takes precedence over currentPods",
+			args: args{
+				esAnnotations:                map[string]string{esv1.RestartTriggerAnnotation: "from-es"},
+				podsRestartTriggerAnnotation: "from-pod",
+			},
+			expectedAnnotations: map[string]string{
+				esv1.RestartTriggerAnnotation: "from-es",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -450,15 +551,125 @@ func Test_buildAnnotations(t *testing.T) {
 				build()
 			ver, err := version.Parse(sampleES.Spec.Version)
 			require.NoError(t, err)
-			cfg, err := settings.NewMergedESConfig(es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config, nil, false, false)
+			cfg, err := settings.NewMergedESConfig(es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config, nil, false, false, es.Spec.NodeSets[0].ZoneAwareness != nil, false, false)
 			require.NoError(t, err)
-			got := buildAnnotations(es, cfg, tt.args.keystoreResources, tt.args.scriptsContent, tt.args.policyAnnotations)
+			got := buildAnnotations(es, cfg, tt.args.keystoreResources, tt.args.scriptsContent, tt.args.policyAnnotations, tt.args.podsRestartTriggerAnnotation)
 
 			for expectedAnnotation, expectedValue := range tt.expectedAnnotations {
 				actualValue, exists := got[expectedAnnotation]
 				assert.True(t, exists, "expected annotation: %s", expectedAnnotation)
 				assert.Equal(t, expectedValue, actualValue, "expected value for annotation %s: %s, got %s", expectedAnnotation, expectedValue, actualValue)
 			}
+			for _, notExpected := range tt.notExpectedAnnotations {
+				_, exists := got[notExpected]
+				assert.False(t, exists, "annotation should not be present: %s", notExpected)
+			}
+		})
+	}
+}
+
+func Test_buildAnnotations_KeystorePasswordSecretHash_changesConfigHash(t *testing.T) {
+	es := newEsSampleBuilder().build()
+	ver, err := version.Parse(sampleES.Spec.Version)
+	require.NoError(t, err)
+	cfg, err := settings.NewMergedESConfig(es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config, nil, false, false, es.Spec.NodeSets[0].ZoneAwareness != nil, false, false)
+	require.NoError(t, err)
+
+	const scriptsContent = "scripts content"
+	baseKeystore := &keystore.Resources{Hash: "42"}
+
+	gotA := buildAnnotations(es, cfg, &keystore.Resources{
+		Hash:                       baseKeystore.Hash,
+		KeystorePasswordSecretHash: "100",
+	}, scriptsContent, nil, "")
+	gotB := buildAnnotations(es, cfg, &keystore.Resources{
+		Hash:                       baseKeystore.Hash,
+		KeystorePasswordSecretHash: "101",
+	}, scriptsContent, nil, "")
+
+	hashA := gotA[ConfigHashAnnotationName]
+	hashB := gotB[ConfigHashAnnotationName]
+	require.NotEmpty(t, hashA)
+	require.NotEmpty(t, hashB)
+	require.NotEqual(t, hashA, hashB, "config hash must change when keystore password secret data hash changes")
+}
+
+func TestElasticsearch_DownwardNodeLabelsHashInput(t *testing.T) {
+	tests := []struct {
+		name string
+		es   esv1.Elasticsearch
+		want string
+	}{
+		{
+			name: "preserves annotation order and formatting",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						esv1.DownwardNodeLabelsAnnotation: "topology.kubernetes.io/zone, topology.kubernetes.io/region",
+					},
+				},
+			},
+			want: "topology.kubernetes.io/zone, topology.kubernetes.io/region",
+		},
+		{
+			name: "appends zone awareness label when not in annotation",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						esv1.DownwardNodeLabelsAnnotation: "topology.kubernetes.io/region",
+					},
+				},
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "with-za",
+							ZoneAwareness: &esv1.ZoneAwareness{},
+						},
+					},
+				},
+			},
+			want: "topology.kubernetes.io/region,topology.kubernetes.io/zone",
+		},
+		{
+			name: "zone awareness key matching annotation does not change hash",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						esv1.DownwardNodeLabelsAnnotation: "topology.kubernetes.io/zone",
+					},
+				},
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name:          "default",
+							ZoneAwareness: &esv1.ZoneAwareness{},
+						},
+					},
+				},
+			},
+			want: "topology.kubernetes.io/zone",
+		},
+		{
+			name: "uses derived labels when annotation is absent",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					NodeSets: []esv1.NodeSet{
+						{
+							Name: "with-za",
+							ZoneAwareness: &esv1.ZoneAwareness{
+								TopologyKey: "topology.custom.io/rack",
+							},
+						},
+					},
+				},
+			},
+			want: "topology.custom.io/rack",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.es.DownwardNodeLabelsHashInput())
 		})
 	}
 }
@@ -481,10 +692,12 @@ func Test_getDefaultContainerPorts(t *testing.T) {
 			name: "http",
 			es: esv1.Elasticsearch{
 				Spec: esv1.ElasticsearchSpec{
-					HTTP: commonv1.HTTPConfig{
-						TLS: commonv1.TLSOptions{
-							SelfSignedCertificate: &commonv1.SelfSignedCertificate{
-								Disabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							TLSOptions: commonv1.TLSOptions{
+								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+									Disabled: true,
+								},
 							},
 						},
 					},
@@ -500,6 +713,399 @@ func Test_getDefaultContainerPorts(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			assert.Equal(t, getDefaultContainerPorts(tc.es), tc.want)
+		})
+	}
+}
+
+func TestBuildPodTemplateSpec_ZoneAwarenessScenarios(t *testing.T) {
+	tests := []struct {
+		name    string
+		buildES func() esv1.Elasticsearch
+	}{
+		{
+			name: "zones add spread constraint and affinity",
+			buildES: func() esv1.Elasticsearch {
+				es := newEsSampleBuilder().withVersion("8.14.0").build()
+				es.Spec.NodeSets[0].ZoneAwareness = &esv1.ZoneAwareness{
+					Zones: []string{"us-east-1a", "us-east-1b"},
+				}
+				return es
+			},
+		},
+		{
+			name: "existing user spread constraint is preserved",
+			buildES: func() esv1.Elasticsearch {
+				es := newEsSampleBuilder().withVersion("8.14.0").build()
+				es.Spec.NodeSets[0].ZoneAwareness = &esv1.ZoneAwareness{}
+				es.Spec.NodeSets[0].PodTemplate.Spec.TopologySpreadConstraints = []corev1.TopologySpreadConstraint{
+					{
+						MaxSkew:           9,
+						TopologyKey:       "topology.kubernetes.io/zone",
+						WhenUnsatisfiable: corev1.DoNotSchedule,
+					},
+				}
+				return es
+			},
+		},
+		{
+			name: "cluster level zone awareness injects env for nodeset without zone awareness",
+			buildES: func() esv1.Elasticsearch {
+				es := newEsSampleBuilder().withVersion("8.14.0").build()
+				es.Spec.NodeSets = []esv1.NodeSet{
+					{
+						Name:  "without-za",
+						Count: 1,
+						Config: &commonv1.Config{
+							Data: map[string]any{
+								"node.roles": []esv1.NodeRole{esv1.MasterRole},
+							},
+						},
+					},
+					{
+						Name:          "with-za",
+						Count:         1,
+						ZoneAwareness: &esv1.ZoneAwareness{},
+						Config: &commonv1.Config{
+							Data: map[string]any{
+								"node.roles": []esv1.NodeRole{esv1.DataRole},
+							},
+						},
+					},
+				}
+				return es
+			},
+		},
+		{
+			name: "cluster level custom topology key injects env for nodeset without zone awareness",
+			buildES: func() esv1.Elasticsearch {
+				es := newEsSampleBuilder().withVersion("8.14.0").build()
+				es.Spec.NodeSets = []esv1.NodeSet{
+					{
+						Name:  "without-za",
+						Count: 1,
+						Config: &commonv1.Config{
+							Data: map[string]any{
+								"node.roles": []esv1.NodeRole{esv1.MasterRole},
+							},
+						},
+					},
+					{
+						Name:  "with-za",
+						Count: 1,
+						ZoneAwareness: &esv1.ZoneAwareness{
+							TopologyKey: "topology.custom.io/rack",
+						},
+						Config: &commonv1.Config{
+							Data: map[string]any{
+								"node.roles": []esv1.NodeRole{esv1.DataRole},
+							},
+						},
+					},
+				}
+				return es
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			es := tt.buildES()
+			nodeSet := es.Spec.NodeSets[0]
+
+			ver, err := version.Parse(es.Spec.Version)
+			require.NoError(t, err)
+			cfg, err := settings.NewMergedESConfig(
+				es.Name,
+				ver,
+				corev1.IPv4Protocol,
+				es.Spec.HTTP,
+				*nodeSet.Config,
+				nil,
+				false,
+				false,
+				esv1.NodeSetList(es.Spec.NodeSets).HasZoneAwareness(),
+				false, false,
+			)
+			require.NoError(t, err)
+
+			client := k8s.NewFakeClient(&corev1.ConfigMap{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)})
+			actual, err := BuildPodTemplateSpec(context.Background(), client, es, nodeSet, cfg, nil, false, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false)
+			require.NoError(t, err)
+
+			gotJSON, err := json.MarshalIndent(&actual, " ", " ")
+			require.NoError(t, err)
+			snaps.MatchJSON(t, gotJSON)
+		})
+	}
+}
+
+func Test_zoneAwarenessEnv(t *testing.T) {
+	tests := []struct {
+		name                    string
+		nodeSet                 esv1.NodeSet
+		clusterHasZoneAwareness bool
+		clusterTopologyKey      string
+		expectedEnv             []corev1.EnvVar
+	}{
+		{
+			name:                    "returns nil when cluster has no zone awareness",
+			clusterHasZoneAwareness: false,
+			clusterTopologyKey:      "",
+			expectedEnv:             nil,
+		},
+		{
+			name: "returns nil when cluster has no zone awareness even if nodeset has zone awareness",
+			nodeSet: esv1.NodeSet{
+				ZoneAwareness: &esv1.ZoneAwareness{
+					TopologyKey: "topology.custom.io/rack",
+				},
+			},
+			clusterHasZoneAwareness: false,
+			clusterTopologyKey:      "",
+			expectedEnv:             nil,
+		},
+		{
+			name:                    "uses default topology key when cluster has zone awareness and nodeset has none",
+			clusterHasZoneAwareness: true,
+			clusterTopologyKey:      esv1.DefaultZoneAwarenessTopologyKey,
+			expectedEnv: []corev1.EnvVar{
+				{
+					Name: settings.EnvZone,
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							APIVersion: "v1",
+							FieldPath:  "metadata.annotations['topology.kubernetes.io/zone']",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "uses default topology key when nodeset zone awareness has empty topology key",
+			nodeSet: esv1.NodeSet{
+				ZoneAwareness: &esv1.ZoneAwareness{},
+			},
+			clusterHasZoneAwareness: true,
+			clusterTopologyKey:      esv1.DefaultZoneAwarenessTopologyKey,
+			expectedEnv: []corev1.EnvVar{
+				{
+					Name: settings.EnvZone,
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							APIVersion: "v1",
+							FieldPath:  "metadata.annotations['topology.kubernetes.io/zone']",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "uses custom topology key when provided in nodeset zone awareness",
+			nodeSet: esv1.NodeSet{
+				ZoneAwareness: &esv1.ZoneAwareness{
+					TopologyKey: "topology.custom.io/rack",
+				},
+			},
+			clusterHasZoneAwareness: true,
+			clusterTopologyKey:      esv1.DefaultZoneAwarenessTopologyKey,
+			expectedEnv: []corev1.EnvVar{
+				{
+					Name: settings.EnvZone,
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							APIVersion: "v1",
+							FieldPath:  "metadata.annotations['topology.custom.io/rack']",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:                    "uses cluster topology key when nodeset has no zone awareness",
+			clusterHasZoneAwareness: true,
+			clusterTopologyKey:      "topology.custom.io/rack",
+			expectedEnv: []corev1.EnvVar{
+				{
+					Name: settings.EnvZone,
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							APIVersion: "v1",
+							FieldPath:  "metadata.annotations['topology.custom.io/rack']",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := zoneAwarenessEnv(tt.nodeSet, tt.clusterHasZoneAwareness, tt.clusterTopologyKey)
+			assert.Equal(t, tt.expectedEnv, env)
+		})
+	}
+}
+
+func TestNodeSetListZoneAwarenessTopologyKey(t *testing.T) {
+	tests := []struct {
+		name     string
+		nodeSets []esv1.NodeSet
+		expected string
+	}{
+		{
+			name:     "defaults when no nodeset has zone awareness",
+			nodeSets: []esv1.NodeSet{{Name: "default"}},
+			expected: esv1.DefaultZoneAwarenessTopologyKey,
+		},
+		{
+			name: "returns topology key from first nodeset enabling zone awareness",
+			nodeSets: []esv1.NodeSet{
+				{Name: "a"},
+				{
+					Name: "b",
+					ZoneAwareness: &esv1.ZoneAwareness{
+						TopologyKey: "topology.custom.io/rack",
+					},
+				},
+				{
+					Name: "c",
+					ZoneAwareness: &esv1.ZoneAwareness{
+						TopologyKey: "topology.custom.io/rack",
+					},
+				},
+			},
+			expected: "topology.custom.io/rack",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, esv1.NodeSetList(tt.nodeSets).ZoneAwarenessTopologyKey())
+		})
+	}
+}
+
+func Test_zoneAwarenessSchedulingDirectives(t *testing.T) {
+	tests := []struct {
+		name                     string
+		nodeSet                  esv1.NodeSet
+		clusterHasZoneAwareness  bool
+		clusterTopologyKey       string
+		expectedSpreads          []corev1.TopologySpreadConstraint
+		expectedMatchExpressions []corev1.NodeSelectorRequirement
+	}{
+		{
+			name:                    "returns no directives when nodeset has no zone awareness and cluster awareness is disabled",
+			nodeSet:                 esv1.NodeSet{},
+			clusterHasZoneAwareness: false,
+		},
+		{
+			name:                    "adds required topology exists affinity for non-zoneAware nodeset when cluster awareness is enabled",
+			nodeSet:                 esv1.NodeSet{},
+			clusterHasZoneAwareness: true,
+			clusterTopologyKey:      "custom.io/rack",
+			expectedMatchExpressions: []corev1.NodeSelectorRequirement{
+				{
+					Key: "custom.io/rack", Operator: corev1.NodeSelectorOpExists,
+				},
+			},
+		},
+		{
+			name: "adds spread and affinity from zone awareness",
+			nodeSet: esv1.NodeSet{
+				ZoneAwareness: &esv1.ZoneAwareness{
+					Zones: []string{"us-east-1a", "us-east-1b"},
+				},
+			},
+			clusterHasZoneAwareness: true,
+			expectedSpreads: []corev1.TopologySpreadConstraint{
+				{
+					MaxSkew:           1,
+					TopologyKey:       esv1.DefaultZoneAwarenessTopologyKey,
+					WhenUnsatisfiable: corev1.DoNotSchedule,
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							label.ClusterNameLabelName:     "cluster",
+							label.StatefulSetNameLabelName: "sset",
+						},
+					},
+				},
+			},
+			expectedMatchExpressions: []corev1.NodeSelectorRequirement{
+				{
+					Key:      esv1.DefaultZoneAwarenessTopologyKey,
+					Operator: corev1.NodeSelectorOpIn,
+					Values:   []string{"us-east-1a", "us-east-1b"},
+				},
+			},
+		},
+		{
+			name: "zone-aware nodeset without zones adds spread and required topology exists affinity",
+			nodeSet: esv1.NodeSet{
+				ZoneAwareness: &esv1.ZoneAwareness{},
+			},
+			clusterHasZoneAwareness: true,
+			expectedSpreads: []corev1.TopologySpreadConstraint{
+				{
+					MaxSkew:           1,
+					TopologyKey:       esv1.DefaultZoneAwarenessTopologyKey,
+					WhenUnsatisfiable: corev1.DoNotSchedule,
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							label.ClusterNameLabelName:     "cluster",
+							label.StatefulSetNameLabelName: "sset",
+						},
+					},
+				},
+			},
+			expectedMatchExpressions: []corev1.NodeSelectorRequirement{
+				{
+					Key:      esv1.DefaultZoneAwarenessTopologyKey,
+					Operator: corev1.NodeSelectorOpExists,
+				},
+			},
+		},
+		{
+			name: "zone-aware nodeset with custom topology key and no zones adds exists affinity for custom key",
+			nodeSet: esv1.NodeSet{
+				ZoneAwareness: &esv1.ZoneAwareness{
+					TopologyKey: "topology.custom.io/rack",
+				},
+			},
+			clusterHasZoneAwareness: true,
+			expectedSpreads: []corev1.TopologySpreadConstraint{
+				{
+					MaxSkew:           1,
+					TopologyKey:       "topology.custom.io/rack",
+					WhenUnsatisfiable: corev1.DoNotSchedule,
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							label.ClusterNameLabelName:     "cluster",
+							label.StatefulSetNameLabelName: "sset",
+						},
+					},
+				},
+			},
+			expectedMatchExpressions: []corev1.NodeSelectorRequirement{
+				{
+					Key:      "topology.custom.io/rack",
+					Operator: corev1.NodeSelectorOpExists,
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotSpreads, gotMatchExpressions := zoneAwarenessSchedulingDirectives(
+				tt.nodeSet,
+				"cluster",
+				"sset",
+				tt.clusterHasZoneAwareness,
+				tt.clusterTopologyKey,
+			)
+			assert.Equal(t, tt.expectedSpreads, gotSpreads)
+			assert.Equal(t, tt.expectedMatchExpressions, gotMatchExpressions)
 		})
 	}
 }
@@ -547,10 +1153,10 @@ func Test_enableLog4JFormatMsgNoLookups(t *testing.T) {
 
 			ver, err := version.Parse(sampleES.Spec.Version)
 			require.NoError(t, err)
-			cfg, err := settings.NewMergedESConfig(sampleES.Name, ver, corev1.IPv4Protocol, sampleES.Spec.HTTP, *sampleES.Spec.NodeSets[0].Config, nil, false, false)
+			cfg, err := settings.NewMergedESConfig(sampleES.Name, ver, corev1.IPv4Protocol, sampleES.Spec.HTTP, *sampleES.Spec.NodeSets[0].Config, nil, false, false, sampleES.Spec.NodeSets[0].ZoneAwareness != nil, false, false)
 			require.NoError(t, err)
-			client := k8s.NewFakeClient(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: sampleES.Namespace, Name: esv1.ScriptsConfigMap(sampleES.Name)}})
-			actual, err := BuildPodTemplateSpec(context.Background(), client, sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false, PolicyConfig{}, metadata.Metadata{})
+			client := k8s.NewFakeClient(&corev1.ConfigMap{Namespace: sampleES.Namespace, Name: esv1.ScriptsConfigMap(sampleES.Name)})
+			actual, err := BuildPodTemplateSpec(context.Background(), client, sampleES, sampleES.Spec.NodeSets[0], cfg, nil, false, stackconfig.PolicyConfig{}, metadata.Metadata{}, "", false)
 			require.NoError(t, err)
 
 			env := actual.Spec.Containers[1].Env

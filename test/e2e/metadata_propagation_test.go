@@ -102,7 +102,7 @@ func TestMetadataPropagation(t *testing.T) {
 				Test: func(t *testing.T) {
 					t.Helper()
 
-					var children []child
+					children := make([]child, 0, len(builders))
 					for _, b := range builders {
 						expectedChildren, err := expectedChildren(b, c)
 						if err != nil {
@@ -207,7 +207,7 @@ func (ec *expectedChildrenForHelper) GetObjects(matchingLabels map[string]string
 			return ec
 		}
 		for i := 0; i < v.Len(); i++ {
-			item, ok := v.Index(i).Addr().Interface().(client.Object)
+			item, ok := reflect.TypeAssert[client.Object](v.Index(i).Addr())
 			if !ok {
 				ec.err = multierror.Append(ec.err, fmt.Errorf("item %d in list %T is not a client.Object", i, list))
 				return ec

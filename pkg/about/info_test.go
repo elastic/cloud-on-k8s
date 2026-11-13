@@ -14,10 +14,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 )
 
-const fakeOperatorNs = "elastic-system-test"
-const fakeDistributionChannel = "channel-1"
+const (
+	fakeOperatorNs          = "elastic-system-test"
+	fakeDistributionChannel = "channel-1"
+)
 
 func TestGetOperatorInfo(t *testing.T) {
 	tests := []struct {
@@ -35,10 +39,8 @@ func TestGetOperatorInfo(t *testing.T) {
 			name: "should update an operator uuid config map when it is empty",
 			initObjs: []runtime.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      UUIDCfgMapName,
-						Namespace: fakeOperatorNs,
-					},
+					Name:      UUIDCfgMapName,
+					Namespace: fakeOperatorNs,
 				},
 			},
 			assert: func(uuid types.UID) {
@@ -49,10 +51,8 @@ func TestGetOperatorInfo(t *testing.T) {
 			name: "should retrieve an operator uuid config map when it is already defined",
 			initObjs: []runtime.Object{
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      UUIDCfgMapName,
-						Namespace: fakeOperatorNs,
-					},
+					Name:      UUIDCfgMapName,
+					Namespace: fakeOperatorNs,
 					Data: map[string]string{
 						UUIDCfgMapKey: "01010101-0101-4242-0101-010101010101",
 					},
@@ -82,6 +82,11 @@ func TestGetOperatorInfo(t *testing.T) {
 
 			// the operator uuid should be the same than the first time
 			assert.Equal(t, uuid, operatorInfo.OperatorUUID)
+
+			// watch label should exists in all scenarios
+			cfgMap, err := fakeClientset.CoreV1().ConfigMaps(fakeOperatorNs).Get(t.Context(), UUIDCfgMapName, metav1.GetOptions{})
+			require.NoError(t, err)
+			require.Equal(t, commonv1.RestrictWatchedResourcesLabelValue, cfgMap.Labels[commonv1.RestrictWatchedResourcesLabelName])
 		})
 	}
 }

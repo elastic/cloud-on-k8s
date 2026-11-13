@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
@@ -29,9 +28,10 @@ import (
 )
 
 const (
-	ESCertsPath     = "/mnt/elastic-internal/es-certs"
-	ConfigFilename  = "elastic-maps-server.yml"
-	ConfigMountPath = "/usr/src/app/server/config/elastic-maps-server.yml"
+	ESCertsPath       = "/mnt/elastic-internal/es-certs"
+	ESClientCertsPath = "/mnt/elastic-internal/es-client-certs"
+	ConfigFilename    = "elastic-maps-server.yml"
+	ConfigMountPath   = "/usr/src/app/server/config/elastic-maps-server.yml"
 )
 
 func configSecretVolume(ems emsv1alpha1.ElasticMapsServer) volume.SecretVolume {
@@ -51,12 +51,10 @@ func reconcileConfig(ctx context.Context, driver driver.Interface, ems emsv1alph
 
 	// Reconcile the configuration in a secret
 	expectedConfigSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   ems.Namespace,
-			Name:        Config(ems.Name),
-			Labels:      commonlabels.AddCredentialsLabel(maps.Clone(meta.Labels)),
-			Annotations: meta.Annotations,
-		},
+		Namespace:   ems.Namespace,
+		Name:        Config(ems.Name),
+		Labels:      commonlabels.AddCredentialsLabel(maps.Clone(meta.Labels)),
+		Annotations: meta.Annotations,
 		Data: map[string][]byte{
 			ConfigFilename: cfgBytes,
 		},
@@ -125,11 +123,14 @@ func associationConfig(ctx context.Context, c k8s.Client, ems emsv1alpha1.Elasti
 	if err != nil {
 		return nil, err
 	}
-	if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]string{
-		"elasticsearch.host":     assocConf.URL,
-		"elasticsearch.username": credentials.Username,
-		"elasticsearch.password": credentials.Password,
-	})); err != nil {
+	esCfg := map[string]string{"elasticsearch.host": assocConf.URL}
+	// PKI authentication: the client certificate configured below authenticates Elastic Maps Server, so no
+	// credentials are set.
+	if !assocConf.NoAuthRequired() {
+		esCfg["elasticsearch.username"] = credentials.Username
+		esCfg["elasticsearch.password"] = credentials.Password
+	}
+	if err := cfg.MergeWith(settings.MustCanonicalConfig(esCfg)); err != nil {
 		return nil, err
 	}
 
@@ -137,6 +138,14 @@ func associationConfig(ctx context.Context, c k8s.Client, ems emsv1alpha1.Elasti
 		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]any{
 			"elasticsearch.ssl.verificationMode":       "certificate",
 			"elasticsearch.ssl.certificateAuthorities": filepath.Join(ESCertsPath, certificates.CAFileName),
+		})); err != nil {
+			return nil, err
+		}
+	}
+	if assocConf.ClientCertIsConfigured() {
+		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]any{
+			"elasticsearch.ssl.certificate": filepath.Join(ESClientCertsPath, certificates.CertFileName),
+			"elasticsearch.ssl.key":         filepath.Join(ESClientCertsPath, certificates.KeyFileName),
 		})); err != nil {
 			return nil, err
 		}

@@ -18,7 +18,7 @@
 
 # Version of Elastic Agent.
 #
-version: 9.4.0-SNAPSHOT
+version: 9.6.0-SNAPSHOT
 
 # Labels that will be applied to Elastic Agent.
 #
@@ -29,8 +29,10 @@ labels: {}
 annotations: {}
 
 # Elastic Agent image to deploy.
-#
-# image: docker.elastic.co/beats/elastic-agent:9.4.0-SNAPSHOT
+# Supports both tag and digest formats.
+# image: docker.elastic.co/beats/elastic-agent:9.6.0-SNAPSHOT
+# image: docker.elastic.co/beats/elastic-agent:9.6.0-SNAPSHOT@sha256:<digest>
+# image: docker.elastic.co/beats/elastic-agent@sha256:<digest>
 
 # ** Deprecation Notice **
 # The previous versions of this Helm Chart simply used the `spec` field here
@@ -121,6 +123,9 @@ fleetServerEnabled: false
 # policyID determines into which Agent Policy this Agent will be enrolled.
 # policyID: eck-agent
 
+# spaceID is the Kibana Space where the Agent Policy resides. Leave unset for the default Space.
+# spaceID: default
+
 # DaemonSet, StatefulSet, or Deployment specification for Agent.
 # At least one is required of [daemonSet, deployment, statefulSet].
 # No default is currently set, refer to https://github.com/elastic/cloud-on-k8s/issues/7429.
@@ -189,16 +194,29 @@ clusterRole:
   rules:
   - apiGroups: [""]
     resources:
-    - pods
     - nodes
+    - nodes/metrics
+    - nodes/proxy
+    - nodes/stats
     - namespaces
-    - events
+    - pods
     - services
     - configmaps
+    - events
+    - persistentvolumes
+    - persistentvolumeclaims
+    - persistentvolumeclaims/status
     verbs:
     - get
     - watch
     - list
+  - apiGroups: ["events.k8s.io"]
+    resources:
+      - events
+    verbs:
+      - get
+      - watch
+      - list
   - apiGroups: ["coordination.k8s.io"]
     resources:
     - leases
@@ -207,62 +225,64 @@ clusterRole:
     - create
     - update
   - nonResourceURLs:
-    - "/metrics"
+    - /metrics
     verbs:
     - get
-  - apiGroups: ["extensions"]
-    resources:
-      - replicasets
-    verbs:
-    - "get"
-    - "list"
-    - "watch"
-  - apiGroups:
-    - "apps"
-    resources:
-    - statefulsets
-    - deployments
-    - replicasets
-    - daemonsets
-    verbs:
-    - "get"
-    - "list"
-    - "watch"
-  - apiGroups:
-    - ""
-    resources:
-    - nodes/stats
-    verbs:
-    - get
+    - watch
+    - list
   - nonResourceURLs:
-    - "/metrics"
+    - /healthz
+    - /healthz/*
+    - /livez
+    - /livez/*
+    - /metrics/slis
+    - /readyz
+    - /readyz/*
     verbs:
     - get
-  - apiGroups:
-    - "batch"
+  - apiGroups: ["apps"]
+    resources:
+    - replicasets
+    - deployments
+    - daemonsets
+    - statefulsets
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups: ["batch"]
     resources:
     - jobs
     - cronjobs
     verbs:
-    - "get"
-    - "list"
-    - "watch"
-  - apiGroups:
-    - "storage.k8s.io"
+    - get
+    - list
+    - watch
+  - apiGroups: ["storage.k8s.io"]
     resources:
     - storageclasses
     verbs:
-    - "get"
-    - "list"
-    - "watch"
+    - get
+    - list
+    - watch
 
 # extraObjects allows injecting additional Kubernetes resources into the chart.
 # These resources will be created/deleted alongside the chart release.
-# The value is a list of strings, each string is a YAML manifest.
+# The value can be a list or a map of strings, each string is a YAML manifest.
 # Helm templating is supported within each manifest.
-# Example:
+# Example (list):
 # extraObjects:
 #   - |
+#     apiVersion: v1
+#     kind: ConfigMap
+#     metadata:
+#       name: {{ include "elasticagent.fullname" . }}-extra-config
+#       namespace: {{ .Release.Namespace }}
+#     data:
+#       key: value
+# Example (map):
+# extraObjects:
+#   myConfigMap: |
 #     apiVersion: v1
 #     kind: ConfigMap
 #     metadata:

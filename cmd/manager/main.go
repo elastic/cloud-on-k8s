@@ -6,12 +6,14 @@ package manager
 
 import (
 	"context"
+	"crypto/fips140"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/http/pprof"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -21,10 +23,14 @@ import (
 	"github.com/spf13/viper"
 	"go.elastic.co/apm/v2"
 	"go.uber.org/automaxprocs/maxprocs"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -39,19 +45,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	crwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/yaml"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
-	apmv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1beta1"
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
-	esv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1beta1"
 	entv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1"
-	entv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/enterprisesearch/v1beta1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
-	kbv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1beta1"
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
@@ -62,12 +66,12 @@ import (
 	associationctl "github.com/elastic/cloud-on-k8s/v3/pkg/controller/association/controller"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoops"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling"
-	esavalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/password"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
@@ -75,8 +79,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing/apmclientgo"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
-	commonwebhook "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/webhook/admission"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/settings"
@@ -86,12 +88,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/license"
 	licensetrial "github.com/elastic/cloud-on-k8s/v3/pkg/controller/license/trial"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash"
-	lsvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/maps"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/packageregistry"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/remotecluster"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/stackconfigpolicy"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/webhook"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/dev/portforward"
 	licensing "github.com/elastic/cloud-on-k8s/v3/pkg/license"
@@ -109,8 +109,6 @@ const (
 	DefaultMetricPort  = 0 // disabled
 	DefaultWebhookName = "elastic-webhook.k8s.elastic.co"
 	WebhookPort        = 9443
-
-	LeaderElectionLeaseName = "elastic-operator-leader"
 
 	debugHTTPShutdownTimeout = 5 * time.Second // time to allow for the debug HTTP server to shutdown
 )
@@ -231,10 +229,21 @@ func Command() *cobra.Command {
 		"",
 		"Set the distribution channel to report through telemetry.",
 	)
-	cmd.Flags().Bool(
+	cmd.Flags().String(
 		operator.EnforceRBACOnRefsFlag,
-		false, // Set to false for backward compatibility
-		"Restrict cross-namespace resource association through RBAC (eg. referencing Elasticsearch from Kibana)",
+		string(operator.RBACOnRefsModeOff),
+		`Restrict cross-namespace resource association through RBAC. Accepts: false (off), true/legacy (direct and transitive Elasticsearch references are enforced; other targets only warn), all (full enforcement). The bare flag is equivalent to --enforce-rbac-on-refs=true.`,
+	)
+	cmd.Flags().Lookup(operator.EnforceRBACOnRefsFlag).NoOptDefVal = string(operator.RBACOnRefsModeTrue)
+	cmd.Flags().String(
+		operator.ProbesBindAddressFlag,
+		":8081",
+		`The address the health probe endpoints (/healthz, /readyz) bind to. Set to "" or "0" to disable probes entirely.`,
+	)
+	cmd.Flags().Duration(
+		operator.CacheStartupTimeoutFlag,
+		0,
+		"Maximum time to wait for the Kubernetes informer cache to sync on startup. If the cache does not sync within this duration the operator exits, allowing Kubernetes to restart the pod. Set to 0 to wait indefinitely.",
 	)
 	cmd.Flags().Bool(
 		operator.EnableLeaderElection,
@@ -366,6 +375,11 @@ func Command() *cobra.Command {
 		"auto-detect",
 		"Enables setting the default security context with fsGroup=1000 for Elasticsearch 8.0+ Pods and Kibana 7.10+ Pods. Possible values: true, false, auto-detect",
 	)
+	cmd.Flags().Bool(
+		operator.RestrictWatchedResources,
+		false,
+		"Restrict resource watching (secrets, services and configmaps) to labeled resources only (resources that have the label eck.k8s.elastic.co/watched=true). Unlabeled resources are skipped.",
+	)
 
 	// hide development mode flags from the usage message
 	_ = cmd.Flags().MarkHidden(operator.AutoPortForwardFlag)
@@ -421,18 +435,16 @@ func doRun(_ *cobra.Command, _ []string) error {
 
 	// start the operator in a goroutine
 	go func() {
-		err := startOperator(ctx)
-		if err != nil {
-			log.Error(err, "Operator stopped with error")
-		}
-		errChan <- err
+		errChan <- startOperator(ctx)
 	}()
 
 	// watch for events
 	for {
 		select {
-		case err := <-errChan: // operator failed
-			log.Error(err, "Shutting down due to error")
+		case err := <-errChan: // operator stopped
+			if err != nil {
+				log.Error(err, "Shutting down due to error")
+			}
 			return err
 		case <-ctx.Done(): // signal received
 			log.Info("Shutting down due to signal")
@@ -445,7 +457,10 @@ func doRun(_ *cobra.Command, _ []string) error {
 }
 
 func startOperator(ctx context.Context) error {
+	// e2e tests parse this log line to check the configuration the operator runs with: changing its message, its
+	// "values" key or its verbosity requires updating parseEffectiveConfig in test/e2e/test/helper/config.go.
 	log.V(1).Info("Effective configuration", "values", viper.AllSettings())
+	fipsLog()
 
 	// update GOMAXPROCS to container cpu limit if necessary
 	_, err := maxprocs.Set(maxprocs.Logger(func(s string, i ...any) {
@@ -578,10 +593,15 @@ func startOperator(ctx context.Context) error {
 		Scheme:                     clientgoscheme.Scheme,
 		LeaderElection:             viper.GetBool(operator.EnableLeaderElection),
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
-		LeaderElectionID:           LeaderElectionLeaseName,
+		LeaderElectionID:           operator.LeaderElectionLeaseName,
 		LeaderElectionNamespace:    operatorNamespace,
 		Logger:                     log.WithName("eck-operator"),
+		Client:                     client.Options{FieldOwner: about.FieldOwner},
 	}
+
+	probesAddr := viper.GetString(operator.ProbesBindAddressFlag)
+	opts.HealthProbeBindAddress = probesAddr
+	probesEnabled := probesAddr != "" && probesAddr != "0"
 
 	// configure the manager cache based on the number of managed namespaces
 	var managedNamespaces []string
@@ -590,7 +610,30 @@ func startOperator(ctx context.Context) error {
 		log.Error(err, "Failed to parse managed namespaces flag")
 		return err
 	}
+
+	// Parse the optional namespace label selector. This field is config-file
+	// only (a metav1.LabelSelector object); it has no CLI flag. When set,
+	// the operator runs in dynamic mode: the cache is cluster-wide and a
+	// Matcher consulted by a predicate on every controller's watches
+	// evaluates the selector against Namespace labels per event.
+	parsedNsSelector, err := parseNSSelector(viper.GetViper(), log)
+	if err != nil {
+		return err
+	}
+	dynamicNSSelector := parsedNsSelector != nil
+
+	// Validate that dynamic ns selector cannot co-exist with the fixed list of managed namespaces.
+	if dynamicNSSelector && len(managedNamespaces) > 0 {
+		err := fmt.Errorf("%q and %q are mutually exclusive", operator.NamespacesFlag, operator.NamespaceSelectorFlag)
+		log.Error(err, "Invalid configuration")
+		return err
+	}
+
 	switch {
+	case dynamicNSSelector:
+		log.Info("Operator configured to manage namespaces dynamically via selector",
+			"selector", parsedNsSelector.String(),
+			"operator_namespace", operatorNamespace)
 	case len(managedNamespaces) == 0:
 		log.Info("Operator configured to manage all namespaces")
 	case len(managedNamespaces) == 1 && managedNamespaces[0] == operatorNamespace:
@@ -602,10 +645,32 @@ func startOperator(ctx context.Context) error {
 		managedNamespaces = append(managedNamespaces, operatorNamespace)
 	}
 
-	// implicitly allows watching cluster-scoped resources (e.g. storage classes)
-	opts.Cache = cache.Options{DefaultNamespaces: map[string]cache.Config{}}
-	for _, ns := range managedNamespaces {
-		opts.Cache.DefaultNamespaces[ns] = cache.Config{}
+	byObject, err := buildByObject(viper.GetBool(operator.RestrictWatchedResources))
+	if err != nil {
+		log.Error(err, "Failed to build cache option ByObject")
+		return err
+	}
+
+	namespaceMatcher := nsmatch.NewNamespaceMatcher(parsedNsSelector, operatorNamespace)
+
+	opts.Cache = cache.Options{
+		DefaultNamespaces: map[string]cache.Config{},
+		DefaultTransform:  cache.TransformStripManagedFields(),
+		ByObject:          byObject,
+	}
+	if !dynamicNSSelector {
+		for _, ns := range managedNamespaces {
+			opts.Cache.DefaultNamespaces[ns] = cache.Config{}
+		}
+	} else {
+		opts.NewClient = func(config *rest.Config, options client.Options) (client.Client, error) {
+			delegate, err := client.New(config, options) // cache-backed; options.Cache already set by mgr
+			if err != nil {
+				return nil, err
+			}
+
+			return nsmatch.NewFilterClient(delegate, namespaceMatcher), nil
+		}
 	}
 
 	// only expose prometheus metrics if provided a non-zero port
@@ -637,6 +702,18 @@ func startOperator(ctx context.Context) error {
 	if err != nil {
 		log.Error(err, "Failed to create controller manager")
 		return err
+	}
+
+	namespaceMatcher.SetCache(mgr.GetCache())
+
+	if probesEnabled {
+		readyCh := make(chan struct{})
+		if err := mgr.Add(&cacheReadyRunnable{readyCh: readyCh}); err != nil {
+			return fmt.Errorf("failed to add cache ready runnable: %w", err)
+		}
+		if err := setupProbes(mgr, readyCh, viper.GetBool(operator.EnableWebhookFlag)); err != nil {
+			return err
+		}
 	}
 
 	// Retrieve globally shared CA if any
@@ -740,16 +817,26 @@ func startOperator(ctx context.Context) error {
 		SetDefaultSecurityContext: setDefaultSecurityContext,
 		ValidateStorageClass:      viper.GetBool(operator.ValidateStorageClassFlag),
 		Tracer:                    tracer,
+		NamespaceMatcher:          namespaceMatcher,
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
-		setupWebhook(ctx, mgr, params, webhookCertDir, clientset, exposedNodeLabels, managedNamespaces, tracer)
+		if err := setupWebhook(ctx, mgr, params, webhookCertDir, clientset, exposedNodeLabels, managedNamespaces, tracer); err != nil {
+			return err
+		}
 	}
 
-	enforceRbacOnRefs := viper.GetBool(operator.EnforceRBACOnRefsFlag)
+	rbacMode, err := operator.ParseRBACOnRefsMode(viper.GetString(operator.EnforceRBACOnRefsFlag))
+	if err != nil {
+		return err
+	}
+	if w := rbacMode.StartupMessage(); w != "" {
+		log.Info(w)
+	}
+	params.RBACOnRefsMode = rbacMode
 
 	var accessReviewer rbac.AccessReviewer
-	if enforceRbacOnRefs {
+	if rbacMode.EnforcementEnabled() {
 		accessReviewer = rbac.NewSubjectAccessReviewer(clientset)
 	} else {
 		accessReviewer = rbac.NewPermissiveAccessReviewer()
@@ -759,46 +846,80 @@ func startOperator(ctx context.Context) error {
 		return err
 	}
 
-	disableTelemetry := viper.GetBool(operator.DisableTelemetryFlag)
-	telemetryInterval := viper.GetDuration(operator.TelemetryIntervalFlag)
-	go asyncTasks(ctx, mgr, cfg, managedNamespaces, operatorNamespace, operatorInfo, disableTelemetry, telemetryInterval, tracer, dialer)
+	licenseRunnable, err := newLicenseCheckRunnable(ctx, mgr, operatorNamespace)
+	if err != nil {
+		return err
+	}
+
+	if err := mgr.Add(licenseRunnable); err != nil {
+		return fmt.Errorf("failed to add license check runnable: %w", err)
+	}
+
+	if err := mgr.Add(&gcRunnable{
+		mgr:               mgr,
+		cfg:               cfg,
+		managedNamespaces: managedNamespaces,
+		operatorNamespace: operatorNamespace,
+		namespaceMatcher:  namespaceMatcher,
+		operatorInfo:      operatorInfo,
+		tracer:            tracer,
+		dialer:            dialer,
+	}); err != nil {
+		return fmt.Errorf("failed to add garbage collection runnable: %w", err)
+	}
+
+	reporter := licensing.NewResourceReporter(mgr.GetClient(), operatorNamespace, tracer, licensing.ResourceReporterFrequency)
+	if err := mgr.Add(reporter); err != nil {
+		return fmt.Errorf("failed to add license reporter runnable: %w", err)
+	}
+
+	if !viper.GetBool(operator.DisableTelemetryFlag) {
+		tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), operatorNamespace, managedNamespaces, namespaceMatcher, viper.GetDuration(operator.TelemetryIntervalFlag), tracer)
+		if err := mgr.Add(&tr); err != nil {
+			return fmt.Errorf("failed to add telemetry runnable: %w", err)
+		}
+	}
+
+	errCh := make(chan error, 2) // two possible senders: cache timeout + mgr.Start
+	if cacheStartupTimeout := viper.GetDuration(operator.CacheStartupTimeoutFlag); cacheStartupTimeout > 0 {
+		go func() {
+			log.Info("Setting up cache startup timeout", "timeout", cacheStartupTimeout.String())
+			start := time.Now()
+			tctx, cancel := context.WithTimeout(ctx, cacheStartupTimeout)
+			defer cancel()
+			switch {
+			case mgr.GetCache().WaitForCacheSync(tctx):
+				log.Info("Cache started in time", "elapsed", time.Since(start).String())
+			case ctx.Err() != nil:
+				// context canceled due to shutdown, not a timeout
+			default:
+				err := errors.New("cache did not start in time")
+				log.Error(err, "Failed to start cache", "timeout", cacheStartupTimeout.String(),
+					"elapsed", time.Since(start).String())
+				errCh <- err
+			}
+		}()
+	} else {
+		log.Info("Cache startup timeout disabled")
+	}
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
 		"build_hash", operatorInfo.BuildInfo.Hash, "build_date", operatorInfo.BuildInfo.Date,
 		"build_snapshot", operatorInfo.BuildInfo.Snapshot)
 
-	exitOnErr := make(chan error)
-
-	// start the manager
 	go func() {
-		if err := mgr.Start(ctx); err != nil {
-			log.Error(err, "Failed to start the controller manager")
-			exitOnErr <- err
-		}
+		errCh <- mgr.Start(ctx)
 	}()
 
-	// check operator license key
-	go func() {
-		mgr.GetCache().WaitForCacheSync(ctx)
-
-		lc := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
-		licenseType, err := lc.ValidOperatorLicenseKeyType(ctx)
-		if err != nil {
-			log.Error(err, "Failed to validate operator license key")
-			exitOnErr <- err
-		} else {
-			log.Info("Operator license key validated", "license_type", licenseType)
-		}
-	}()
-
-	for {
-		select {
-		case err = <-exitOnErr:
+	select {
+	case err := <-errCh:
+		if !errors.Is(err, context.Canceled) {
 			return err
-		case <-ctx.Done():
-			return nil
 		}
+		return nil
+	case <-ctx.Done():
+		return nil
 	}
 }
 
@@ -809,57 +930,94 @@ func readOptionalCA(caDir string) (*certificates.CA, error) {
 	return certificates.BuildCAFromFile(caDir)
 }
 
-// asyncTasks schedules some tasks to be started when this instance of the operator is elected
-func asyncTasks(
-	ctx context.Context,
-	mgr manager.Manager,
-	cfg *rest.Config,
-	managedNamespaces []string,
-	operatorNamespace string,
-	operatorInfo about.OperatorInfo,
-	disableTelemetry bool,
-	telemetryInterval time.Duration,
-	tracer *apm.Tracer,
-	dialer net.Dialer,
-) {
-	<-mgr.Elected() // wait for this operator instance to be elected
+var _ manager.LeaderElectionRunnable = (*gcRunnable)(nil)
 
-	// Report this instance as elected through Prometheus
-	metrics.Leader.WithLabelValues(string(operatorInfo.OperatorUUID), operatorNamespace).Set(1)
+// gcRunnable garbage-collects orphaned resources once after leader election completes.
+type gcRunnable struct {
+	mgr               manager.Manager
+	cfg               *rest.Config
+	managedNamespaces []string
+	operatorNamespace string
+	namespaceMatcher  *nsmatch.NamespaceMatcher
+	operatorInfo      about.OperatorInfo
+	tracer            *apm.Tracer
+	dialer            net.Dialer
+}
 
-	time.Sleep(10 * time.Second)         // wait some arbitrary time for the manager to start
-	mgr.GetCache().WaitForCacheSync(ctx) // wait until k8s client cache is initialized
+func (r *gcRunnable) NeedLeaderElection() bool { return true }
 
-	// Start the resource reporter
-	go func() {
-		r := licensing.NewResourceReporter(mgr.GetClient(), operatorNamespace, tracer)
-		r.Start(ctx, licensing.ResourceReporterFrequency)
-	}()
+func (r *gcRunnable) Start(ctx context.Context) error {
+	metrics.Leader.WithLabelValues(string(r.operatorInfo.OperatorUUID), r.operatorNamespace).Set(1)
 
-	if !disableTelemetry {
-		// Start the telemetry reporter
-		go func() {
-			tr := telemetry.NewReporter(operatorInfo, mgr.GetClient(), operatorNamespace, managedNamespaces, telemetryInterval, tracer)
-			tr.Start(ctx)
-		}()
+	// The manager's Caches group has already synced before the LeaderElection
+	// group starts, and informers registered later are covered because cached
+	// reads block on their own informer inside Informers.Get, so no explicit
+	// cache wait is needed here.
+
+	namespaces := r.managedNamespaces
+	if r.namespaceMatcher.SelectorEnabled() {
+		nsp, err := r.namespaceMatcher.MatchingNamespaces(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to fetch managed namespaces for garbage collection: %w", err)
+		}
+		namespaces = nsp
 	}
-
 	// Garbage collect orphaned secrets leftover from deleted resources while the operator was not running
 	// - association user secrets
-	gcCtx := tracing.NewContextTransaction(ctx, tracer, tracing.RunOnceTxType, "garbage-collection", nil)
+	gcCtx := tracing.NewContextTransaction(ctx, r.tracer, tracing.RunOnceTxType, "garbage-collection", nil)
 	gcCtx = logconf.AddToContext(gcCtx, logf.Log.WithName("garbage-collection"))
-	err := garbageCollectUsers(gcCtx, cfg, managedNamespaces)
-	if err != nil {
-		log.Error(err, "exiting due to unrecoverable error")
-		os.Exit(1)
+	defer tracing.EndContextTransaction(gcCtx)
+	if err := garbageCollectUsers(gcCtx, r.cfg, namespaces); err != nil {
+		return fmt.Errorf("user garbage collection failed: %w", err)
+	}
+	// legacy fleet-server additional secret copies (cross-namespace copies with old naming scheme)
+	if err := associationctl.GarbageCollectLegacyFleetServerAdditionalSecrets(gcCtx, r.mgr.GetClient(), namespaces); err != nil {
+		log.Error(err, "Legacy fleet-server cross-namespace additional secrets GC failed, will be attempted again at next operator restart")
 	}
 	// - soft-owned secrets
-	garbageCollectSoftOwnedSecrets(gcCtx, mgr.GetClient())
+	garbageCollectSoftOwnedSecrets(gcCtx, r.mgr.GetClient())
 	// - autoops orphaned resources (API key secrets without owner references)
-	if err := garbageCollectAutoOpsResources(gcCtx, mgr.GetClient(), dialer); err != nil {
+	if err := garbageCollectAutoOpsResources(gcCtx, r.mgr.GetClient(), r.dialer); err != nil {
 		log.Error(err, "AutoOps garbage collection failed, will be attempted again at next operator restart")
 	}
-	tracing.EndContextTransaction(gcCtx)
+	return nil
+}
+
+var _ manager.LeaderElectionRunnable = (*licenseCheckRunnable)(nil)
+
+// licenseCheckRunnable validates the operator license key on all pods once the cache is synced.
+// NeedLeaderElection() = false ensures it runs on every replica, not only the elected leader.
+type licenseCheckRunnable struct {
+	client            k8s.Client
+	operatorNamespace string
+}
+
+func newLicenseCheckRunnable(
+	ctx context.Context,
+	mgr manager.Manager,
+	operatorNamespace string,
+) (*licenseCheckRunnable, error) {
+	// The license check reads Secrets before leader election, so ensure its
+	// informer is available before the manager starts.
+	if _, err := mgr.GetCache().GetInformer(ctx, &corev1.Secret{}); err != nil {
+		return nil, fmt.Errorf("pre-register informer for license check %T: %w", &corev1.Secret{}, err)
+	}
+	return &licenseCheckRunnable{
+		client:            mgr.GetClient(),
+		operatorNamespace: operatorNamespace,
+	}, nil
+}
+
+func (r *licenseCheckRunnable) NeedLeaderElection() bool { return false }
+
+func (r *licenseCheckRunnable) Start(ctx context.Context) error {
+	lc := commonlicense.NewLicenseChecker(r.client, r.operatorNamespace)
+	licenseType, err := lc.ValidOperatorLicenseKeyType(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to validate operator license key: %w", err)
+	}
+	log.Info("Operator license key validated", "license_type", licenseType)
+	return nil
 }
 
 // determineSetDefaultSecurityContext determines what settings we need to use for security context by using the following rules:
@@ -1031,108 +1189,90 @@ func garbageCollectAutoOpsResources(ctx context.Context, k8sClient k8s.Client, d
 	return nil
 }
 
-func setupWebhook(
-	ctx context.Context,
-	mgr manager.Manager,
-	params operator.Parameters,
-	webhookCertDir string,
-	clientset kubernetes.Interface,
-	exposedNodeLabels esvalidation.NodeLabels,
-	managedNamespaces []string,
-	tracer *apm.Tracer,
-) {
-	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
-	if manageWebhookCerts {
-		if err := reconcileWebhookCertsAndAddController(ctx, mgr, params.CertRotation, clientset, tracer); err != nil {
-			log.Error(err, "unable to setup the webhook certificates")
-			os.Exit(1)
+func fipsLog() {
+	if buildInfo, buildInfoOK := debug.ReadBuildInfo(); buildInfoOK {
+		for _, s := range buildInfo.Settings {
+			if s.Key != "GOEXPERIMENT" {
+				continue
+			}
+			if strings.Contains(s.Value, "boringcrypto") {
+				log.Info("operator runs in FIPS mode", "type", "boringcrypto")
+				return
+			}
+			break
 		}
 	}
 
-	checker := commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace)
-	// setup webhooks for supported types
-	webhookObjects := []interface {
-		runtime.Object
-		admission.Validator
-		WebhookPath() string
-	}{
-		&agentv1alpha1.Agent{},
-		&apmv1.ApmServer{},
-		&apmv1beta1.ApmServer{},
-		&beatv1beta1.Beat{},
-		&entv1.EnterpriseSearch{},
-		&entv1beta1.EnterpriseSearch{},
-		&esv1beta1.Elasticsearch{},
-		&kbv1.Kibana{},
-		&kbv1beta1.Kibana{},
-		&emsv1alpha1.ElasticMapsServer{},
-		&eprv1alpha1.PackageRegistry{},
-		&policyv1alpha1.StackConfigPolicy{},
-		&autoopsv1alpha1.AutoOpsAgentPolicy{},
-	}
-	for _, obj := range webhookObjects {
-		commonwebhook.SetupValidatingWebhookWithConfig(&commonwebhook.Config{
-			Manager:          mgr,
-			WebhookPath:      obj.WebhookPath(),
-			ManagedNamespace: managedNamespaces,
-			Validator:        obj,
-			LicenseChecker:   checker,
-		})
+	if fips140.Enabled() {
+		// when go.mod bumps to go 1.26 and later fips140.Enforced() and fips140.Version()
+		// can also be added to log.
+		log.Info("operator runs in FIPS mode", "type", "native")
+		return
 	}
 
-	// Logstash, Elasticsearch and ElasticsearchAutoscaling validating webhooks are wired up differently, in order to access the k8s client
-	esvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, exposedNodeLabels, checker, managedNamespaces)
-	esavalidation.RegisterWebhook(mgr, params.ValidateStorageClass, checker, managedNamespaces)
-	lsvalidation.RegisterWebhook(mgr, params.ValidateStorageClass, managedNamespaces)
-
-	// wait for the secret to be populated in the local filesystem before returning
-	interval := time.Second * 1
-	timeout := time.Second * 30
-	keyPath := filepath.Join(webhookCertDir, certificates.CertFileName)
-	log.Info("Polling for the webhook certificate to be available", "path", keyPath)
-	//nolint:staticcheck // keep
-	err := wait.PollImmediateWithContext(ctx, interval, timeout, func(_ context.Context) (bool, error) {
-		_, err := os.Stat(keyPath)
-		// err could be that the file does not exist, but also that permission was denied or something else
-		if os.IsNotExist(err) {
-			log.V(1).Info("Webhook certificate file not present on filesystem yet", "path", keyPath)
-
-			return false, nil
-		} else if err != nil {
-			log.Error(err, "Error checking if webhook secret path exists", "path", keyPath)
-			return false, err
-		}
-		log.V(1).Info("Webhook certificate file present on filesystem", "path", keyPath)
-		return true, nil
-	})
-	if err != nil {
-		log.Error(err, "Timeout elapsed waiting for webhook certificate to be available", "path", keyPath, "timeout_seconds", timeout.Seconds())
-		os.Exit(1)
-	}
+	log.Info("operator runs without FIPS mode")
 }
 
-func reconcileWebhookCertsAndAddController(ctx context.Context, mgr manager.Manager, certRotation certificates.RotationParams, clientset kubernetes.Interface, tracer *apm.Tracer) error {
-	ctx = tracing.NewContextTransaction(ctx, tracer, tracing.ReconciliationTxType, webhook.ControllerName, nil)
-	defer tracing.EndContextTransaction(ctx)
-	log.Info("Automatic management of the webhook certificates enabled")
-	// Ensure that all the certificates needed by the webhook server are already created
-	webhookParams := webhook.Params{
-		Name:       viper.GetString(operator.WebhookNameFlag),
-		Namespace:  viper.GetString(operator.OperatorNamespaceFlag),
-		SecretName: viper.GetString(operator.WebhookSecretFlag),
-		Rotation:   certRotation,
-	}
-
-	// retrieve the current webhook configuration interface
-	wh, err := webhookParams.NewAdmissionControllerInterface(ctx, clientset)
+func buildByObject(restrictWatchedResources bool) (map[client.Object]cache.ByObject, error) {
+	// cache filter for ECK owned resources (carrying the common.k8s.elastic.co/type label)
+	commonTypeExists, err := labels.NewRequirement(commonv1.TypeLabelName, selection.Exists, nil)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	eckOwnedSelector := labels.NewSelector().Add(*commonTypeExists)
+
+	byObject := map[client.Object]cache.ByObject{
+		// Only resource types exclusively created by ECK (always carrying
+		// common.k8s.elastic.co/type) can be filtered here.
+		// The rest of the resources (such as Service, ConfigMap, and Secret)
+		// are excluded because ECK also watches user-provided instances of these types.
+		&corev1.Pod{}:                   {Label: eckOwnedSelector},
+		&policyv1.PodDisruptionBudget{}: {Label: eckOwnedSelector},
+		&appsv1.Deployment{}:            {Label: eckOwnedSelector},
+		&appsv1.StatefulSet{}:           {Label: eckOwnedSelector},
+		&appsv1.DaemonSet{}:             {Label: eckOwnedSelector},
 	}
 
-	// Force a first reconciliation to create the resources before the server is started
-	if err := webhookParams.ReconcileResources(ctx, clientset, wh); err != nil {
-		return err
+	if !restrictWatchedResources {
+		return byObject, nil
 	}
+	log.Info("watched resources restriction is enabled")
 
-	return webhook.Add(mgr, webhookParams, clientset, wh, tracer)
+	watchedResourcesSelector := labels.SelectorFromSet(labels.Set{
+		commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
+	})
+	byObject[&corev1.Secret{}] = cache.ByObject{Label: watchedResourcesSelector}
+	byObject[&corev1.Service{}] = cache.ByObject{Label: watchedResourcesSelector}
+	byObject[&corev1.ConfigMap{}] = cache.ByObject{Label: watchedResourcesSelector}
+
+	return byObject, nil
+}
+
+func parseNSSelector(v *viper.Viper, log logr.Logger) (labels.Selector, error) {
+	if !v.IsSet(operator.NamespaceSelectorFlag) {
+		return nil, nil
+	}
+	raw := v.Get(operator.NamespaceSelectorFlag)
+	yamlBytes, err := yaml.Marshal(raw)
+	if err != nil {
+		log.Error(err, "Failed to serialize namespace-selector for parsing")
+		return nil, err
+	}
+	var ls metav1.LabelSelector
+	if err := yaml.Unmarshal(yamlBytes, &ls); err != nil {
+		log.Error(err, "Failed to parse namespace-selector")
+		return nil, err
+	}
+	if len(ls.MatchLabels) == 0 && len(ls.MatchExpressions) == 0 {
+		// an empty selector ({}) means dynamic namespace selection is disabled,
+		// so fallback to all namespaces.
+		log.Info("namespace-selector is empty: dynamic namespace selection is disabled, all namespaces will be watched")
+		return nil, nil
+	}
+	sel, err := metav1.LabelSelectorAsSelector(&ls)
+	if err != nil {
+		log.Error(err, "Invalid namespace-selector")
+		return nil, err
+	}
+	return sel, nil
 }

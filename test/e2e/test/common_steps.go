@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -46,13 +45,11 @@ func CreateEnterpriseLicenseSecret(t *testing.T, k *K8sClient, secretName string
 	t.Helper()
 	Eventually(func() error {
 		sec := corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: Ctx().ManagedNamespace(0),
-				Name:      secretName,
-				Labels: map[string]string{
-					commonv1.TypeLabelName:    license.Type,
-					license.LicenseLabelScope: string(license.LicenseScopeOperator),
-				},
+			Namespace: Ctx().ManagedNamespace(0),
+			Name:      secretName,
+			Labels: map[string]string{
+				commonv1.TypeLabelName:    license.Type,
+				license.LicenseLabelScope: string(license.LicenseScopeOperator),
 			},
 			Data: map[string][]byte{
 				license.FileName: licenseBytes,

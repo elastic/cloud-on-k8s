@@ -32,12 +32,10 @@ type Params struct {
 
 func New(params Params) appsv1.DaemonSet {
 	return appsv1.DaemonSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        params.Name,
-			Namespace:   params.Owner.GetNamespace(),
-			Labels:      params.Metadata.Labels,
-			Annotations: params.Metadata.Annotations,
-		},
+		Name:        params.Name,
+		Namespace:   params.Owner.GetNamespace(),
+		Labels:      params.Metadata.Labels,
+		Annotations: params.Metadata.Annotations,
 		Spec: appsv1.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: params.Selectors,
@@ -74,7 +72,12 @@ func Reconcile(
 				hash.GetTemplateHashLabel(reconciled.Labels) != hash.GetTemplateHashLabel(expected.Labels)
 		},
 		UpdateReconciled: func() {
-			expected.DeepCopyInto(reconciled)
+			// set expected annotations and labels, but don't remove existing ones
+			// that may have been defaulted or set by a user/admin on the existing resource
+			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
+			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
+			// overwrite the spec but leave the status intact
+			reconciled.Spec = expected.Spec
 		},
 	})
 	return *reconciled, err
@@ -83,6 +86,6 @@ func Reconcile(
 // WithTemplateHash returns a new DaemonSet with a hash of its template to ease comparisons.
 func WithTemplateHash(d appsv1.DaemonSet) appsv1.DaemonSet {
 	dCopy := *d.DeepCopy()
-	dCopy.Labels = hash.SetTemplateHashLabel(dCopy.Labels, dCopy)
+	dCopy.Labels = hash.SetTemplateHashLabel(dCopy.Labels, dCopy.Spec)
 	return dCopy
 }

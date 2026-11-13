@@ -29,7 +29,6 @@ func NewHTTPClient(caCerts []*x509.Certificate) *http.Client {
 		certPool.AddCert(c)
 	}
 
-	//nolint:gosec  // [G402: TLS MinVersion too low] is not a concern here as it is test code.
 	transport.TLSClientConfig = &tls.Config{
 		RootCAs: certPool,
 	}

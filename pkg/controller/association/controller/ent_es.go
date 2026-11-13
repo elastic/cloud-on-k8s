@@ -16,7 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	esuser "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
 
@@ -35,6 +34,7 @@ const (
 func AddEntES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedObjTemplate:     func() commonv1.Associated { return &entv1.EnterpriseSearch{} },
+		AssociatedObjListTemplate: func() client.ObjectList { return &entv1.EnterpriseSearchList{} },
 		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		AssociationType:           commonv1.ElasticsearchAssociationType,
@@ -53,14 +53,19 @@ func AddEntES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
 
+		ElasticsearchRef: directElasticsearchRef,
 		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
-			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
-				return true, association.AssociationRef(), nil
-			},
 			UserSecretSuffix: "ent-user",
 			ESUserRole: func(_ commonv1.Associated) (string, error) {
 				return esuser.SuperUserBuiltinRole, nil
 			},
+			SupportsAuthentication: entSupportsAuthentication,
 		},
 	})
+}
+
+// entSupportsAuthentication reports whether Enterprise Search supports the given authentication mode towards
+// Elasticsearch. Enterprise Search always sends Basic Auth, so PKI is not supported.
+func entSupportsAuthentication(_ commonv1.Associated, mode commonv1.AuthenticationMode) bool {
+	return mode == commonv1.AuthenticationModeCredentials
 }

@@ -10,6 +10,7 @@ import (
 	"hash"
 	"hash/fnv"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -19,8 +20,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
-	"k8s.io/utils/strings/slices"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -36,26 +35,20 @@ import (
 func Test_buildPodTemplate(t *testing.T) {
 	clientWithMonitoringEnabled := k8s.NewFakeClient(
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "secret",
-				Namespace: "ns",
-			},
-			Data: map[string][]byte{"elastic": []byte("123")},
+			Name:      "secret",
+			Namespace: "ns",
+			Data:      map[string][]byte{"elastic": []byte("123")},
 		},
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "external-user-secret",
-				Namespace: "ns",
-			},
+			Name:      "external-user-secret",
+			Namespace: "ns",
 			Data: map[string][]byte{
 				"elastic-external": []byte("asdf"),
 			},
 		},
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "external-es-monitoring",
-				Namespace: "ns",
-			},
+			Name:      "external-es-monitoring",
+			Namespace: "ns",
 			Data: map[string][]byte{
 				"url":      []byte("https://external-es.external.com"),
 				"username": []byte("monitoring-user"),
@@ -64,24 +57,20 @@ func Test_buildPodTemplate(t *testing.T) {
 			},
 		},
 		&esv1.Elasticsearch{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        "testes",
-				Namespace:   "ns",
-				Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "abcd1234"},
-			},
+			Name:        "testes",
+			Namespace:   "ns",
+			Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "abcd1234"},
 		},
 	)
 	httpPortCfg := &commonv1.Config{Data: map[string]any{"http.port": 3033}}
 	beatWithMonitoring := beatv1beta1.Beat{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "beat-name",
-			Namespace: "ns",
-		},
+		Name:      "beat-name",
+		Namespace: "ns",
 		Spec: beatv1beta1.BeatSpec{
 			Version:          "7.15.0",
 			Config:           httpPortCfg,
 			Type:             "filebeat",
-			ElasticsearchRef: commonv1.ObjectSelector{Name: "testes", Namespace: "ns"},
+			ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "testes", Namespace: "ns"}},
 			Monitoring: commonv1.Monitoring{
 				Metrics: commonv1.MetricsMonitoring{
 					ElasticsearchRefs: []commonv1.ObjectSelector{
@@ -107,7 +96,7 @@ func Test_buildPodTemplate(t *testing.T) {
 							{
 								Name: "filebeat",
 								SecurityContext: &corev1.SecurityContext{
-									RunAsUser: ptr.To[int64](0),
+									RunAsUser: new(int64(0)),
 								},
 								// The "-e" in these arguments should be removed
 								Args: []string{"-e", "-c", "/etc/beat.yml", "--system.hostfs=/hostfs"},
@@ -116,7 +105,8 @@ func Test_buildPodTemplate(t *testing.T) {
 					},
 				},
 			},
-		}}
+		},
+	}
 	beatWithMonitoring.MonitoringAssociation(commonv1.ObjectSelector{Name: "testes", Namespace: "ns"}).SetAssociationConf(&commonv1.AssociationConf{
 		AuthSecretName: "secret",
 		AuthSecretKey:  "elastic",
@@ -218,20 +208,16 @@ func Test_buildPodTemplate(t *testing.T) {
 					Client: k8s.NewFakeClient(
 						// Secret maintained by the operator
 						&corev1.Secret{
-							ObjectMeta: metav1.ObjectMeta{
-								ResourceVersion: "1", // ResourceVersion should be incremented during the reconciliation loop
-								Name:            "beat-name-beat-secure-settings",
-								Namespace:       "beat-namespace",
-							},
-							Data: map[string][]byte{"key": []byte("value1")},
+							ResourceVersion: "1", // ResourceVersion should be incremented during the reconciliation loop
+							Name:            "beat-name-beat-secure-settings",
+							Namespace:       "beat-namespace",
+							Data:            map[string][]byte{"key": []byte("value1")},
 						},
 						// User secret
 						&corev1.Secret{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "foo",
-								Namespace: "beat-namespace",
-							},
-							Data: map[string][]byte{"key": []byte("value2")},
+							Name:      "foo",
+							Namespace: "beat-namespace",
+							Data:      map[string][]byte{"key": []byte("value2")},
 						},
 					),
 					Beat: beatv1beta1.Beat{
@@ -299,6 +285,104 @@ func Test_buildPodTemplate(t *testing.T) {
 			if monitoring.IsDefined(&tt.args.params.Beat) {
 				assertMonitoring(t, tt.args.params.Client, tt.args.params.Beat, podTemplateSpec)
 			}
+		})
+	}
+}
+
+func Test_buildPodTemplate_clientCertVolume(t *testing.T) {
+	tests := []struct {
+		name                 string
+		conf                 commonv1.AssociationConf
+		wantCAVolume         bool
+		wantClientCertVolume bool
+		wantCAMount          bool
+		wantClientCertMount  bool
+	}{
+		{
+			name: "CA and client cert both present",
+			conf: commonv1.AssociationConf{
+				AuthSecretName:       "auth-secret",
+				AuthSecretKey:        "elastic",
+				CACertProvided:       true,
+				CASecretName:         "ca-secret",
+				URL:                  "https://es:9200",
+				ClientCertSecretName: "client-cert-secret",
+			},
+			wantCAVolume:         true,
+			wantClientCertVolume: true,
+			wantCAMount:          true,
+			wantClientCertMount:  true,
+		},
+		{
+			name: "client cert only, no CA",
+			conf: commonv1.AssociationConf{
+				AuthSecretName:       "auth-secret",
+				AuthSecretKey:        "elastic",
+				CACertProvided:       false,
+				URL:                  "https://es:9200",
+				ClientCertSecretName: "client-cert-secret",
+			},
+			wantCAVolume:         false,
+			wantClientCertVolume: true,
+			wantCAMount:          false,
+			wantClientCertMount:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			beat := beatv1beta1.Beat{
+				Name:      "beat-name",
+				Namespace: "ns",
+				Spec: beatv1beta1.BeatSpec{
+					Version: "8.0.0",
+					Type:    "filebeat",
+					ElasticsearchRef: commonv1.ElasticsearchSelector{
+						ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "ns"},
+					},
+					DaemonSet: &beatv1beta1.DaemonSetSpec{},
+				},
+			}
+			esAssoc := beatv1beta1.BeatESAssociation{Beat: &beat}
+			esAssoc.SetAssociationConf(&tt.conf)
+
+			params := DriverParams{
+				Context: context.Background(),
+				Watches: watches.NewDynamicWatches(),
+				Client: k8s.NewFakeClient(&corev1.Secret{
+					Name: "auth-secret", Namespace: "ns",
+					Data: map[string][]byte{"elastic": []byte("pass")},
+				}),
+				Beat: beat,
+			}
+
+			meta := metadata.Propagate(&params.Beat, metadata.Metadata{Labels: params.Beat.GetIdentityLabels()})
+			podTemplate, err := buildPodTemplate(params, "beats/filebeat", newHash("test"), meta)
+			require.NoError(t, err)
+
+			var hasCAVolume, hasClientCertVolume bool
+			for _, vol := range podTemplate.Spec.Volumes {
+				if vol.Secret != nil && vol.Secret.SecretName == "ca-secret" {
+					hasCAVolume = true
+				}
+				if vol.Secret != nil && vol.Secret.SecretName == "client-cert-secret" {
+					hasClientCertVolume = true
+				}
+			}
+			assert.Equal(t, tt.wantCAVolume, hasCAVolume, "CA volume")
+			assert.Equal(t, tt.wantClientCertVolume, hasClientCertVolume, "client cert volume")
+
+			var hasCAMount, hasClientCertMount bool
+			for _, vm := range podTemplate.Spec.Containers[0].VolumeMounts {
+				if vm.MountPath == "/mnt/elastic-internal/elasticsearch-certs" {
+					hasCAMount = true
+				}
+				if vm.MountPath == "/mnt/elastic-internal/elasticsearch-client-certs" {
+					hasClientCertMount = true
+				}
+			}
+			assert.Equal(t, tt.wantCAMount, hasCAMount, "CA volume mount")
+			assert.Equal(t, tt.wantClientCertMount, hasClientCertMount, "client cert volume mount")
 		})
 	}
 }
@@ -437,7 +521,7 @@ func Test_runningAsRoot(t *testing.T) {
 									{
 										Name: "filebeat",
 										SecurityContext: &corev1.SecurityContext{
-											RunAsUser: ptr.To[int64](0),
+											RunAsUser: new(int64(0)),
 										},
 									},
 								},
@@ -459,7 +543,7 @@ func Test_runningAsRoot(t *testing.T) {
 									{
 										Name: "filebeat",
 										SecurityContext: &corev1.SecurityContext{
-											RunAsUser: ptr.To[int64](0),
+											RunAsUser: new(int64(0)),
 										},
 									},
 								},
@@ -481,7 +565,7 @@ func Test_runningAsRoot(t *testing.T) {
 									{
 										Name: "filebeat",
 										SecurityContext: &corev1.SecurityContext{
-											RunAsUser: ptr.To[int64](1),
+											RunAsUser: new(int64(1)),
 										},
 									},
 								},
@@ -503,7 +587,7 @@ func Test_runningAsRoot(t *testing.T) {
 									{
 										Name: "filebeat",
 										SecurityContext: &corev1.SecurityContext{
-											RunAsUser: ptr.To[int64](1),
+											RunAsUser: new(int64(1)),
 										},
 									},
 								},

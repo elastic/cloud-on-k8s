@@ -11,7 +11,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
@@ -28,19 +27,15 @@ func TestGetESConfigContent(t *testing.T) {
 	namespace := "namespace"
 	ssetName := "sset"
 	secret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      ConfigSecretName(ssetName),
-			Namespace: namespace,
-		},
+		Name:      ConfigSecretName(ssetName),
+		Namespace: namespace,
 		Data: map[string][]byte{
 			ConfigFileName: []byte("a: b\nc: d\n"),
 		},
 	}
 	secretInvalid := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      ConfigSecretName(ssetName),
-			Namespace: namespace,
-		},
+		Name:      ConfigSecretName(ssetName),
+		Namespace: namespace,
 		Data: map[string][]byte{
 			ConfigFileName: []byte("yolo"),
 		},
@@ -94,23 +89,19 @@ func TestGetESConfigContent(t *testing.T) {
 
 func TestReconcileConfig(t *testing.T) {
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "cluster",
-		},
+		Namespace: "ns",
+		Name:      "cluster",
 	}
 	ssetName := "sset"
 	config := CanonicalConfig{common.MustCanonicalConfig(map[string]string{"a": "b", "c": "d"})}
 	rendered, err := config.Render()
 	require.NoError(t, err)
 	configSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      ConfigSecretName(ssetName),
-			Labels: map[string]string{
-				label.ClusterNameLabelName:     es.Name,
-				label.StatefulSetNameLabelName: ssetName,
-			},
+		Namespace: es.Namespace,
+		Name:      ConfigSecretName(ssetName),
+		Labels: map[string]string{
+			label.ClusterNameLabelName:     es.Name,
+			label.StatefulSetNameLabelName: ssetName,
 		},
 		Data: map[string][]byte{
 			ConfigFileName: rendered,

@@ -59,6 +59,10 @@ func NewBuilderWithoutSuffix(name string) Builder {
 	return newBuilder(name, "")
 }
 
+func (b Builder) ResourceName() string {
+	return b.Kibana.Name
+}
+
 func (b Builder) Ref() commonv1.ObjectSelector {
 	return commonv1.ObjectSelector{
 		Name:      b.Kibana.Name,
@@ -116,7 +120,15 @@ func (b Builder) WithSuffix(suffix string) Builder {
 }
 
 func (b Builder) WithElasticsearchRef(ref commonv1.ObjectSelector) Builder {
-	b.Kibana.Spec.ElasticsearchRef = ref
+	b.Kibana.Spec.ElasticsearchRef = commonv1.ElasticsearchSelector{
+		ObjectSelector:              ref,
+		ClientCertificateSecretName: b.Kibana.Spec.ElasticsearchRef.ClientCertificateSecretName,
+	}
+	return b
+}
+
+func (b Builder) WithClientCertificateSecret(secretName string) Builder {
+	b.Kibana.Spec.ElasticsearchRef.ClientCertificateSecretName = secretName
 	return b
 }
 
@@ -125,7 +137,7 @@ func (b Builder) WithEnterpriseSearchRef(ref commonv1.ObjectSelector) Builder {
 	return b
 }
 
-func (b Builder) WithPackageRegistryRef(ref commonv1.ObjectSelector) Builder {
+func (b Builder) WithPackageRegistryRef(ref commonv1.LocalObjectSelector) Builder {
 	b.Kibana.Spec.PackageRegistryRef = ref
 	return b
 }
@@ -151,8 +163,8 @@ func (b Builder) WithVersion(version string) Builder {
 	return b
 }
 
-func (b Builder) WithNodeCount(count int) Builder {
-	b.Kibana.Spec.Count = int32(count)
+func (b Builder) WithNodeCount(count int32) Builder {
+	b.Kibana.Spec.Count = count
 	return b
 }
 
@@ -270,6 +282,13 @@ func (b Builder) WithMonitoring(metricsESRef commonv1.ObjectSelector, logsESRef 
 	return b
 }
 
+func (b Builder) WithBackgroundTasks(count int32) Builder {
+	b.Kibana.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{
+		Count: &count,
+	}
+	return b
+}
+
 func (b Builder) WithEnv(envVar []corev1.EnvVar) Builder {
 	if len(b.Kibana.Spec.PodTemplate.Spec.Containers) == 0 {
 		b.Kibana.Spec.PodTemplate.Spec.Containers = []corev1.Container{
@@ -335,7 +354,13 @@ func (b Builder) Spec() any {
 	return b.Kibana.Spec
 }
 
+// Count returns the total expected pod count across all active pools.
+// When background task isolation is enabled, UI pods and BG pods are summed so
+// that shared test helpers (CheckPods, CheckStatus) operate on the full fleet.
 func (b Builder) Count() int32 {
+	if b.Kibana.Spec.BackgroundTasks != nil && b.Kibana.Spec.BackgroundTasks.Count != nil {
+		return b.Kibana.Spec.Count + *b.Kibana.Spec.BackgroundTasks.Count
+	}
 	return b.Kibana.Spec.Count
 }
 
@@ -353,8 +378,8 @@ func (b Builder) RuntimeObjects() []client.Object {
 	return []client.Object{&b.Kibana}
 }
 
-func (b Builder) ElasticsearchRef() commonv1.ObjectSelector {
-	if b.ExternalElasticsearchRef.IsDefined() {
+func (b Builder) ElasticsearchRef() commonv1.AssociationRef {
+	if b.ExternalElasticsearchRef.IsSet() {
 		return b.ExternalElasticsearchRef
 	}
 	// if no external Elasticsearch cluster is defined, use the ElasticsearchRef

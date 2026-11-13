@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	eprv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/packageregistry/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
@@ -18,10 +17,8 @@ import (
 func TestNewPodSpec(t *testing.T) {
 	getEprWithVersion := func(version string) eprv1alpha1.PackageRegistry {
 		return eprv1alpha1.PackageRegistry{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-epr",
-				Namespace: "default",
-			},
+			Name:      "test-epr",
+			Namespace: "default",
 			Spec: eprv1alpha1.PackageRegistrySpec{
 				Version: version,
 			},

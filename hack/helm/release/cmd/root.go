@@ -19,13 +19,17 @@ import (
 
 const (
 	// viper flags
-	chartsDirFlag       = "charts-dir"
-	credentialsFileFlag = "credentials-file"
-	dryRunFlag          = "dry-run"
-	forceFlag           = "force"
-	keepTmpDirFlag      = "keep-tmp-dir"
-	envFlag             = "env"
-	enableVaultFlag     = "enable-vault"
+	chartsDirFlag            = "charts-dir"
+	credentialsFileFlag      = "credentials-file"
+	dryRunFlag               = "dry-run"
+	forceFlag                = "force"
+	keepTmpDirFlag           = "keep-tmp-dir"
+	envFlag                  = "env"
+	enableVaultFlag          = "enable-vault"
+	skipChartRepoFlag        = "skip-chart-repo"
+	skipOCIRegistryFlag      = "skip-oci-registry"
+	skipOCIExistingFlag      = "skip-oci-existing"
+	ociChartsDigestsFileFlag = "oci-charts-digests-file"
 
 	// GCS Helm Buckets
 	devBucket  = "elastic-helm-charts-dev"
@@ -35,6 +39,11 @@ const (
 	devRepoURL  = "https://helm-dev.elastic.co/helm"
 	prodRepoURL = "https://helm.elastic.co/helm"
 
+	// OCI registries. Charts live in dedicated namespaces, separate from the operator images in eck and eck-snapshots,
+	// so that each repository name matches the chart name as Helm requires for chart dependencies.
+	devOCIRegistry  = "docker.elastic.co/eck-charts-snapshots"
+	prodOCIRegistry = "docker.elastic.co/eck-charts"
+
 	// Environment flag options
 	devEnvironment  = "dev"
 	prodEnvironment = "prod"
@@ -42,11 +51,18 @@ const (
 	googleCredsVaultSecretPath = "helm-gcs-credentials"
 	googleCredsVaultSecretKey  = "creds.json"
 	googleCredentialsEnvVar    = "GOOGLE_APPLICATION_CREDENTIALS"
+
+	ociCredsVaultSecretPath  = "docker-registry-elastic"
+	ociCredsVaultUsernameKey = "username"
+	ociCredsVaultPasswordKey = "password"
 )
 
 var (
 	bucket        string
 	chartsRepoURL string
+	ociRegistry   string
+	ociUsername   string
+	ociPassword   string
 )
 
 func init() {
@@ -60,16 +76,37 @@ func releaseCmd() *cobra.Command {
 		Example: fmt.Sprintf("  %s", "release --env=prod --charts-dir=./deploy --dry-run=false"),
 		PreRunE: validate,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			log.Printf("Releasing charts in (%s) to bucket (%s) in repo (%s)\n", viper.GetString(chartsDirFlag), bucket, chartsRepoURL)
+			var destinations []string
+			skipChartRepo := viper.GetBool(skipChartRepoFlag)
+			skipOCIRegistry := viper.GetBool(skipOCIRegistryFlag)
+			if skipChartRepo && skipOCIRegistry {
+				log.Printf("Nothing to release: both --%s and --%s are set", skipChartRepoFlag, skipOCIRegistryFlag)
+				return nil
+			}
+			if !skipChartRepo {
+				destinations = append(destinations, fmt.Sprintf("bucket (%s) / repo (%s)", bucket, chartsRepoURL))
+			}
+			if !skipOCIRegistry {
+				destinations = append(destinations, fmt.Sprintf("OCI registry (%s)", ociRegistry))
+			}
+			log.Printf("Releasing charts in (%s) to %s\n", viper.GetString(chartsDirFlag), strings.Join(destinations, " and "))
 			return helm.Release(
 				helm.ReleaseConfig{
-					ChartsDir:           viper.GetString(chartsDirFlag),
-					Bucket:              bucket,
-					ChartsRepoURL:       chartsRepoURL,
-					CredentialsFilePath: viper.GetString(credentialsFileFlag),
-					DryRun:              viper.GetBool(dryRunFlag),
-					Force:               viper.GetBool(forceFlag),
-					KeepTmpDir:          viper.GetBool(keepTmpDirFlag),
+					ChartsDir:                viper.GetString(chartsDirFlag),
+					Bucket:                   bucket,
+					ChartsRepoURL:            chartsRepoURL,
+					CredentialsFilePath:      viper.GetString(credentialsFileFlag),
+					DryRun:                   viper.GetBool(dryRunFlag),
+					Force:                    viper.GetBool(forceFlag),
+					KeepTmpDir:               viper.GetBool(keepTmpDirFlag),
+					IsProdRelease:            viper.GetString(envFlag) == prodEnvironment,
+					SkipChartRepo:            skipChartRepo,
+					SkipOCIRegistry:          skipOCIRegistry,
+					SkipOCIExisting:          viper.GetBool(skipOCIExistingFlag),
+					OCIRegistry:              ociRegistry,
+					OCIUsername:              ociUsername,
+					OCIPassword:              ociPassword,
+					OCIChartsDigestsFilePath: viper.GetString(ociChartsDigestsFileFlag),
 				})
 		},
 	}
@@ -80,7 +117,7 @@ func releaseCmd() *cobra.Command {
 		dryRunFlag,
 		"d",
 		true,
-		"Do not upload files to bucket, or update Helm index (env: HELM_DRY_RUN)",
+		"Do not upload files to bucket, update Helm index, or push to OCI registry (env: HELM_DRY_RUN)",
 	)
 	_ = viper.BindPFlag(dryRunFlag, flags.Lookup(dryRunFlag))
 
@@ -124,9 +161,37 @@ func releaseCmd() *cobra.Command {
 	flags.Bool(
 		enableVaultFlag,
 		true,
-		"Read 'credentials-file' from Vault (requires VAULT_ADDR and VAULT_TOKEN) (env: HELM_ENABLE_VAULT)",
+		"Read 'credentials-file' and the OCI registry credentials from Vault (requires VAULT_ADDR and VAULT_TOKEN). When disabled, the local Docker/Helm registry login is used (env: HELM_ENABLE_VAULT)",
 	)
 	_ = viper.BindPFlag(enableVaultFlag, flags.Lookup(enableVaultFlag))
+
+	flags.Bool(
+		skipChartRepoFlag,
+		false,
+		"Skip uploading to the GCS bucket and updating the Helm index. Useful when only OCI publishing is needed (env: HELM_SKIP_CHART_REPO)",
+	)
+	_ = viper.BindPFlag(skipChartRepoFlag, flags.Lookup(skipChartRepoFlag))
+
+	flags.Bool(
+		skipOCIRegistryFlag,
+		false,
+		"Skip pushing charts to the OCI registry. Useful when only GCS publishing is needed (env: HELM_SKIP_OCI_REGISTRY)",
+	)
+	_ = viper.BindPFlag(skipOCIRegistryFlag, flags.Lookup(skipOCIRegistryFlag))
+
+	flags.Bool(
+		skipOCIExistingFlag,
+		false,
+		"Skip pushing charts that already exist in the OCI registry, and still write their digest refs to the OCI charts digests file. Useful to retry a release without overwriting published charts (env: HELM_SKIP_OCI_EXISTING)",
+	)
+	_ = viper.BindPFlag(skipOCIExistingFlag, flags.Lookup(skipOCIExistingFlag))
+
+	flags.String(
+		ociChartsDigestsFileFlag,
+		"",
+		"Path of the file to write pushed OCI chart digest refs to, one per line (registry/chart:version@sha256:...). Includes digest refs of already-existing charts with --skip-oci-existing. Empty to skip (env: HELM_OCI_CHARTS_DIGESTS_FILE)",
+	)
+	_ = viper.BindPFlag(ociChartsDigestsFileFlag, flags.Lookup(ociChartsDigestsFileFlag))
 
 	return releaseCommand
 }
@@ -137,35 +202,54 @@ func validate(_ *cobra.Command, _ []string) error {
 	case devEnvironment:
 		bucket = devBucket
 		chartsRepoURL = devRepoURL
+		ociRegistry = devOCIRegistry
 	case prodEnvironment:
 		bucket = prodBucket
 		chartsRepoURL = prodRepoURL
+		ociRegistry = prodOCIRegistry
 	default:
 		return fmt.Errorf("%s flag can only be on of (%s, %s)", envFlag, devEnvironment, prodEnvironment)
 	}
 
-	credentialsFilePath := viper.GetString(credentialsFileFlag)
-	if credentialsFilePath == "" {
-		return fmt.Errorf("%s is a required flag", credentialsFilePath)
+	if viper.GetBool(skipOCIExistingFlag) && viper.GetBool(forceFlag) {
+		return fmt.Errorf("--%s and --%s cannot be used together", skipOCIExistingFlag, forceFlag)
 	}
 
-	if viper.GetBool(enableVaultFlag) {
-		c := vault.NewClientProvider()
-		_, err := vault.ReadFile(c, vault.SecretFile{
-			Name:          credentialsFilePath,
-			Path:          googleCredsVaultSecretPath,
-			FieldResolver: func() string { return googleCredsVaultSecretKey },
-		})
+	enableVault := viper.GetBool(enableVaultFlag)
+	vaultClientProvider := vault.NewClientProvider()
+	if enableVault && !viper.GetBool(skipOCIRegistryFlag) {
+		vaultClient, err := vaultClientProvider()
 		if err != nil {
-			return fmt.Errorf("while reading '%s' from vault: %w", credentialsFilePath, err)
+			return fmt.Errorf("while creating vault client: %w", err)
 		}
+		creds, err := vault.GetMany(vaultClient, ociCredsVaultSecretPath, ociCredsVaultUsernameKey, ociCredsVaultPasswordKey)
+		if err != nil {
+			return fmt.Errorf("while reading OCI registry credentials from vault: %w", err)
+		}
+		ociUsername, ociPassword = creds[0], creds[1]
 	}
 
-	_, err := os.Open(credentialsFilePath)
-	if err != nil {
-		return fmt.Errorf("while reading google credentials file (%s): %w", credentialsFilePath, err)
+	if !viper.GetBool(skipChartRepoFlag) {
+		credentialsFilePath := viper.GetString(credentialsFileFlag)
+		if credentialsFilePath == "" {
+			return fmt.Errorf("%s is a required flag", credentialsFileFlag)
+		}
+		if enableVault {
+			_, err := vault.ReadFile(vaultClientProvider, vault.SecretFile{
+				Name:          credentialsFilePath,
+				Path:          googleCredsVaultSecretPath,
+				FieldResolver: func() string { return googleCredsVaultSecretKey },
+			})
+			if err != nil {
+				return fmt.Errorf("while reading '%s' from vault: %w", credentialsFilePath, err)
+			}
+		}
+
+		if _, err := os.Stat(credentialsFilePath); err != nil {
+			return fmt.Errorf("while accessing google credentials file (%s): %w", credentialsFilePath, err)
+		}
+		os.Setenv(googleCredentialsEnvVar, credentialsFilePath)
 	}
-	os.Setenv(googleCredentialsEnvVar, credentialsFilePath)
 
 	return nil
 }

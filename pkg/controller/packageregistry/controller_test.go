@@ -13,7 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
@@ -31,11 +31,9 @@ var nsnFixture = types.NamespacedName{
 	Name:      "test-resource",
 }
 var eprFixture = v1alpha1.PackageRegistry{
-	ObjectMeta: metav1.ObjectMeta{
-		Namespace:  nsnFixture.Namespace,
-		Name:       nsnFixture.Name,
-		Generation: 2,
-	},
+	Namespace:  nsnFixture.Namespace,
+	Name:       nsnFixture.Name,
+	Generation: 2,
 	Spec: v1alpha1.PackageRegistrySpec{
 		Version: "7.17.8",
 		Count:   1,
@@ -71,7 +69,7 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 				// simulate a watch for a configRef that has been added during a previous reconciliation
 				require.NoError(t, watches.WatchUserProvidedSecrets(nsnFixture, r.DynamicWatches(), common.ConfigRefWatchName(nsnFixture), []string{"user-config-secret"}))
 				// simulate a watch for custom TLS certificates
-				require.NoError(t, watches.WatchUserProvidedSecrets(nsnFixture, r.DynamicWatches(), certificates.CertificateWatchKey(v1alpha1.Namer, nsnFixture.Name), []string{"user-tls-secret"}))
+				require.NoError(t, watches.WatchUserProvidedSecrets(nsnFixture, r.DynamicWatches(), certificates.CertificateWatchKey(v1alpha1.Namer, nsnFixture), []string{"user-tls-secret"}))
 				require.NotEmpty(t, r.DynamicWatches().Secrets.Registrations())
 			},
 			post: func(r ReconcilePackageRegistry) {
@@ -84,12 +82,10 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 			name: "Resource marked for deletion",
 			reconciler: ReconcilePackageRegistry{
 				Client: k8s.NewFakeClient(&v1alpha1.PackageRegistry{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:              nsnFixture.Name,
-						Namespace:         nsnFixture.Namespace,
-						DeletionTimestamp: &timeFixture, Generation: 2,
-						Finalizers: []string{"something"},
-					},
+					Name:              nsnFixture.Name,
+					Namespace:         nsnFixture.Namespace,
+					DeletionTimestamp: &timeFixture, Generation: 2,
+					Finalizers: []string{"something"},
 					Status: v1alpha1.PackageRegistryStatus{
 						ObservedGeneration: 1,
 					},
@@ -100,7 +96,7 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 				// simulate a watch for a configRef that has been added during a previous reconciliation
 				require.NoError(t, watches.WatchUserProvidedSecrets(nsnFixture, r.DynamicWatches(), common.ConfigRefWatchName(nsnFixture), []string{"user-config-secret"}))
 				// simulate a watch for custom TLS certificates
-				require.NoError(t, watches.WatchUserProvidedSecrets(nsnFixture, r.DynamicWatches(), certificates.CertificateWatchKey(v1alpha1.Namer, nsnFixture.Name), []string{"user-tls-secret"}))
+				require.NoError(t, watches.WatchUserProvidedSecrets(nsnFixture, r.DynamicWatches(), certificates.CertificateWatchKey(v1alpha1.Namer, nsnFixture), []string{"user-tls-secret"}))
 				require.NotEmpty(t, r.DynamicWatches().Secrets.Registrations())
 			},
 			post: func(r ReconcilePackageRegistry) {
@@ -116,12 +112,10 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 			name: "Resource is unmanaged",
 			reconciler: ReconcilePackageRegistry{
 				Client: k8s.NewFakeClient(&v1alpha1.PackageRegistry{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      nsnFixture.Name,
-						Namespace: nsnFixture.Namespace,
-						Annotations: map[string]string{
-							common.ManagedAnnotation: "false",
-						},
+					Name:      nsnFixture.Name,
+					Namespace: nsnFixture.Namespace,
+					Annotations: map[string]string{
+						common.ManagedAnnotation: "false",
 					},
 				}),
 			},
@@ -131,11 +125,9 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 			name: "validates on reconcile",
 			reconciler: ReconcilePackageRegistry{
 				Client: k8s.NewFakeClient(&v1alpha1.PackageRegistry{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:       nsnFixture.Name,
-						Namespace:  nsnFixture.Namespace,
-						Generation: 2,
-					},
+					Name:       nsnFixture.Name,
+					Namespace:  nsnFixture.Namespace,
+					Generation: 2,
 					Spec: v1alpha1.PackageRegistrySpec{
 						Version: "7.14.0", // unsupported version - below minimum 7.17.8
 					},
@@ -143,7 +135,7 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 						ObservedGeneration: 1,
 					},
 				}),
-				recorder: record.NewFakeRecorder(10),
+				recorder: toolsevents.NewFakeRecorder(10),
 			},
 			post: func(r ReconcilePackageRegistry) {
 				// observedGeneration should have been updated
@@ -155,7 +147,7 @@ func TestReconcilePackageRegistry_Reconcile(t *testing.T) {
 			name: "Happy path: first reconciliation",
 			reconciler: ReconcilePackageRegistry{
 				Client:         k8s.NewFakeClient(&eprFixture),
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 				Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.6.0"}}},
 			},
@@ -234,7 +226,7 @@ func Test_buildConfigHash(t *testing.T) {
 		},
 	}
 	tlsCertsSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: nsnFixture.Namespace, Name: certificates.InternalCertsSecretName(v1alpha1.Namer, nsnFixture.Name)},
+		Namespace: nsnFixture.Namespace, Name: certificates.InternalCertsSecretName(v1alpha1.Namer, nsnFixture.Name),
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("cert-data"),
 		},

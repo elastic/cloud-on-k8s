@@ -6,25 +6,31 @@ package autoops
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 
+	"github.com/go-logr/logr"
 	"go.elastic.co/apm/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	autoopsvalidation "github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoops/validation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/driver"
 	commonesclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/esclient"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
@@ -45,7 +51,7 @@ const (
 // and start it when the manager is started.
 func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	r := newReconciler(mgr, accessReviewer, params)
-	c, err := common.NewController(mgr, controllerName, r, params)
+	c, err := common.NewNamespacedController(mgr, controllerName, r, params, namespaceFlipRequests(ulog.Log, mgr.GetCache()))
 	if err != nil {
 		return err
 	}
@@ -57,32 +63,59 @@ func newReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 	return &AgentPolicyReconciler{
 		Client:           k8sClient,
 		accessReviewer:   accessReviewer,
-		recorder:         mgr.GetEventRecorderFor(controllerName),
-		licenseChecker:   license.NewLicenseChecker(k8sClient, params.OperatorNamespace),
+		recorder:         mgr.GetEventRecorder(controllerName),
 		params:           params,
 		dynamicWatches:   watches.NewDynamicWatches(),
 		esClientProvider: commonesclient.NewClient,
+		licenseChecker:   license.NewLicenseChecker(k8sClient, params.OperatorNamespace),
 	}
 }
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *AgentPolicyReconciler) error {
+	m := r.params.NamespaceMatcher
 	// watch for changes to AutoOpsAgentPolicy
-	if err := c.Watch(source.Kind(mgr.GetCache(), &autoopsv1alpha1.AutoOpsAgentPolicy{}, &handler.TypedEnqueueRequestForObject[*autoopsv1alpha1.AutoOpsAgentPolicy]{})); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &autoopsv1alpha1.AutoOpsAgentPolicy{}, &handler.TypedEnqueueRequestForObject[*autoopsv1alpha1.AutoOpsAgentPolicy]{})); err != nil {
 		return err
 	}
 
 	// watch for changes to Elasticsearch and reconcile all AutoOpsAgentPolicies
-	if err := c.Watch(source.Kind[client.Object](mgr.GetCache(), &esv1.Elasticsearch{}, reconcileRequestForAllAutoOpsPolicies(r.Client))); err != nil {
+	if err := c.Watch(watches.NamespacedKind[client.Object](m, mgr.GetCache(), &esv1.Elasticsearch{}, reconcileRequestForAllAutoOpsPolicies(r.Client))); err != nil {
 		return err
 	}
 
 	// watch dynamically referenced secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
 		return err
 	}
 
 	// watch for changes to deployments created by this controller
-	return c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}, reconcileRequestForAutoOpsPolicyFromDeployment()))
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &appsv1.Deployment{}, reconcileRequestForAutoOpsPolicyFromDeployment()))
+}
+
+// namespaceFlipRequests returns a mapper translating a namespace match-state change into
+// reconcile requests for the AutoOpsAgentPolicies affected by it. A policy selects its
+// Elasticsearch clusters cluster-wide by label (ResourceSelector), so a flip of any namespace
+// can change any policy's set of matching clusters: policies living in the flipped namespace
+// must be picked up or cleaned up, and policies living elsewhere must deploy agents for newly
+// scoped clusters or clean up agents and API keys for de-scoped ones. Mirroring the
+// Elasticsearch watch above (reconcileRequestForAllAutoOpsPolicies), all policies are
+// re-enqueued.
+func namespaceFlipRequests(log logr.Logger, cache cache.Cache) func(context.Context, *corev1.Namespace) []reconcile.Request {
+	return func(ctx context.Context, ns *corev1.Namespace) []reconcile.Request {
+		var list autoopsv1alpha1.AutoOpsAgentPolicyList
+		// List **cluster-wide** from the cache (not the FilterClient): policies in the
+		// namespace being de-scoped would be hidden by the FilterClient, causing us to miss
+		// the reconcile requests needed to clean them up.
+		if err := cache.List(ctx, &list); err != nil {
+			log.Error(err, "failed to list AutoOpsAgentPolicies in namespace flip watch", "namespace", ns.Name)
+			return nil
+		}
+		reqs := make([]reconcile.Request, 0, len(list.Items))
+		for i := range list.Items {
+			reqs = append(reqs, reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&list.Items[i])})
+		}
+		return reqs
+	}
 }
 
 // reconcileRequestForAllAutoOpsPolicies returns the requests to reconcile all AutoOpsAgentPolicy resources.
@@ -121,16 +154,17 @@ func reconcileRequestForAutoOpsPolicyFromDeployment() handler.TypedEventHandler[
 }
 
 var _ reconcile.Reconciler = (*AgentPolicyReconciler)(nil)
+var _ driver.Interface = (*AgentPolicyReconciler)(nil)
 
 // AgentPolicyReconciler reconciles an AutoOpsAgentPolicy object
 type AgentPolicyReconciler struct {
 	k8s.Client
 	accessReviewer   rbac.AccessReviewer
-	recorder         record.EventRecorder
-	licenseChecker   license.Checker
+	recorder         toolsevents.EventRecorder
 	params           operator.Parameters
 	dynamicWatches   watches.DynamicWatches
 	esClientProvider commonesclient.Provider
+	licenseChecker   license.Checker
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
 }
@@ -166,7 +200,7 @@ func (r *AgentPolicyReconciler) Reconcile(ctx context.Context, request reconcile
 	}
 
 	results := r.doReconcile(ctx, policy, state)
-	state.CalculateFinalPhase(results.IsReconciled())
+	state.Finalize(results.IsReconciled())
 
 	result, err := r.updateStatusFromState(ctx, state)
 	results = results.WithResult(result).WithError(err)
@@ -183,9 +217,9 @@ func (r *AgentPolicyReconciler) validate(ctx context.Context, policy *autoopsv1a
 	span, ctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	if _, err := policy.ValidateCreate(); err != nil {
+	if err := autoopsvalidation.Validate(ctx, policy, r.licenseChecker); err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, policy, events.EventReasonValidation, err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, policy, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(ctx, err)
 	}
 
@@ -200,7 +234,7 @@ func (r *AgentPolicyReconciler) updateStatusFromState(ctx context.Context, state
 	events, policy := state.Apply()
 	for _, evt := range events {
 		log.V(1).Info("Recording event", "event", evt)
-		r.recorder.Event(&state.policy, evt.EventType, evt.Reason, evt.Message)
+		k8s.EmitEvent(r.recorder, &state.policy, evt.EventType, evt.Reason, evt.Action, evt.Message)
 	}
 	if policy == nil {
 		log.V(1).Info("Status is up to date", "iteration", atomic.LoadUint64(&r.iteration))
@@ -220,13 +254,19 @@ func (r *AgentPolicyReconciler) updateStatusFromState(ctx context.Context, state
 	return reconcile.Result{}, nil
 }
 
+// OnNamespaceOutOfScope releases all controller-local state associated with the given AutoOpsAgentPolicy
+// resource when its namespace no longer matches the operator's namespace selector.
+func (r *AgentPolicyReconciler) OnNamespaceOutOfScope(obj types.NamespacedName) {
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(configSecretWatchName(obj))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(common.ConfigRefWatchName(obj))
+}
+
 func (r *AgentPolicyReconciler) onDelete(ctx context.Context, obj types.NamespacedName) error {
 	defer tracing.Span(&ctx)()
 	log := ulog.FromContext(ctx)
 	log.Info("Cleaning up AutoOpsAgentPolicy resources")
 
-	// Remove dynamic watches on secrets
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(configSecretWatchName(obj))
+	r.OnNamespaceOutOfScope(obj)
 
 	// Cleanup API keys for all Elasticsearch clusters that match this policy.
 	// Query for secrets labeled with this policy to find all associated ES clusters.
@@ -240,8 +280,20 @@ func (r *AgentPolicyReconciler) onDelete(ctx context.Context, obj types.Namespac
 	}
 
 	// Cleanup API keys for each ES cluster referenced by the secrets
+	var trustSourceErrs error
 	for _, secret := range secrets.Items {
+		// Trust sources live in the ES namespaces without an owner reference to the policy: delete them here.
+		if secret.Labels[commonv1.TypeLabelName] == certificates.ClientCertTrustSourceType {
+			r.dynamicWatches.Secrets.RemoveHandlerForKey(secret.Name)
+			if err := k8s.DeleteSecretIfExists(ctx, r.Client, k8s.ExtractNamespacedName(&secret)); err != nil {
+				trustSourceErrs = errors.Join(trustSourceErrs, fmt.Errorf("while deleting client certificate trust source %s/%s: %w", secret.Namespace, secret.Name, err))
+			}
+			continue
+		}
+
 		// Remove dynamic watch registered for this secret (CA or API key)
+		// Safety-net for in-scope secrets at policy deletion,
+		// selector-change cleanup is handled in cleanupOrphanedSecrets
 		r.dynamicWatches.Secrets.RemoveHandlerForKey(secret.Name)
 
 		esName, hasESName := secret.Labels["elasticsearch.k8s.elastic.co/name"]
@@ -270,6 +322,9 @@ func (r *AgentPolicyReconciler) onDelete(ctx context.Context, obj types.Namespac
 		log.V(1).Info("Successfully cleaned up API key", "es_namespace", esNamespace, "es_name", esName)
 	}
 
+	if trustSourceErrs != nil {
+		return tracing.CaptureError(ctx, trustSourceErrs)
+	}
 	return nil
 }
 
@@ -279,7 +334,9 @@ func (r *AgentPolicyReconciler) reconcileWatches(policy autoopsv1alpha1.AutoOpsA
 
 	secretNames := []string{policy.Spec.AutoOpsRef.SecretName}
 
-	// Set up dynamic watches for referenced secrets
+	// Set up dynamic watch for the AutoOpsRef secret.
+	// The configRef watch is managed by common.ParseConfigRef, called unconditionally
+	// in ReconcileAutoOpsESConfigMap, so we do not set it up here.
 	return watches.WatchUserProvidedSecrets(
 		watcher,
 		r.dynamicWatches,
@@ -292,3 +349,12 @@ func (r *AgentPolicyReconciler) reconcileWatches(policy autoopsv1alpha1.AutoOpsA
 func configSecretWatchName(watcher types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-config-secret", watcher.Namespace, watcher.Name)
 }
+
+// K8sClient returns the Kubernetes client from the reconciler, satisfying driver.Interface.
+func (r *AgentPolicyReconciler) K8sClient() k8s.Client { return r.Client }
+
+// DynamicWatches returns the set of dynamic watches from the reconciler, satisfying driver.Interface.
+func (r *AgentPolicyReconciler) DynamicWatches() watches.DynamicWatches { return r.dynamicWatches }
+
+// Recorder returns the event recorder from the reconciler, satisfying driver.Interface.
+func (r *AgentPolicyReconciler) Recorder() toolsevents.EventRecorder { return r.recorder }

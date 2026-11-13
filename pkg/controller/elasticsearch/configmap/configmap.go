@@ -8,12 +8,12 @@ import (
 	"context"
 	"reflect"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 
 	"go.elastic.co/apm/v2"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -26,7 +26,8 @@ import (
 )
 
 // ReconcileScriptsConfigMap reconciles a configmap containing scripts and related configuration used by
-// init containers and readiness probe.
+// init containers and readiness probe. The scripts ConfigMap content feeds into the pod-template config
+// hash, so any change to the rendered scripts (including label ordering) will trigger a rolling restart.
 func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasticsearch, meta metadata.Metadata) error {
 	span, ctx := apm.StartSpan(ctx, "reconcile_scripts", tracing.SpanTypeApp)
 	defer span.End()
@@ -41,14 +42,16 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasti
 		return err
 	}
 
+	// merge into a copy of meta: the caller reuses meta.Labels for other resources (eg. the StatefulSets),
+	// which must not inherit the watched label
+	cmMeta := meta.CloneWithLabel(commonv1.RestrictWatchedResourcesLabelName, commonv1.RestrictWatchedResourcesLabelValue)
+
 	nsn := types.NamespacedName{Name: esv1.ScriptsConfigMap(es.Name), Namespace: es.Namespace}
 	scriptsConfigMap := corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        nsn.Name,
-			Namespace:   nsn.Namespace,
-			Labels:      meta.Labels,
-			Annotations: meta.Annotations,
-		},
+		Name:        nsn.Name,
+		Namespace:   nsn.Namespace,
+		Labels:      cmMeta.Labels,
+		Annotations: cmMeta.Annotations,
 		Data: map[string]string{
 			nodespec.LegacyReadinessProbeScriptConfigKey: nodespec.LegacyReadinessProbeScript,
 			nodespec.ReadinessPortProbeScriptConfigKey:   nodespec.ReadinessPortProbeScript,
@@ -58,6 +61,7 @@ func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, es esv1.Elasti
 			initcontainer.SuspendedHostsFile:             initcontainer.RenderSuspendConfiguration(es),
 		},
 	}
+
 	return reconcileConfigMap(ctx, c, es, scriptsConfigMap)
 }
 

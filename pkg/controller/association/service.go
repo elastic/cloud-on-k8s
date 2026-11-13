@@ -43,7 +43,7 @@ func findPortFor(protocol string, svc corev1.Service) (int32, error) {
 func filterWithServiceName(associations []commonv1.Association) []commonv1.Association {
 	var r []commonv1.Association
 	for _, a := range associations {
-		if a.AssociationRef().ServiceName != "" {
+		if a.AssociationRef().GetServiceName() != "" {
 			r = append(r, a)
 		}
 	}

@@ -19,7 +19,7 @@ type LogstashHealth string
 
 const (
 	LogstashContainerName = "logstash"
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "Logstash"
 
@@ -68,11 +68,11 @@ type LogstashSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Pipelines []commonv1.Config `json:"pipelines,omitempty"`
 
-	// PipelinesRef contains a reference to an existing Kubernetes Secret holding the Logstash Pipelines.
+	// PipelinesRef contains a reference to an existing Kubernetes Secret or ConfigMap holding the Logstash Pipelines.
 	// Logstash pipelines must be specified as yaml, under a single "pipelines.yml" entry. At most one of [`Pipelines`, `PipelinesRef`]
-	// can be specified.
+	// can be specified. Within PipelinesRef, at most one of [`secretName`, `configMapName`] can be set.
 	// +kubebuilder:validation:Optional
-	PipelinesRef *commonv1.ConfigSource `json:"pipelinesRef,omitempty"`
+	PipelinesRef *commonv1.ConfigMapOrSecretSource `json:"pipelinesRef,omitempty"`
 
 	// Services contains details of services that Logstash should expose - similar to the HTTP layer configuration for the
 	// rest of the stack, but also applicable for more use cases than the metrics API, as logstash may need to
@@ -86,7 +86,13 @@ type LogstashSpec struct {
 	// +kubebuilder:validation:Optional
 	Monitoring commonv1.Monitoring `json:"monitoring,omitempty"`
 
-	// PodTemplate provides customisation options for the Logstash pods.
+	// Resources provides a shorthand to set CPU and Memory resources on the Logstash container. When set, these
+	// values override any CPU or memory resource settings specified in the PodTemplate for the primary Logstash
+	// container. To set resources on other containers, use the PodTemplate.
+	// +kubebuilder:validation:Optional
+	Resources commonv1.Resources `json:"resources,omitzero"`
+
+	// PodTemplate provides customization options for the Logstash pods.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
@@ -125,7 +131,7 @@ type LogstashService struct {
 
 // ElasticsearchCluster is a named reference to an Elasticsearch cluster which can be used in a Logstash pipeline.
 type ElasticsearchCluster struct {
-	commonv1.ObjectSelector `json:",omitempty,inline"`
+	commonv1.ElasticsearchSelector `json:",omitempty,inline"`
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
 	// ClusterName is an alias for the cluster to be used to refer to the Elasticsearch cluster in Logstash
@@ -160,6 +166,10 @@ type LogstashStatus struct {
 	MonitoringAssociationStatus commonv1.AssociationStatusMap `json:"monitoringAssociationStatus,omitempty"`
 
 	Selector string `json:"selector"`
+
+	// Conditions holds the current service state of the Logstash.
+	// +optional
+	Conditions commonv1.Conditions `json:"conditions"`
 }
 
 // +kubebuilder:object:root=true
@@ -194,10 +204,10 @@ type LogstashList struct {
 	Items           []Logstash `json:"items"`
 }
 
-func (l *Logstash) ElasticsearchRefs() []commonv1.ObjectSelector {
-	refs := make([]commonv1.ObjectSelector, len(l.Spec.ElasticsearchRefs))
+func (l *Logstash) ElasticsearchRefs() []commonv1.ElasticsearchSelector {
+	refs := make([]commonv1.ElasticsearchSelector, len(l.Spec.ElasticsearchRefs))
 	for i, r := range l.Spec.ElasticsearchRefs {
-		refs[i] = r.ObjectSelector
+		refs[i] = r.ElasticsearchSelector
 	}
 	return refs
 }
@@ -230,14 +240,14 @@ func (l *Logstash) GetAssociations() []commonv1.Association {
 		associations = append(associations, &LogstashESAssociation{
 			Logstash: l,
 			ElasticsearchCluster: ElasticsearchCluster{
-				ObjectSelector: ref.WithDefaultNamespace(l.Namespace),
-				ClusterName:    ref.ClusterName,
+				ElasticsearchSelector: ref.ElasticsearchSelector.WithDefaultNamespace(l.Namespace),
+				ClusterName:           ref.ClusterName,
 			},
 		})
 	}
 
 	for _, ref := range l.Spec.Monitoring.Metrics.ElasticsearchRefs {
-		if ref.IsDefined() {
+		if ref.IsSet() {
 			associations = append(associations, &LogstashMonitoringAssociation{
 				Logstash: l,
 				ref:      ref.WithDefaultNamespace(l.Namespace),
@@ -245,7 +255,7 @@ func (l *Logstash) GetAssociations() []commonv1.Association {
 		}
 	}
 	for _, ref := range l.Spec.Monitoring.Logs.ElasticsearchRefs {
-		if ref.IsDefined() {
+		if ref.IsSet() {
 			associations = append(associations, &LogstashMonitoringAssociation{
 				Logstash: l,
 				ref:      ref.WithDefaultNamespace(l.Namespace),
@@ -264,12 +274,12 @@ func (l *Logstash) AssociationStatusMap(typ commonv1.AssociationType) commonv1.A
 		}
 	case commonv1.LogstashMonitoringAssociationType:
 		for _, esRef := range l.Spec.Monitoring.Metrics.ElasticsearchRefs {
-			if esRef.IsDefined() {
+			if esRef.IsSet() {
 				return l.Status.MonitoringAssociationStatus
 			}
 		}
 		for _, esRef := range l.Spec.Monitoring.Logs.ElasticsearchRefs {
-			if esRef.IsDefined() {
+			if esRef.IsSet() {
 				return l.Status.MonitoringAssociationStatus
 			}
 		}
@@ -294,10 +304,10 @@ func (l *Logstash) SetAssociationStatusMap(typ commonv1.AssociationType, status 
 type LogstashESAssociation struct {
 	// The associated Logstash
 	*Logstash
-	ElasticsearchCluster
+	ElasticsearchCluster ElasticsearchCluster
 }
 
-var _ commonv1.Association = &LogstashESAssociation{}
+var _ commonv1.Association = (*LogstashESAssociation)(nil)
 
 func (lses *LogstashESAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	return "", nil
@@ -317,8 +327,8 @@ func (lses *LogstashESAssociation) AssociationType() commonv1.AssociationType {
 	return commonv1.ElasticsearchAssociationType
 }
 
-func (lses *LogstashESAssociation) AssociationRef() commonv1.ObjectSelector {
-	return lses.ElasticsearchCluster.ObjectSelector
+func (lses *LogstashESAssociation) AssociationRef() commonv1.AssociationRef {
+	return lses.ElasticsearchCluster.ElasticsearchSelector
 }
 
 func (lses *LogstashESAssociation) AssociationConfAnnotationName() string {
@@ -353,7 +363,7 @@ type LogstashMonitoringAssociation struct {
 	ref commonv1.ObjectSelector
 }
 
-var _ commonv1.Association = &LogstashMonitoringAssociation{}
+var _ commonv1.Association = (*LogstashMonitoringAssociation)(nil)
 
 func (lsmon *LogstashMonitoringAssociation) ElasticServiceAccount() (commonv1.ServiceAccountName, error) {
 	return "", nil
@@ -378,7 +388,7 @@ func (lsmon *LogstashMonitoringAssociation) AssociationType() commonv1.Associati
 	return commonv1.LogstashMonitoringAssociationType
 }
 
-func (lsmon *LogstashMonitoringAssociation) AssociationRef() commonv1.ObjectSelector {
+func (lsmon *LogstashMonitoringAssociation) AssociationRef() commonv1.AssociationRef {
 	return lsmon.ref
 }
 
@@ -418,6 +428,16 @@ func (l *Logstash) MonitoringAssociation(esRef commonv1.ObjectSelector) commonv1
 	}
 }
 
+// MergeConditions provides a nil-safe way to merge the LogstashStatus's Conditions with the new Condition(s).
+func (l *Logstash) MergeConditions(conditions ...commonv1.Condition) {
+	l.Status.Conditions = l.Status.Conditions.MergeWith(conditions...)
+}
+
+// Conditions returns the current conditions of the Logstash resource.
+func (l *Logstash) Conditions() commonv1.Conditions {
+	return l.Status.Conditions
+}
+
 // APIServerService returns the user defined API Service
 func (l *Logstash) APIServerService() LogstashService {
 	for _, service := range l.Spec.Services {
@@ -431,8 +451,4 @@ func (l *Logstash) APIServerService() LogstashService {
 // APIServerTLSOptions returns the user defined TLSOptions of API Service
 func (l *Logstash) APIServerTLSOptions() commonv1.TLSOptions {
 	return l.APIServerService().TLS
-}
-
-func init() {
-	SchemeBuilder.Register(&Logstash{}, &LogstashList{})
 }

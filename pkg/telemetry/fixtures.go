@@ -40,6 +40,9 @@ func renderExpectedTemplate(t *testing.T, data TemplateData) []byte {
 	return tplBuffer.Bytes()
 }
 
+// When changes/additions are made to this template, ensure that the index field
+// mappings are also updated to allow these new fields to be indexed.
+// (see internal telemetry documentation)
 const expectedTelemetryTemplate = `eck:
   build:
     date: "2019-09-20T07:00:00Z"
@@ -122,6 +125,7 @@ const expectedTelemetryTemplate = `eck:
         index_lifecycle_policies_count: 0
         ingest_pipelines_count: 0
         role_mappings_count: 0
+        roles_count: 0
         snapshot_lifecycle_policies_count: 0
         snapshot_repositories_count: 0
 `

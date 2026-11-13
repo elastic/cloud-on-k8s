@@ -28,6 +28,12 @@ import (
 // match Kubernetes internal service name, but only the user-facing public endpoint
 // - set APM spans with each request
 func Client(dialer net.Dialer, caCerts []*x509.Certificate, timeout time.Duration) *http.Client {
+	return ClientWithCert(dialer, caCerts, nil, timeout)
+}
+
+// ClientWithCert returns an http.Client similar to Client, but additionally configured with a client certificate
+// for mutual TLS authentication. If clientCert is nil, the client will not present a certificate.
+func ClientWithCert(dialer net.Dialer, caCerts []*x509.Certificate, clientCert *tls.Certificate, timeout time.Duration) *http.Client {
 	transportConfig := http.Transport{
 		TLSClientConfig: &tls.Config{
 			MinVersion: tls.VersionTLS12, // this is the default as of Go 1.18 we are just restating this here for clarity.
@@ -40,7 +46,7 @@ func Client(dialer net.Dialer, caCerts []*x509.Certificate, timeout time.Duratio
 			// go requires either ServerName or InsecureSkipVerify (or both) when handshaking as a client since 1.3:
 			// https://github.com/golang/go/commit/fca335e91a915b6aae536936a7694c4a2a007a60
 			InsecureSkipVerify: true, //nolint:gosec
-			VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+			VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error { //nolint:gosec
 				return errors.New("tls: verify peer certificate not setup")
 			},
 		},
@@ -55,7 +61,12 @@ func Client(dialer net.Dialer, caCerts []*x509.Certificate, timeout time.Duratio
 		transportConfig.TLSClientConfig.RootCAs = certPool
 	}
 
-	transportConfig.TLSClientConfig.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+	// present client certificate for mutual TLS if provided
+	if clientCert != nil {
+		transportConfig.TLSClientConfig.Certificates = []tls.Certificate{*clientCert}
+	}
+
+	transportConfig.TLSClientConfig.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error { //nolint:gosec
 		if verifiedChains != nil {
 			return errors.New("tls: non-nil verifiedChains argument breaks crypto/tls.Config.VerifyPeerCertificate contract")
 		}

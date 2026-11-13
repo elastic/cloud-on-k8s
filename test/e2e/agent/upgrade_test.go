@@ -60,7 +60,7 @@ func TestAgentVersionUpgradeToLatest8x(t *testing.T) {
 		[]test.Builder{
 			esBuilder.WithVersion(dstVersion).WithMutatedFrom(&esBuilder),
 			kbBuilder.WithVersion(dstVersion).WithMutatedFrom(&kbBuilder),
-			fleetServerBuilder.WithVersion(dstVersion),
+			fleetServerBuilder.WithVersion(dstVersion).WithMutatedFrom(&fleetServerBuilder),
 			agentBuilder.WithVersion(dstVersion).WithMutatedFrom(&agentBuilder),
 		},
 	)

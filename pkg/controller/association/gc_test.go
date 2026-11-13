@@ -11,13 +11,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/rolemapping"
 	esuser "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
@@ -35,14 +36,12 @@ func newUserSecret(
 	associationNamespaceValue, associationNameValue string,
 ) client.Object {
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels: map[string]string{
-				associationNameLabel:      associationNameValue,
-				associationNamespaceLabel: associationNamespaceValue,
-				commonv1.TypeLabelName:    esuser.AssociatedUserType,
-			},
+		Name:      name,
+		Namespace: namespace,
+		Labels: map[string]string{
+			associationNameLabel:      associationNameValue,
+			associationNamespaceLabel: associationNamespaceValue,
+			commonv1.TypeLabelName:    esuser.AssociatedUserType,
 		},
 	}
 }
@@ -53,93 +52,122 @@ func newServiceAccountSecret(
 	associationNamespaceValue, associationNameValue string,
 ) client.Object {
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels: map[string]string{
-				associationNameLabel:      associationNameValue,
-				associationNamespaceLabel: associationNamespaceValue,
-				commonv1.TypeLabelName:    esuser.ServiceAccountTokenType,
-			},
+		Name:      name,
+		Namespace: namespace,
+		Labels: map[string]string{
+			associationNameLabel:      associationNameValue,
+			associationNamespaceLabel: associationNamespaceValue,
+			commonv1.TypeLabelName:    esuser.ServiceAccountTokenType,
+		},
+	}
+}
+
+func newPKIRoleMappingRequest(
+	namespace, name,
+	associationNamespaceLabel, associationNameLabel,
+	associationNamespaceValue, associationNameValue string,
+) client.Object {
+	return &corev1.Secret{
+		Name:      name,
+		Namespace: namespace,
+		Labels: map[string]string{
+			associationNameLabel:      associationNameValue,
+			associationNamespaceLabel: associationNamespaceValue,
+			commonv1.TypeLabelName:    rolemapping.PKIRoleMappingRequestType,
+		},
+	}
+}
+
+func newClientCertTrustSource(
+	namespace, name,
+	associationNamespaceLabel, associationNameLabel,
+	associationNamespaceValue, associationNameValue string,
+) client.Object {
+	return &corev1.Secret{
+		Name:      name,
+		Namespace: namespace,
+		Labels: map[string]string{
+			associationNameLabel:      associationNameValue,
+			associationNamespaceLabel: associationNamespaceValue,
+			commonv1.TypeLabelName:    certificates.ClientCertTrustSourceType,
 		},
 	}
 }
 
 func TestUsersGarbageCollector_GC(t *testing.T) {
-	client := k8s.NewFakeClient(
-		// Create 5 secrets, 3 actually used and 2 orphaned
-		newUserSecret("es", "ns1-kb-orphaned-xxxx-kibana-user", KibanaAssociationLabelNamespace, KibanaAssociationLabelName, "ns1", "orphaned-kibana"),
-		newUserSecret("es", "ns1-kb-kibana1-w2fz-kibana-user", KibanaAssociationLabelNamespace, KibanaAssociationLabelName, "ns1", "kibana1"),
-		newUserSecret("es", "ns1-kb-kibana2-fy8i-kibana-user", KibanaAssociationLabelNamespace, KibanaAssociationLabelName, "ns2", "kibana2"),
-		newUserSecret("es", "ns1-kb-orphaned-xxxx-apm-user", ApmAssociationLabelNamespace, ApmAssociationLabelName, "ns1", "orphaned-apm"),
-		newUserSecret("es", "ns1-kb-apm1-yrfa-apm-user", ApmAssociationLabelNamespace, ApmAssociationLabelName, "ns1", "apm1"),
-		&kbv1.Kibana{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "kibana1",
-				Namespace: "ns1",
+	for _, tt := range []struct {
+		name              string
+		managedNamespaces []string
+		objs              []client.Object
+		wantRemaining     []string
+	}{
+		{
+			name:              "deletes the secrets of deleted associated resources: users, role mapping requests and client certificate trust sources",
+			managedNamespaces: []string{AllNamespaces},
+			objs: []client.Object{
+				// Create 5 secrets, 3 actually used and 2 orphaned
+				newUserSecret("es", "ns1-kb-orphaned-xxxx-kibana-user", KibanaAssociationLabelNamespace, KibanaAssociationLabelName, "ns1", "orphaned-kibana"),
+				newUserSecret("es", "ns1-kb-kibana1-w2fz-kibana-user", KibanaAssociationLabelNamespace, KibanaAssociationLabelName, "ns1", "kibana1"),
+				newUserSecret("es", "ns1-kb-kibana2-fy8i-kibana-user", KibanaAssociationLabelNamespace, KibanaAssociationLabelName, "ns2", "kibana2"),
+				newUserSecret("es", "ns1-kb-orphaned-xxxx-apm-user", ApmAssociationLabelNamespace, ApmAssociationLabelName, "ns1", "orphaned-apm"),
+				newUserSecret("es", "ns1-kb-apm1-yrfa-apm-user", ApmAssociationLabelNamespace, ApmAssociationLabelName, "ns1", "apm1"),
+				newPKIRoleMappingRequest("es", "ns1-kb-kibana1-pki-role-mapping", KibanaAssociationLabelNamespace, KibanaAssociationLabelName, "ns1", "kibana1"),
+				newPKIRoleMappingRequest("es", "ns1-kb-orphaned-pki-role-mapping", KibanaAssociationLabelNamespace, KibanaAssociationLabelName, "ns1", "orphaned-kibana"),
+				// A client certificate trust source of a deleted association must not keep its certificate in the
+				// server's trust bundle.
+				newClientCertTrustSource("es", "kibana1-client-cert-source", KibanaAssociationLabelNamespace, KibanaAssociationLabelName, "ns1", "kibana1"),
+				newClientCertTrustSource("es", "orphaned-client-cert-source", KibanaAssociationLabelNamespace, KibanaAssociationLabelName, "ns1", "orphaned-kibana"),
+				&kbv1.Kibana{Name: "kibana1", Namespace: "ns1"},
+				&kbv1.Kibana{Name: "kibana2", Namespace: "ns2"},
+				&apmv1.ApmServer{Name: "apm1", Namespace: "ns1"},
+			},
+			wantRemaining: []string{
+				"ns1-kb-kibana1-w2fz-kibana-user", "ns1-kb-kibana2-fy8i-kibana-user", "ns1-kb-apm1-yrfa-apm-user",
+				"ns1-kb-kibana1-pki-role-mapping", "kibana1-client-cert-source",
 			},
 		},
-		&kbv1.Kibana{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "kibana2",
-				Namespace: "ns2",
+		{
+			name:              "only deletes the orphaned client certificate trust sources of the managed namespaces",
+			managedNamespaces: []string{"es"},
+			objs: []client.Object{
+				newClientCertTrustSource("es", "orphaned-client-cert-source", KibanaAssociationLabelNamespace, KibanaAssociationLabelName, "ns1", "orphaned-kibana"),
+				newClientCertTrustSource("unmanaged", "orphaned-in-unmanaged-client-cert-source", KibanaAssociationLabelNamespace, KibanaAssociationLabelName, "ns1", "orphaned-kibana"),
 			},
+			wantRemaining: []string{"orphaned-in-unmanaged-client-cert-source"},
 		},
-		&apmv1.ApmServer{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "apm1",
-				Namespace: "ns1",
+		{
+			// A secret in the server namespace which carries association labels but is not typed as a trust source
+			// (or any other kind of association secret) is not ours to delete.
+			name:              "keeps the secrets which are not association secrets",
+			managedNamespaces: []string{AllNamespaces},
+			objs: []client.Object{
+				&corev1.Secret{Namespace: "es", Name: "not-an-association-secret", Labels: map[string]string{
+					KibanaAssociationLabelName:      "orphaned-kibana",
+					KibanaAssociationLabelNamespace: "ns1",
+				}},
 			},
+			wantRemaining: []string{"not-an-association-secret"},
 		},
-	)
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			c := k8s.NewFakeClient(tt.objs...)
+			ugc := &UsersGarbageCollector{client: c, managedNamespaces: tt.managedNamespaces}
 
-	ugc := &UsersGarbageCollector{
-		client:            client,
-		managedNamespaces: []string{AllNamespaces},
+			// register some resources
+			ugc.For(&apmv1.ApmServerList{}, ApmAssociationLabelNamespace, ApmAssociationLabelName)
+			ugc.For(&kbv1.KibanaList{}, KibanaAssociationLabelNamespace, KibanaAssociationLabelName)
+
+			assert.NoError(t, ugc.DoGarbageCollection(t.Context()))
+
+			var secrets corev1.SecretList
+			assert.NoError(t, c.List(t.Context(), &secrets))
+			var remaining []string //nolint:prealloc
+			for _, secret := range secrets.Items {
+				remaining = append(remaining, secret.Name)
+			}
+			assert.ElementsMatch(t, tt.wantRemaining, remaining)
+		})
 	}
-
-	// register some resources
-	ugc.For(&apmv1.ApmServerList{}, ApmAssociationLabelNamespace, ApmAssociationLabelName)
-	ugc.For(&kbv1.KibanaList{}, KibanaAssociationLabelNamespace, KibanaAssociationLabelName)
-
-	err := ugc.DoGarbageCollection(context.Background())
-	if err != nil {
-		t.Errorf("UsersGarbageCollector.DoGarbageCollection() error = %v", err)
-		return
-	}
-
-	// kibana1, kibana2 and apm1 user Secret must still be present
-	s := &corev1.Secret{}
-	err = client.Get(context.Background(), types.NamespacedName{
-		Namespace: "es",
-		Name:      "ns1-kb-kibana1-w2fz-kibana-user",
-	}, s)
-	assert.NoError(t, err)
-	err = client.Get(context.Background(), types.NamespacedName{
-		Namespace: "es",
-		Name:      "ns1-kb-kibana2-fy8i-kibana-user",
-	}, s)
-	assert.NoError(t, err)
-	err = client.Get(context.Background(), types.NamespacedName{
-		Namespace: "es",
-		Name:      "ns1-kb-apm1-yrfa-apm-user",
-	}, s)
-	assert.NoError(t, err)
-
-	// Orphaned secret must have been deleted
-	err = client.Get(context.Background(), types.NamespacedName{
-		Namespace: "es",
-		Name:      "ns1-kb-orphaned-xxxx-kibana-user",
-	}, s)
-	assert.NotNil(t, err)
-	assert.True(t, errors.IsNotFound(err))
-
-	err = client.Get(context.Background(), types.NamespacedName{
-		Namespace: "es",
-		Name:      "ns1-kb-orphaned-xxxx-apm-user",
-	}, s)
-	assert.NotNil(t, err)
-	assert.True(t, errors.IsNotFound(err))
 }
 
 func TestServiceAccountsGarbageCollector_GC(t *testing.T) {
@@ -150,24 +178,9 @@ func TestServiceAccountsGarbageCollector_GC(t *testing.T) {
 		newServiceAccountSecret("es", "ns1-kb-kibana2-fy8i-kibana-user", KibanaAssociationLabelNamespace, KibanaAssociationLabelName, "ns2", "kibana2"),
 		newUserSecret("es", "ns1-kb-orphaned-xxxx-apm-user", ApmAssociationLabelNamespace, ApmAssociationLabelName, "ns1", "orphaned-apm"),
 		newUserSecret("es", "ns1-kb-apm1-yrfa-apm-user", ApmAssociationLabelNamespace, ApmAssociationLabelName, "ns1", "apm1"),
-		&kbv1.Kibana{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "kibana1",
-				Namespace: "ns1",
-			},
-		},
-		&kbv1.Kibana{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "kibana2",
-				Namespace: "ns2",
-			},
-		},
-		&apmv1.ApmServer{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "apm1",
-				Namespace: "ns1",
-			},
-		},
+		&kbv1.Kibana{Name: "kibana1", Namespace: "ns1"},
+		&kbv1.Kibana{Name: "kibana2", Namespace: "ns2"},
+		&apmv1.ApmServer{Name: "apm1", Namespace: "ns1"},
 	)
 
 	ugc := &UsersGarbageCollector{

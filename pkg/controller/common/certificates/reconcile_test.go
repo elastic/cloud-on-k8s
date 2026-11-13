@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -27,18 +26,14 @@ var (
 		Validity:     DefaultCertValidity,
 		RotateBefore: DefaultRotateBefore,
 	}
-	labels = map[string]string{
+	testLabels = map[string]string{
 		"foo": "bar",
 	}
 	// tested on Elasticsearch but could be any resource
 	obj = esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "es",
-		},
-		TypeMeta: metav1.TypeMeta{
-			Kind: esv1.Kind,
-		},
+		Namespace: "ns",
+		Name:      "es",
+		Kind:      esv1.Kind,
 	}
 )
 
@@ -53,7 +48,7 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 		Owner:                 &obj,
 		TLSOptions:            commonv1.TLSOptions{},
 		Namer:                 esv1.ESNamer,
-		Metadata:              metadata.Metadata{Labels: labels},
+		Metadata:              metadata.Metadata{Labels: testLabels},
 		Services:              nil,
 		CACertRotation:        rotation,
 		CertRotation:          rotation,
@@ -71,11 +66,16 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 	}
 	checkResults()
 
+	expectedLabels := map[string]string{
+		"foo": "bar",
+		commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
+	}
 	labelsWithSoftOwner := map[string]string{
-		"foo":                              "bar",
-		reconciler.SoftOwnerKindLabel:      obj.Kind,
-		reconciler.SoftOwnerNamespaceLabel: obj.Namespace,
-		reconciler.SoftOwnerNameLabel:      obj.Name,
+		"foo": "bar",
+		commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
+		reconciler.SoftOwnerKindLabel:              obj.Kind,
+		reconciler.SoftOwnerNamespaceLabel:         obj.Namespace,
+		reconciler.SoftOwnerNameLabel:              obj.Name,
 	}
 
 	// the 3 secrets should have been created in the apiserver,
@@ -87,7 +87,7 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 		require.Len(t, caCerts.Data, 2)
 		require.NotEmpty(t, caCerts.Data[CertFileName])
 		require.NotEmpty(t, caCerts.Data[KeyFileName])
-		require.Equal(t, labels, caCerts.Labels)
+		require.Equal(t, expectedLabels, caCerts.Labels)
 
 		var internalCerts corev1.Secret
 		err = c.Get(context.Background(), types.NamespacedName{Namespace: obj.Namespace, Name: InternalCertsSecretName(esv1.ESNamer, obj.Name)}, &internalCerts)
@@ -96,7 +96,7 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 		require.NotEmpty(t, internalCerts.Data[CAFileName])
 		require.NotEmpty(t, internalCerts.Data[CertFileName])
 		require.NotEmpty(t, internalCerts.Data[KeyFileName])
-		require.Equal(t, labels, internalCerts.Labels)
+		require.Equal(t, expectedLabels, internalCerts.Labels)
 
 		var publicCerts corev1.Secret
 		err = c.Get(context.Background(), types.NamespacedName{Namespace: obj.Namespace, Name: PublicCertsSecretName(esv1.ESNamer, obj.Name)}, &publicCerts)

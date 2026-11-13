@@ -23,7 +23,7 @@ func TestReversalIllegalConfig(t *testing.T) {
 		WithESMasterNodes(1, elasticsearch.DefaultResources)
 
 	// then apply an illegal configuration change to the data node
-	bogus := b.WithAdditionalConfig(map[string]map[string]interface{}{
+	bogus := b.WithAdditionalConfig(map[string]map[string]any{
 		"data": {
 			"this leads": "to a bootlooping instance",
 		},

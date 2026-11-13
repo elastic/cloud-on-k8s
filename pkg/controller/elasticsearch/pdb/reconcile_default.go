@@ -110,10 +110,8 @@ func reconcilePDB(
 // deleteDefaultPDB deletes the default pdb if it exists.
 func deleteDefaultPDB(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch) error {
 	pdb := &policyv1.PodDisruptionBudget{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      esv1.DefaultPodDisruptionBudget(es.Name),
-		},
+		Namespace: es.Namespace,
+		Name:      esv1.DefaultPodDisruptionBudget(es.Name),
 	}
 	return deletePDB(ctx, k8sClient, pdb)
 }
@@ -142,13 +140,14 @@ func expectedPDB(es esv1.Elasticsearch, statefulSets sset.StatefulSetList, meta 
 		template = &commonv1.PodDisruptionBudgetTemplate{}
 	}
 
-	expected := policyv1.PodDisruptionBudget{
-		ObjectMeta: template.ObjectMeta,
-	}
-
 	// inherit user-provided ObjectMeta, but set our own name & namespace
-	expected.Name = esv1.DefaultPodDisruptionBudget(es.Name)
-	expected.Namespace = es.Namespace
+	objMeta := template.ObjectMeta
+	objMeta.Name = esv1.DefaultPodDisruptionBudget(es.Name)
+	objMeta.Namespace = es.Namespace
+
+	expected := policyv1.PodDisruptionBudget{
+		ObjectMeta: objMeta,
+	}
 	// Add labels and annotations
 	mergedMeta := meta.Merge(metadata.Metadata{
 		Labels:      expected.Labels,

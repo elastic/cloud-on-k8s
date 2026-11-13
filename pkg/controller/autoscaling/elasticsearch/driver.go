@@ -19,6 +19,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/autoscaler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/status"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
 	logconf "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
@@ -196,12 +197,10 @@ func (r *baseReconcileAutoscaling) attemptOnlineReconciliation(
 	}
 
 	// Emit the K8S events
-	status.EmitEvents(es, r.recorder, statusBuilder.Build())
+	status.EmitEvents(es, r.recorder, events.EventActionAutoscalingOnline, statusBuilder.Build())
 
 	// Update the Elasticsearch resource with the calculated resources.
-	if err := reconcileElasticsearch(log, &es, nextClusterResources); err != nil {
-		errors = append(errors, err)
-	}
+	reconcileElasticsearch(log, &es, nextClusterResources)
 	if len(errors) > 0 {
 		return nil, tracing.CaptureError(ctx, k8serrors.NewAggregate(errors))
 	}
@@ -243,12 +242,10 @@ func (r *baseReconcileAutoscaling) doOfflineReconciliation(
 	}
 
 	// Emit the K8S events
-	status.EmitEvents(es, r.recorder, statusBuilder.Build())
+	status.EmitEvents(es, r.recorder, events.EventActionAutoscalingOffline, statusBuilder.Build())
 
 	// Update the Elasticsearch manifest
-	if err := reconcileElasticsearch(log, &es, clusterNodeSetsResources); err != nil {
-		return nil, tracing.CaptureError(ctx, err)
-	}
+	reconcileElasticsearch(log, &es, clusterNodeSetsResources)
 
 	// Register new resources in the status
 	statusBuilder.UpdateResources(clusterNodeSetsResources, currentAutoscalingStatus)

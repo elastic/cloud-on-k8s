@@ -16,7 +16,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -86,9 +86,9 @@ func (r ReconcileStackConfigPolicy) getPolicy(t *testing.T, nsn types.Namespaced
 	return policy
 }
 
-func fetchEvents(recorder *record.FakeRecorder) []string {
+func fetchEvents(recorder *toolsevents.FakeRecorder) []string {
 	close(recorder.Events)
-	events := make([]string, 0)
+	events := make([]string, 0, len(recorder.Events))
 	for event := range recorder.Events {
 		events = append(events, event)
 	}
@@ -97,14 +97,12 @@ func fetchEvents(recorder *record.FakeRecorder) []string {
 
 func getEsPod(namespace string, annotations map[string]string) *corev1.Pod {
 	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-es-default-0",
-			Namespace: namespace,
-			Labels: map[string]string{
-				eslabel.ClusterNameLabelName: "test-es",
-			},
-			Annotations: annotations,
+		Name:      "test-es-default-0",
+		Namespace: namespace,
+		Labels: map[string]string{
+			eslabel.ClusterNameLabelName: "test-es",
 		},
+		Annotations: annotations,
 	}
 }
 
@@ -114,10 +112,8 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 		Name:      "test-policy",
 	}
 	policyFixture := policyv1alpha1.StackConfigPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "test-policy",
-		},
+		Namespace: "ns",
+		Name:      "test-policy",
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"label": "test"}},
 			SecureSettings: []commonv1.SecretSource{
@@ -164,26 +160,23 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 	esPodFixture := getEsPod("ns", map[string]string{
 		commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: elasticsearchConfigAndMountsHash,
 	})
-	esFixture := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{
+	esFixture := esv1.Elasticsearch{
 		Namespace: "ns",
 		Name:      "test-es",
 		Labels:    map[string]string{"label": "test"},
-	},
-		Spec: esv1.ElasticsearchSpec{Version: "8.6.1"},
+		Spec:      esv1.ElasticsearchSpec{Version: "8.6.1"},
 	}
 	secretMountsSecretFixture := getSecretMountSecret(t, "test-secret-mount", "ns", "test-policy", "ns", "delete")
 	secretFixture := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "test-es-es-file-settings",
-			Labels: map[string]string{
-				"common.k8s.elastic.co/type":                    "elasticsearch",
-				"elasticsearch.k8s.elastic.co/cluster-name":     "test-es",
-				"eck.k8s.elastic.co/owner-kind":                 "StackConfigPolicy",
-				"eck.k8s.elastic.co/owner-namespace":            "ns",
-				"eck.k8s.elastic.co/owner-name":                 "test-policy",
-				commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretResetOnPolicyDelete,
-			},
+		Namespace: "ns",
+		Name:      "test-es-es-file-settings",
+		Labels: map[string]string{
+			"common.k8s.elastic.co/type":                    "elasticsearch",
+			"elasticsearch.k8s.elastic.co/cluster-name":     "test-es",
+			"eck.k8s.elastic.co/owner-kind":                 "StackConfigPolicy",
+			"eck.k8s.elastic.co/owner-namespace":            "ns",
+			"eck.k8s.elastic.co/owner-name":                 "test-policy",
+			commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretResetOnPolicyDelete,
 		},
 		Data: map[string][]byte{"settings.json": []byte(`{"metadata":{"version":"42","compatibility":"8.4.0"},"state":{"cluster_settings":{"indices.recovery.max_bytes_per_sec":"42mb"},"snapshot_repositories":{},"slm":{},"role_mappings":{},"autoscaling":{},"ilm":{},"ingest_pipelines":{},"index_templates":{"component_templates":{},"composable_index_templates":{}}}}`)},
 	}
@@ -200,17 +193,15 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 	orphanSecretFixture.Labels["elasticsearch.k8s.elastic.co/cluster-name"] = "another-es"
 
 	orphanElasticsearchConfigSecretFixture := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      esv1.StackConfigElasticsearchConfigSecretName("another-es"),
-			Namespace: "ns",
-			Labels: map[string]string{
-				"elasticsearch.k8s.elastic.co/cluster-name":     "another-es",
-				"common.k8s.elastic.co/type":                    "elasticsearch",
-				commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretDeleteOnPolicyDelete,
-				reconciler.SoftOwnerNamespaceLabel:              policyFixture.Namespace,
-				reconciler.SoftOwnerNameLabel:                   policyFixture.Name,
-				reconciler.SoftOwnerKindLabel:                   policyv1alpha1.Kind,
-			},
+		Name:      esv1.StackConfigElasticsearchConfigSecretName("another-es"),
+		Namespace: "ns",
+		Labels: map[string]string{
+			"elasticsearch.k8s.elastic.co/cluster-name":     "another-es",
+			"common.k8s.elastic.co/type":                    "elasticsearch",
+			commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretDeleteOnPolicyDelete,
+			reconciler.SoftOwnerNamespaceLabel:              policyFixture.Namespace,
+			reconciler.SoftOwnerNameLabel:                   policyFixture.Name,
+			reconciler.SoftOwnerKindLabel:                   policyv1alpha1.Kind,
 		},
 	}
 
@@ -225,13 +216,35 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 	orphanEsFixture.Name = "another-es"
 	orphanEsFixture.Labels["label"] = "another"
 
-	oldVersionEsFixture := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{
+	oldVersionEsFixture := esv1.Elasticsearch{
 		Namespace: "ns",
 		Name:      "test-es",
 		Labels:    map[string]string{"label": "test"},
-	},
-		Spec: esv1.ElasticsearchSpec{Version: "8.0.0"},
+		Spec:      esv1.ElasticsearchSpec{Version: "8.0.0"},
 	}
+
+	reservedPKIRealmPolicyFixture := policyFixture.DeepCopy()
+	reservedPKIRealmPolicyFixture.Spec.Elasticsearch.Config = &commonv1.Config{Data: map[string]any{
+		"xpack.security.authc.realms.jwt.my_jwt.order": commonv1.ECKPKIRealmOrder,
+	}}
+
+	// A second policy targeting the same Elasticsearch, with a copy of an ECK-generated PKI role mapping. It is not the
+	// reconciled policy, but its role mappings are merged into the file settings of the Elasticsearch.
+	eckManagedRoleMappingPolicyFixture := policyFixture.DeepCopy()
+	eckManagedRoleMappingPolicyFixture.Name = "eck-managed-role-mapping-policy"
+	eckManagedRoleMappingPolicyFixture.Spec.Weight = 1
+	eckManagedRoleMappingPolicyFixture.Spec.Elasticsearch = policyv1alpha1.ElasticsearchConfigPolicySpec{
+		SecurityRoleMappings: &commonv1.Config{Data: map[string]any{
+			commonv1.ECKPKIRoleMappingPrefix + "ns.kb-client-cert": map[string]any{
+				"enabled":  true,
+				"metadata": map[string]any{"managed_by": "eck", "eck_resource_uid": "uid"},
+			},
+		}},
+	}
+	eckManagedRoleMappingPolicyFixture.Spec.Kibana = policyv1alpha1.KibanaConfigPolicySpec{}
+
+	pkiEsFixture := esFixture.DeepCopy()
+	pkiEsFixture.Spec.Auth.PKI.Enabled = true
 
 	clusterStateFileSettingsFixture := func(v int64, err error) esclient.FileSettings {
 		if err != nil {
@@ -248,14 +261,13 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 		}
 	}
 
-	kibanaFixture := kibanav1.Kibana{ObjectMeta: metav1.ObjectMeta{
+	kibanaFixture := kibanav1.Kibana{
 		Namespace: "ns",
 		Name:      "test-kb",
-		Labels:    map[string]string{"label": "test"},
-	}}
+		Labels:    map[string]string{"label": "test"}}
 
 	kibanaConfigSecretFixture := MkKibanaConfigSecret("ns", policyFixture.Name, policyFixture.Namespace, "3077592849")
-	addSecureSettingsAnnotationToSecret(kibanaConfigSecretFixture, "ns")
+	addSecureSettingsAnnotationToSecret(kibanaConfigSecretFixture, "ns", "shared-secret")
 
 	type args struct {
 		client           k8s.Client
@@ -267,7 +279,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 		name             string
 		args             args
 		pre              func(r ReconcileStackConfigPolicy)
-		post             func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder)
+		post             func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder)
 		wantRequeueAfter bool
 		wantErr          bool
 	}{
@@ -286,7 +298,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(0, nil), nil),
 			},
-			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
 				// Verify that the file settings secret was created by the StackConfigPolicy controller
 				var secret corev1.Secret
 				err := r.Client.Get(context.Background(), types.NamespacedName{
@@ -324,7 +336,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(&secretFixture))
 				assert.NotEmpty(t, settings.State.ClusterSettings.Data)
 			},
-			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
 				// after the reconciliation, settings are empty
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(&secretFixture))
 				assert.Empty(t, settings.State.ClusterSettings.Data)
@@ -343,7 +355,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(orphanSecretFixture))
 				assert.NotEmpty(t, settings.State.ClusterSettings)
 			},
-			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
 				// after the reconciliation, settings are empty
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(orphanSecretFixture))
 				assert.Empty(t, settings.State.ClusterSettings.Data)
@@ -364,7 +376,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				settings = r.getSettings(t, k8s.ExtractNamespacedName(orphanSecretFixture))
 				assert.NotEmpty(t, settings.State.ClusterSettings)
 			},
-			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
 				// after the reconciliation, settings are empty
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(&secretFixture))
 				assert.Empty(t, settings.State.ClusterSettings.Data)
@@ -379,7 +391,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				client:         k8s.NewFakeClient(&policyFixture),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: false},
 			},
-			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
 				events := fetchEvents(&recorder)
 
 				assert.ElementsMatch(t, []string{"Warning ReconciliationError StackConfigPolicy is an enterprise feature. Enterprise features are disabled"}, events)
@@ -396,9 +408,12 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				client:         k8s.NewFakeClient(&policyFixture, &secretFixture, &oldVersionEsFixture, esPodFixture),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
-			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
 				events := fetchEvents(&recorder)
-				assert.ElementsMatch(t, []string{"Warning Unexpected invalid version to configure resource Elasticsearch ns/test-es: actual 8.0.0, expected >= 8.6.1"}, events)
+				assert.ElementsMatch(t, []string{
+					"Warning Validation StackConfigPolicy ns/test-policy: spec.SecureSettings is deprecated, secure settings must be set per application",
+					"Warning Unexpected invalid version to configure resource Elasticsearch ns/test-es: actual 8.0.0, expected >= 8.6.1",
+				}, events)
 
 				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
 				assert.Equal(t, 1, policy.Status.Resources)
@@ -409,13 +424,72 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 			wantRequeueAfter: true,
 		},
 		{
+			name: "Reserved PKI realm settings are applied to Elasticsearch without PKI enabled",
+			args: args{
+				client:           k8s.NewFakeClient(reservedPKIRealmPolicyFixture, &esFixture, secretMountsSecretFixture),
+				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
+				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(0, nil), nil),
+			},
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
+				var secret corev1.Secret
+				err := r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "test-es-es-file-settings"}, &secret)
+				assert.NoError(t, err, "file settings secret should be created by the policy controller")
+
+				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
+				assert.Equal(t, policyv1alpha1.ApplyingChangesPhase, policy.Status.Details["elasticsearch"]["ns/test-es"].Phase)
+			},
+			wantErr:          false,
+			wantRequeueAfter: true,
+		},
+		{
+			name: "Reserved PKI realm settings are not applied to Elasticsearch with PKI enabled",
+			args: args{
+				client:           k8s.NewFakeClient(reservedPKIRealmPolicyFixture, pkiEsFixture, secretMountsSecretFixture),
+				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
+				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(0, nil), nil),
+			},
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
+				var secret corev1.Secret
+				err := r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "test-es-es-file-settings"}, &secret)
+				assert.True(t, apierrors.IsNotFound(err), "file settings secret should not be created, got: %v", err)
+
+				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
+				assert.Equal(t, policyv1alpha1.ErrorPhase, policy.Status.Details["elasticsearch"]["ns/test-es"].Phase)
+				assert.Contains(t, policy.Status.Details["elasticsearch"]["ns/test-es"].Error.Message,
+					"realm order 2147483647 is reserved for the ECK-managed PKI realm eck_managed_pki")
+				assert.Equal(t, policyv1alpha1.ErrorPhase, policy.Status.Phase)
+			},
+			wantErr:          false,
+			wantRequeueAfter: true,
+		},
+		{
+			name: "ECK-managed role mappings merged from another policy are not written",
+			args: args{
+				client:           k8s.NewFakeClient(&policyFixture, eckManagedRoleMappingPolicyFixture, &esFixture, secretMountsSecretFixture),
+				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
+				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(0, nil), nil),
+			},
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
+				var secret corev1.Secret
+				err := r.Client.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: "test-es-es-file-settings"}, &secret)
+				assert.True(t, apierrors.IsNotFound(err), "file settings secret should not be created, got: %v", err)
+
+				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
+				assert.Equal(t, policyv1alpha1.ErrorPhase, policy.Status.Details["elasticsearch"]["ns/test-es"].Phase)
+				assert.Contains(t, policy.Status.Details["elasticsearch"]["ns/test-es"].Error.Message,
+					"are reserved for ECK-generated PKI role mappings, remove this metadata")
+			},
+			wantErr:          false,
+			wantRequeueAfter: true,
+		},
+		{
 			name: "Elasticsearch cluster is unreachable",
 			args: args{
 				client:           k8s.NewFakeClient(&policyFixture, &esFixture, &secretFixture, secretMountsSecretFixture, esPodFixture),
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(esclient.FileSettings{}, errors.New("elasticsearch client failed")),
 			},
-			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
 				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
 				assert.Equal(t, 1, policy.Status.Resources)
 				assert.Equal(t, 0, policy.Status.Ready)
@@ -436,7 +510,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(&secretFixture))
 				assert.Equal(t, "42mb", settings.State.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"])
 			},
-			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(&secretFixture))
 				assert.Equal(t, "43mb", settings.State.ClusterSettings.Data["indices.recovery.max_bytes_per_sec"])
 
@@ -460,7 +534,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(42, errors.New("invalid cluster settings")), nil),
 			},
-			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
 				var policy policyv1alpha1.StackConfigPolicy
 				err := r.Client.Get(context.Background(), types.NamespacedName{
 					Namespace: "ns",
@@ -482,7 +556,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(40, nil), nil),
 			},
-			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
 				var policy policyv1alpha1.StackConfigPolicy
 				err := r.Client.Get(context.Background(), types.NamespacedName{
 					Namespace: "ns",
@@ -503,7 +577,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(42, nil), nil),
 			},
-			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
 				var policy policyv1alpha1.StackConfigPolicy
 				err := r.Client.Get(context.Background(), types.NamespacedName{
 					Namespace: "ns",
@@ -524,7 +598,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				assert.NoError(t, err)
 				secretMountsJSONData, err := json.Marshal(policy.Spec.Elasticsearch.SecretMounts)
 				assert.NoError(t, err)
-				assert.Equal(t, esSecret.Data[ElasticSearchConfigKey], elasticsearchConfigJSONData)
+				assert.Equal(t, esSecret.Data[esv1.StackConfigElasticsearchConfigKey], elasticsearchConfigJSONData)
 				assert.Equal(t, esSecret.Data[SecretsMountKey], secretMountsJSONData)
 
 				// Verify the secret mounts secret
@@ -562,7 +636,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				}, &secretMountsSecret)
 				assert.NoError(t, err)
 			},
-			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
 				// after the reconciliation, settings are empty
 				settings := r.getSettings(t, k8s.ExtractNamespacedName(orphanSecretFixture))
 				assert.Empty(t, settings.State.ClusterSettings.Data)
@@ -599,7 +673,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				}, &configSecret)
 				assert.NoError(t, err)
 			},
-			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
 				// after the reconciliation, the config secrets do not exist
 				var kibanaConfigSecret corev1.Secret
 				err := r.Client.Get(context.Background(), types.NamespacedName{
@@ -626,7 +700,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				}, &configSecret)
 				assert.NoError(t, err)
 			},
-			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
 				// after the reconciliation, the config secrets do not exist
 				var kibanaConfigSecret corev1.Secret
 				err := r.Client.Get(context.Background(), types.NamespacedName{
@@ -644,7 +718,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(esclient.FileSettings{}, errors.New("elasticsearch client failed")),
 			},
-			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
 				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
 				assert.Equal(t, 2, policy.Status.Resources)
 				assert.Equal(t, 1, policy.Status.Ready)
@@ -662,7 +736,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(42, nil), nil),
 			},
-			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
 				policy := r.getPolicy(t, k8s.ExtractNamespacedName(&policyFixture))
 				assert.Equal(t, 2, policy.Status.Resources)
 				assert.Equal(t, 1, policy.Status.Ready)
@@ -690,19 +764,15 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 
 					// Source secrets in policy namespace (these don't need owner labels, they're just data sources)
 					sourceSecret1 := &corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test-secret-mount",
-							Namespace: "ns",
-						},
+						Name:      "test-secret-mount",
+						Namespace: "ns",
 						Data: map[string][]byte{
 							"idfile.txt": []byte("test id file"),
 						},
 					}
 					sourceSecret2 := &corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "another-secret-mount",
-							Namespace: "ns",
-						},
+						Name:      "another-secret-mount",
+						Namespace: "ns",
 						Data: map[string][]byte{
 							"another-file.txt": []byte("another test file"),
 						},
@@ -731,7 +801,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(42, nil), nil),
 			},
-			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
 				// Verify the first secret exists (reconciled because still in SecretMounts)
 				var copiedSecret1 corev1.Secret
 				err := r.Client.Get(context.Background(), types.NamespacedName{
@@ -769,19 +839,15 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 
 					// Source secrets in policy namespace (left over from before, not currently used)
 					sourceSecret1 := &corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test-secret-mount",
-							Namespace: "ns",
-						},
+						Name:      "test-secret-mount",
+						Namespace: "ns",
 						Data: map[string][]byte{
 							"idfile.txt": []byte("test id file"),
 						},
 					}
 					sourceSecret2 := &corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "another-secret-mount",
-							Namespace: "ns",
-						},
+						Name:      "another-secret-mount",
+						Namespace: "ns",
 						Data: map[string][]byte{
 							"another-file.txt": []byte("another test file"),
 						},
@@ -810,7 +876,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 				esClientProvider: fakeClientProvider(clusterStateFileSettingsFixture(42, nil), nil),
 			},
-			post: func(r ReconcileStackConfigPolicy, recorder record.FakeRecorder) {
+			post: func(r ReconcileStackConfigPolicy, recorder toolsevents.FakeRecorder) {
 				// Verify both copied secrets with source annotations were deleted
 				var copiedSecret1 corev1.Secret
 				err := r.Client.Get(context.Background(), types.NamespacedName{
@@ -841,7 +907,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fakeRecorder := record.NewFakeRecorder(100)
+			fakeRecorder := toolsevents.NewFakeRecorder(100)
 			reconciler := ReconcileStackConfigPolicy{
 				Client:           tt.args.client,
 				esClientProvider: tt.args.esClientProvider,
@@ -871,20 +937,16 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 	// Setup: Create an Elasticsearch cluster and multiple StackConfigPolicies with different weights
 	esFixture := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "test-es",
-			Labels:    map[string]string{"env": "prod"},
-		},
-		Spec: esv1.ElasticsearchSpec{Version: "8.6.1"},
+		Namespace: "ns",
+		Name:      "test-es",
+		Labels:    map[string]string{"env": "prod"},
+		Spec:      esv1.ElasticsearchSpec{Version: "8.6.1"},
 	}
 
 	// Policy with weight 20 (applied first)
 	policy1 := policyv1alpha1.StackConfigPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "policy-high",
-		},
+		Namespace: "ns",
+		Name:      "policy-high",
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			Weight:           20,
 			ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}},
@@ -901,10 +963,8 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 
 	// Policy with weight 10 (applied second, overrides policy1)
 	policy2 := policyv1alpha1.StackConfigPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "policy-low",
-		},
+		Namespace: "ns",
+		Name:      "policy-low",
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			Weight:           10,
 			ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}},
@@ -927,10 +987,8 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 
 	// Policy with same weight as policy2 (should cause conflict)
 	policy3Conflicting := policyv1alpha1.StackConfigPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "policy-conflict",
-		},
+		Namespace: "ns",
+		Name:      "policy-conflict",
 		Spec: policyv1alpha1.StackConfigPolicySpec{
 			Weight:           10, // Same weight as policy2
 			ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}},
@@ -944,14 +1002,12 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 
 	// Initial empty file settings secret (will be populated by controller)
 	esFileSettingsSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "test-es-es-file-settings",
-			Labels: map[string]string{
-				commonv1.TypeLabelName:                          "elasticsearch",
-				eslabel.ClusterNameLabelName:                    "test-es",
-				commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretResetOnPolicyDelete,
-			},
+		Namespace: "ns",
+		Name:      "test-es-es-file-settings",
+		Labels: map[string]string{
+			commonv1.TypeLabelName:                          "elasticsearch",
+			eslabel.ClusterNameLabelName:                    "test-es",
+			commonlabels.StackConfigPolicyOnDeleteLabelName: commonlabels.OrphanSecretResetOnPolicyDelete,
 		},
 		Data: map[string][]byte{"settings.json": []byte(`{"metadata":{"version":"1","compatibility":"8.4.0"},"state":{"cluster_settings":{},"snapshot_repositories":{},"slm":{},"role_mappings":{},"autoscaling":{},"ilm":{},"ingest_pipelines":{},"index_templates":{"component_templates":{},"composable_index_templates":{}}}}`)},
 	}
@@ -960,10 +1016,8 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 
 	// Source secret that will be mounted (exists in policy namespace)
 	sourceSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-secret",
-			Namespace: "ns",
-		},
+		Name:      "test-secret",
+		Namespace: "ns",
 		Data: map[string][]byte{
 			"key1": []byte("value1"),
 		},
@@ -1099,7 +1153,7 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 				clientObjects = append(clientObjects, &tt.policies[i])
 			}
 
-			fakeRecorder := record.NewFakeRecorder(100)
+			fakeRecorder := toolsevents.NewFakeRecorder(100)
 			reconciler := ReconcileStackConfigPolicy{
 				Client:           k8s.NewFakeClient(clientObjects...),
 				esClientProvider: fakeClientProvider(esclient.FileSettings{Version: 1}, nil),
@@ -1113,10 +1167,8 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 
 			// Reconcile the specified policy
 			got, err := reconciler.Reconcile(context.Background(), reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Namespace: "ns",
-					Name:      tt.reconcilePolicy,
-				},
+				Namespace: "ns",
+				Name:      tt.reconcilePolicy,
 			})
 
 			if (err != nil) != tt.wantErr {
@@ -1136,6 +1188,156 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 			// Run custom validation if provided
 			if tt.validateSettings != nil {
 				tt.validateSettings(t, reconciler)
+			}
+		})
+	}
+}
+
+func TestReconcileStackConfigPolicy_NoSpuriousSecretUpdates(t *testing.T) {
+	tests := []struct {
+		name               string
+		objects            []client.Object
+		reconcileRequests  []types.NamespacedName
+		managedSecretNames []string
+	}{
+		{
+			name: "single policy with all secret types",
+			objects: func() []client.Object {
+				policy := &policyv1alpha1.StackConfigPolicy{
+					Namespace: "ns", Name: "test-policy",
+					Spec: policyv1alpha1.StackConfigPolicySpec{
+						ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"label": "test"}},
+						SecureSettings:   []commonv1.SecretSource{{SecretName: "shared-secret1"}},
+						Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+							ClusterSettings: &commonv1.Config{Data: map[string]any{
+								"indices.recovery.max_bytes_per_sec": "42mb",
+							}},
+							SecretMounts:   []policyv1alpha1.SecretMount{{SecretName: "test-secret-mount", MountPath: "/usr/test"}},
+							SecureSettings: []commonv1.SecretSource{{SecretName: "shared-secret"}},
+							Config:         &commonv1.Config{Data: map[string]any{"logger.org.elasticsearch.discovery": "DEBUG"}},
+						},
+						Kibana: policyv1alpha1.KibanaConfigPolicySpec{
+							Config:         &commonv1.Config{Data: map[string]any{"xpack.canvas.enabled": true}},
+							SecureSettings: []commonv1.SecretSource{{SecretName: "shared-secret"}},
+						},
+					},
+				}
+				es := &esv1.Elasticsearch{
+					Namespace: "ns", Name: "test-es", Labels: map[string]string{"label": "test"},
+					Spec: esv1.ElasticsearchSpec{Version: "8.6.1"},
+				}
+				kb := &kibanav1.Kibana{
+					Namespace: "ns", Name: "test-kb", Labels: map[string]string{"label": "test"},
+				}
+				secretMount := &corev1.Secret{
+					Name: "test-secret-mount", Namespace: "ns",
+					Data: map[string][]byte{"idfile.txt": []byte("test id file")},
+				}
+				hash := getElasticsearchConfigAndMountsHash(policy.Spec.Elasticsearch.Config, policy.Spec.Elasticsearch.SecretMounts)
+				esPod := getEsPod("ns", map[string]string{
+					commonannotation.ElasticsearchConfigAndSecretMountsHashAnnotation: hash,
+				})
+				kbPod := mkKibanaPod("ns", true, "3077592849")
+				return []client.Object{policy, es, kb, secretMount, esPod, kbPod}
+			}(),
+			reconcileRequests: []types.NamespacedName{
+				{Namespace: "ns", Name: "test-policy"},
+			},
+			managedSecretNames: []string{
+				"test-es-es-file-settings",
+				esv1.StackConfigElasticsearchConfigSecretName("test-es"),
+				esv1.StackConfigAdditionalSecretName("test-es", "test-secret-mount"),
+				"test-kb-kb-policy-config",
+			},
+		},
+		{
+			name: "multiple policies targeting the same cluster",
+			objects: func() []client.Object {
+				es := &esv1.Elasticsearch{
+					Namespace: "ns", Name: "test-es", Labels: map[string]string{"env": "prod"},
+					Spec: esv1.ElasticsearchSpec{Version: "8.6.1"},
+				}
+				policy1 := &policyv1alpha1.StackConfigPolicy{
+					Namespace: "ns", Name: "policy-base",
+					Spec: policyv1alpha1.StackConfigPolicySpec{
+						Weight:           10,
+						ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}},
+						Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+							ClusterSettings: &commonv1.Config{Data: map[string]any{"indices.recovery.max_bytes_per_sec": "40mb"}},
+							SecureSettings:  []commonv1.SecretSource{{SecretName: "secret-from-policy1"}},
+						},
+					},
+				}
+				policy2 := &policyv1alpha1.StackConfigPolicy{
+					Namespace: "ns", Name: "policy-override",
+					Spec: policyv1alpha1.StackConfigPolicySpec{
+						Weight:           20,
+						ResourceSelector: metav1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}},
+						Elasticsearch: policyv1alpha1.ElasticsearchConfigPolicySpec{
+							Config:         &commonv1.Config{Data: map[string]any{"logger.org.elasticsearch.discovery": "DEBUG"}},
+							SecureSettings: []commonv1.SecretSource{{SecretName: "secret-from-policy2"}},
+						},
+					},
+				}
+				esPod := getEsPod("ns", map[string]string{})
+				return []client.Object{es, policy1, policy2, esPod}
+			}(),
+			reconcileRequests: []types.NamespacedName{
+				{Namespace: "ns", Name: "policy-base"},
+				{Namespace: "ns", Name: "policy-override"},
+			},
+			managedSecretNames: []string{
+				"test-es-es-file-settings",
+				esv1.StackConfigElasticsearchConfigSecretName("test-es"),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fakeClient := k8s.NewFakeClient(tt.objects...)
+
+			newReconciler := func() ReconcileStackConfigPolicy {
+				return ReconcileStackConfigPolicy{
+					Client:           fakeClient,
+					esClientProvider: fakeClientProvider(esclient.FileSettings{Version: 42}, nil),
+					recorder:         toolsevents.NewFakeRecorder(100),
+					licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
+					params:           operator.Parameters{OperatorNamespace: "elastic-system"},
+					dynamicWatches:   watches.NewDynamicWatches(),
+				}
+			}
+
+			// First round of reconciliations: creates all secrets
+			for _, req := range tt.reconcileRequests {
+				r := newReconciler()
+				_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: req})
+				require.NoError(t, err)
+			}
+
+			// Collect resource versions after first round
+			resourceVersionsAfterFirst := make(map[string]string, len(tt.managedSecretNames))
+			for _, name := range tt.managedSecretNames {
+				var secret corev1.Secret
+				err := fakeClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: name}, &secret)
+				require.NoError(t, err, "secret %s should exist after first reconciliation", name)
+				resourceVersionsAfterFirst[name] = secret.ResourceVersion
+			}
+
+			// Second round: nothing changed, should be a no-op for all secrets
+			for _, req := range tt.reconcileRequests {
+				r := newReconciler()
+				_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: req})
+				require.NoError(t, err)
+			}
+
+			// Assert no secret resource versions changed
+			for _, name := range tt.managedSecretNames {
+				var secret corev1.Secret
+				err := fakeClient.Get(context.Background(), types.NamespacedName{Namespace: "ns", Name: name}, &secret)
+				require.NoError(t, err)
+				assert.Equal(t, resourceVersionsAfterFirst[name], secret.ResourceVersion,
+					"secret %q was unnecessarily updated on idempotent reconciliation", name)
 			}
 		})
 	}
@@ -1181,4 +1383,84 @@ func assertKibanaConfigSecret(t *testing.T, c client.Client, kibanaName string, 
 	require.Equal(t, expectedKibanaSecret.Labels, kibanaSecret.Labels)
 	require.Equal(t, expectedKibanaSecret.Annotations, kibanaSecret.Annotations)
 	require.Equal(t, expectedKibanaSecret.Data, kibanaSecret.Data)
+}
+
+func Test_reconcileRequestForSoftOwnerPolicy(t *testing.T) {
+	tests := []struct {
+		name     string
+		secret   *corev1.Secret
+		wantReqs []reconcile.Request
+	}{
+		{
+			name: "Secret without soft-owner labels returns no requests",
+			secret: &corev1.Secret{
+				Name:      "test-secret",
+				Namespace: "ns",
+			},
+			wantReqs: nil,
+		},
+		{
+			name: "Secret soft-owned by Elasticsearch returns no requests",
+			secret: &corev1.Secret{
+				Name:      "test-secret",
+				Namespace: "ns",
+				Labels: map[string]string{
+					reconciler.SoftOwnerKindLabel:      esv1.Kind,
+					reconciler.SoftOwnerNameLabel:      "my-es",
+					reconciler.SoftOwnerNamespaceLabel: "ns",
+				},
+			},
+			wantReqs: nil,
+		},
+		{
+			name: "Secret soft-owned by StackConfigPolicy returns request for that policy",
+			secret: &corev1.Secret{
+				Name:      "test-secret",
+				Namespace: "ns",
+				Labels: map[string]string{
+					reconciler.SoftOwnerKindLabel:      policyv1alpha1.Kind,
+					reconciler.SoftOwnerNameLabel:      "my-policy",
+					reconciler.SoftOwnerNamespaceLabel: "policy-ns",
+				},
+			},
+			wantReqs: []reconcile.Request{
+				{Namespace: "policy-ns", Name: "my-policy"},
+			},
+		},
+		{
+			name: "Secret with multiple soft-owners via annotation returns only StackConfigPolicy requests",
+			secret: &corev1.Secret{
+				Name:      "test-secret",
+				Namespace: "ns",
+				Labels: map[string]string{
+					reconciler.SoftOwnerKindLabel: policyv1alpha1.Kind,
+				},
+				Annotations: map[string]string{
+					reconciler.SoftOwnerRefsAnnotation: `["ns1/policy1","ns2/policy2"]`,
+				},
+			},
+			wantReqs: []reconcile.Request{
+				{Namespace: "ns1", Name: "policy1"},
+				{Namespace: "ns2", Name: "policy2"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotReqs := toReconcileRequests(tt.secret)
+
+			if tt.wantReqs == nil {
+				assert.Empty(t, gotReqs)
+			} else {
+				assert.Equal(t, tt.wantReqs, gotReqs)
+			}
+
+			// Verify no zero-value requests are returned
+			for _, req := range gotReqs {
+				assert.NotEmpty(t, req.Namespace, "reconcile request should not have empty namespace")
+				assert.NotEmpty(t, req.Name, "reconcile request should not have empty name")
+			}
+		})
+	}
 }

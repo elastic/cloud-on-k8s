@@ -62,5 +62,6 @@ func maybeRunECKDiagnostics(ctx context.Context, testName string, step Step) {
 		"-o", testCtx.Operator.Namespace,
 		"-r", strings.Join(otherNS, ","),
 		"--run-agent-diagnostics",
+		"--keep-secret-data",
 	)
 }

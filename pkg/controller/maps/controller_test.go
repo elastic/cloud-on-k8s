@@ -13,7 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
@@ -32,11 +32,9 @@ var nsnFixture = types.NamespacedName{
 	Name:      "test-resource",
 }
 var emsFixture = v1alpha1.ElasticMapsServer{
-	ObjectMeta: metav1.ObjectMeta{
-		Namespace:  nsnFixture.Namespace,
-		Name:       nsnFixture.Name,
-		Generation: 2,
-	},
+	Namespace:  nsnFixture.Namespace,
+	Name:       nsnFixture.Name,
+	Generation: 2,
 	Spec: v1alpha1.MapsSpec{
 		Version: "7.12.0",
 		Count:   1,
@@ -72,7 +70,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				// simulate a watch for a configRef that has been added during a previous reconciliation
 				require.NoError(t, watches.WatchUserProvidedSecrets(nsnFixture, r.DynamicWatches(), common.ConfigRefWatchName(nsnFixture), []string{"user-config-secret"}))
 				// simulate a watch for custom TLS certificates
-				require.NoError(t, watches.WatchUserProvidedSecrets(nsnFixture, r.DynamicWatches(), certificates.CertificateWatchKey(EMSNamer, nsnFixture.Name), []string{"user-tls-secret"}))
+				require.NoError(t, watches.WatchUserProvidedSecrets(nsnFixture, r.DynamicWatches(), certificates.CertificateWatchKey(EMSNamer, nsnFixture), []string{"user-tls-secret"}))
 				require.NotEmpty(t, r.DynamicWatches().Secrets.Registrations())
 			},
 			post: func(r ReconcileMapsServer) {
@@ -85,12 +83,10 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			name: "Resource marked for deletion",
 			reconciler: ReconcileMapsServer{
 				Client: k8s.NewFakeClient(&v1alpha1.ElasticMapsServer{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:              nsnFixture.Name,
-						Namespace:         nsnFixture.Namespace,
-						DeletionTimestamp: &timeFixture, Generation: 2,
-						Finalizers: []string{"something"},
-					},
+					Name:              nsnFixture.Name,
+					Namespace:         nsnFixture.Namespace,
+					DeletionTimestamp: &timeFixture, Generation: 2,
+					Finalizers: []string{"something"},
 					Status: v1alpha1.MapsStatus{
 						ObservedGeneration: 1,
 					},
@@ -102,7 +98,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				// simulate a watch for a configRef that has been added during a previous reconciliation
 				require.NoError(t, watches.WatchUserProvidedSecrets(nsnFixture, r.DynamicWatches(), common.ConfigRefWatchName(nsnFixture), []string{"user-config-secret"}))
 				// simulate a watch for custom TLS certificates
-				require.NoError(t, watches.WatchUserProvidedSecrets(nsnFixture, r.DynamicWatches(), certificates.CertificateWatchKey(EMSNamer, nsnFixture.Name), []string{"user-tls-secret"}))
+				require.NoError(t, watches.WatchUserProvidedSecrets(nsnFixture, r.DynamicWatches(), certificates.CertificateWatchKey(EMSNamer, nsnFixture), []string{"user-tls-secret"}))
 				require.NotEmpty(t, r.DynamicWatches().Secrets.Registrations())
 			},
 			post: func(r ReconcileMapsServer) {
@@ -118,12 +114,10 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			name: "Resource is unmanaged",
 			reconciler: ReconcileMapsServer{
 				Client: k8s.NewFakeClient(&v1alpha1.ElasticMapsServer{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      nsnFixture.Name,
-						Namespace: nsnFixture.Namespace,
-						Annotations: map[string]string{
-							common.ManagedAnnotation: "false",
-						},
+					Name:      nsnFixture.Name,
+					Namespace: nsnFixture.Namespace,
+					Annotations: map[string]string{
+						common.ManagedAnnotation: "false",
 					},
 				}),
 			},
@@ -133,13 +127,13 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			name: "License missing or invalid ",
 			reconciler: ReconcileMapsServer{
 				Client:         k8s.NewFakeClient(&emsFixture),
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: false},
 				Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.6.0"}}},
 			},
 			post: func(r ReconcileMapsServer) {
-				e := <-r.recorder.(*record.FakeRecorder).Events //nolint:forcetypeassert
+				e := <-r.recorder.(*toolsevents.FakeRecorder).Events //nolint:forcetypeassert
 				require.Equal(t, "Warning ReconciliationError Elastic Maps Server is an enterprise feature. Enterprise features are disabled", e)
 
 				// observedGeneration should have been updated
@@ -152,11 +146,9 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			name: "validates on reconcile",
 			reconciler: ReconcileMapsServer{
 				Client: k8s.NewFakeClient(&v1alpha1.ElasticMapsServer{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:       nsnFixture.Name,
-						Namespace:  nsnFixture.Namespace,
-						Generation: 2,
-					},
+					Name:       nsnFixture.Name,
+					Namespace:  nsnFixture.Namespace,
+					Generation: 2,
 					Spec: v1alpha1.MapsSpec{
 						Version: "7.10.0", // unsupported version
 					},
@@ -165,7 +157,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 					},
 				}),
 				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 			},
 			post: func(r ReconcileMapsServer) {
 				// observedGeneration should have been updated
@@ -177,14 +169,12 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			name: "Association specified but not configured (yet)",
 			reconciler: ReconcileMapsServer{
 				Client: k8s.NewFakeClient(&v1alpha1.ElasticMapsServer{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:       nsnFixture.Name,
-						Namespace:  nsnFixture.Namespace,
-						Generation: 2,
-					},
+					Name:       nsnFixture.Name,
+					Namespace:  nsnFixture.Namespace,
+					Generation: 2,
 					Spec: v1alpha1.MapsSpec{
 						Version:          "7.12.0",
-						ElasticsearchRef: commonv1.ObjectSelector{Name: "es", Namespace: "ns"},
+						ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "ns"}},
 					},
 					Status: v1alpha1.MapsStatus{
 						ObservedGeneration: 1,
@@ -192,10 +182,10 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				}),
 				dynamicWatches: watches.NewDynamicWatches(),
 				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 			},
 			post: func(r ReconcileMapsServer) {
-				e := <-r.recorder.(*record.FakeRecorder).Events //nolint:forcetypeassert
+				e := <-r.recorder.(*toolsevents.FakeRecorder).Events //nolint:forcetypeassert
 				require.Equal(t, "Warning AssociationError Association backend for elasticsearch is not configured", e)
 
 				// observedGeneration should have been updated
@@ -207,17 +197,15 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			name: "Association specified but ES version too old",
 			reconciler: ReconcileMapsServer{
 				Client: k8s.NewFakeClient(&v1alpha1.ElasticMapsServer{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      nsnFixture.Name,
-						Namespace: nsnFixture.Namespace,
-						Annotations: map[string]string{
-							"association.k8s.elastic.co/es-conf": `{"authSecretName":"test-resource-maps-user","authSecretKey":"ns-test-resource-maps-user","caCertProvided":true,"caSecretName": "test-resource-es-ca","url":"https://es-es-http.ns.svc:9200","version":"7.10.0"}`,
-						},
-						Generation: 2,
+					Name:      nsnFixture.Name,
+					Namespace: nsnFixture.Namespace,
+					Annotations: map[string]string{
+						"association.k8s.elastic.co/es-conf": `{"authSecretName":"test-resource-maps-user","authSecretKey":"ns-test-resource-maps-user","caCertProvided":true,"caSecretName": "test-resource-es-ca","url":"https://es-es-http.ns.svc:9200","version":"7.10.0"}`,
 					},
+					Generation: 2,
 					Spec: v1alpha1.MapsSpec{
 						Version:          "7.12.0",
-						ElasticsearchRef: commonv1.ObjectSelector{Name: "es", Namespace: "ns"},
+						ElasticsearchRef: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{Name: "es", Namespace: "ns"}},
 					},
 					Status: v1alpha1.MapsStatus{
 						ObservedGeneration: 1,
@@ -225,10 +213,12 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 				}),
 				dynamicWatches: watches.NewDynamicWatches(),
 				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 			},
 			post: func(r ReconcileMapsServer) {
-				e := <-r.recorder.(*record.FakeRecorder).Events //nolint:forcetypeassert
+				e := <-r.recorder.(*toolsevents.FakeRecorder).Events //nolint:forcetypeassert
+				require.Equal(t, "Warning Validation Version 7.12.0 is EOL and support for it will be removed in a future release of the ECK operator", e)
+				e = <-r.recorder.(*toolsevents.FakeRecorder).Events //nolint:forcetypeassert
 				require.Equal(t, "Warning Delayed Delaying deployment of version 7.12.0 since the referenced elasticsearch is not upgraded yet", e)
 
 				// observedGeneration should have been updated
@@ -242,7 +232,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 			name: "Happy path: first reconciliation",
 			reconciler: ReconcileMapsServer{
 				Client:         k8s.NewFakeClient(&emsFixture),
-				recorder:       record.NewFakeRecorder(10),
+				recorder:       toolsevents.NewFakeRecorder(10),
 				dynamicWatches: watches.NewDynamicWatches(),
 				licenseChecker: license.MockLicenseChecker{EnterpriseEnabled: true},
 				Parameters:     operator.Parameters{OperatorInfo: about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.6.0"}}},
@@ -314,7 +304,7 @@ func TestReconcileMapsServer_Reconcile(t *testing.T) {
 func Test_buildConfigHash(t *testing.T) {
 	emsWithAssoc := *emsFixture.DeepCopy()
 	esTLSCertsSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: nsnFixture.Namespace, Name: "es-tls-certs"},
+		Namespace: nsnFixture.Namespace, Name: "es-tls-certs",
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("es-cert-data"),
 		},
@@ -330,7 +320,7 @@ func Test_buildConfigHash(t *testing.T) {
 		},
 	}
 	tlsCertsSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: nsnFixture.Namespace, Name: certificates.InternalCertsSecretName(EMSNamer, nsnFixture.Name)},
+		Namespace: nsnFixture.Namespace, Name: certificates.InternalCertsSecretName(EMSNamer, nsnFixture.Name),
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("cert-data"),
 		},

@@ -9,11 +9,11 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/comparison"
@@ -26,7 +26,7 @@ import (
 func newTestReconciler(objects ...client.Object) *ReconcileElasticsearch {
 	r := &ReconcileElasticsearch{
 		Client:   k8s.NewFakeClient(objects...),
-		recorder: record.NewFakeRecorder(100),
+		recorder: toolsevents.NewFakeRecorder(100),
 	}
 	return r
 }
@@ -42,10 +42,8 @@ type esBuilder struct {
 func newBuilder(name, namespace string) *esBuilder {
 	return &esBuilder{
 		es: &esv1.Elasticsearch{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-			},
+			Name:      name,
+			Namespace: namespace,
 		},
 	}
 }
@@ -164,7 +162,7 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 						ObservedGeneration:   2,
 						Phase:                esv1.ElasticsearchResourceInvalid,
 						Health:               esv1.ElasticsearchUnknownHealth,
-						Conditions:           commonv1alpha1.Conditions{commonv1alpha1.Condition{Type: "ReconciliationComplete", Status: "True"}},
+						Conditions:           commonv1.Conditions{commonv1.Condition{Type: "ReconciliationComplete", Status: "True"}},
 						InProgressOperations: noInProgressOperations,
 					},
 				).BuildAndCopy(),
@@ -197,7 +195,7 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 						ObservedGeneration:   2,
 						Phase:                esv1.ElasticsearchResourceInvalid,
 						Health:               esv1.ElasticsearchUnknownHealth,
-						Conditions:           commonv1alpha1.Conditions{commonv1alpha1.Condition{Type: "ReconciliationComplete", Status: "True"}},
+						Conditions:           commonv1.Conditions{commonv1.Condition{Type: "ReconciliationComplete", Status: "True"}},
 						InProgressOperations: noInProgressOperations,
 					},
 				).BuildAndCopy(),
@@ -231,7 +229,7 @@ func TestReconcileElasticsearch_Reconcile(t *testing.T) {
 						ObservedGeneration:   2,
 						Phase:                esv1.ElasticsearchResourceInvalid,
 						Health:               esv1.ElasticsearchUnknownHealth,
-						Conditions:           commonv1alpha1.Conditions{commonv1alpha1.Condition{Type: "ReconciliationComplete", Status: "True"}},
+						Conditions:           commonv1.Conditions{commonv1.Condition{Type: "ReconciliationComplete", Status: "True"}},
 						InProgressOperations: noInProgressOperations,
 					},
 				).BuildAndCopy(),

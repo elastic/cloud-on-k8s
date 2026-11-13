@@ -2,6 +2,9 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
+// When changes/additions are made to the following code, ensure that the index field
+// mappings are also updated to allow these new fields to be indexed.
+// (see internal telemetry documentation)
 package telemetry
 
 import (
@@ -15,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/about"
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
@@ -28,6 +32,7 @@ import (
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	mapsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 	policyv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/stackconfigpolicy/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/nsmatch"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/stackmon/monitoring"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -62,10 +67,11 @@ func NewReporter(
 	client client.Client,
 	operatorNamespace string,
 	managedNamespaces []string,
+	namespaceMatcher *nsmatch.NamespaceMatcher,
 	telemetryInterval time.Duration,
 	tracer *apm.Tracer,
 ) Reporter {
-	if len(managedNamespaces) == 0 {
+	if len(managedNamespaces) == 0 && !namespaceMatcher.SelectorEnabled() {
 		// treat no managed namespaces as managing all namespaces, ie. set empty string for namespace filtering
 		managedNamespaces = append(managedNamespaces, "")
 	}
@@ -75,25 +81,37 @@ func NewReporter(
 		client:            client,
 		operatorNamespace: operatorNamespace,
 		managedNamespaces: managedNamespaces,
+		namespaceMatcher:  namespaceMatcher,
 		telemetryInterval: telemetryInterval,
 		tracer:            tracer,
 	}
 }
+
+var _ manager.LeaderElectionRunnable = (*Reporter)(nil)
 
 type Reporter struct {
 	operatorInfo      about.OperatorInfo
 	client            k8s.Client
 	operatorNamespace string
 	managedNamespaces []string
+	namespaceMatcher  *nsmatch.NamespaceMatcher
 	telemetryInterval time.Duration
 	tracer            *apm.Tracer
 }
 
-func (r *Reporter) Start(ctx context.Context) {
+func (r *Reporter) NeedLeaderElection() bool { return true }
+
+func (r *Reporter) Start(ctx context.Context) error {
 	ctx = ulog.InitInContext(ctx, "telemetry")
 	ticker := time.NewTicker(r.telemetryInterval)
-	for range ticker.C {
-		r.report(ctx)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			r.report(ctx)
+		case <-ctx.Done():
+			return nil
+		}
 	}
 }
 
@@ -110,7 +128,15 @@ func marshalTelemetry(ctx context.Context, info about.OperatorInfo, stats map[st
 	})
 }
 
-func (r *Reporter) getResourceStats(ctx context.Context) (map[string]any, error) {
+func (r *Reporter) getNamespaces(ctx context.Context) ([]string, error) {
+	if r.namespaceMatcher.SelectorEnabled() {
+		return r.namespaceMatcher.MatchingNamespaces(ctx)
+	}
+
+	return r.managedNamespaces, nil
+}
+
+func (r *Reporter) getResourceStats(ctx context.Context, namespaces []string) (map[string]any, error) {
 	span, _ := apm.StartSpan(ctx, "get_resource_stats", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -127,7 +153,7 @@ func (r *Reporter) getResourceStats(ctx context.Context) (map[string]any, error)
 		logstashStats,
 		aopStats,
 	} {
-		key, statsPart, err := f(r.client, r.managedNamespaces)
+		key, statsPart, err := f(r.client, namespaces)
 		if err != nil {
 			return nil, err
 		}
@@ -143,7 +169,13 @@ func (r *Reporter) report(ctx context.Context) {
 
 	log := ulog.FromContext(ctx)
 
-	stats, err := r.getResourceStats(ctx)
+	namespaces, err := r.getNamespaces(ctx)
+	if err != nil {
+		log.Error(err, "failed to get namespaces")
+		return
+	}
+
+	stats, err := r.getResourceStats(ctx, namespaces)
 	if err != nil {
 		log.Error(err, "failed to get resource stats")
 		return
@@ -161,7 +193,7 @@ func (r *Reporter) report(ctx context.Context) {
 		return
 	}
 
-	for _, ns := range r.managedNamespaces {
+	for _, ns := range namespaces {
 		var kibanaList kbv1.KibanaList
 		if err := r.client.List(ctx, &kibanaList, client.InNamespace(ns)); err != nil {
 			log.Error(err, "failed to list Kibanas")
@@ -275,7 +307,7 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, err
 	if resourcesWithDownwardLabels > 0 {
 		stats.DownwardNodeLabels = &downwardNodeLabelsStats{
 			ResourceCount:           resourcesWithDownwardLabels,
-			DistinctNodeLabelsCount: int32(distinctNodeLabels.Count()),
+			DistinctNodeLabelsCount: int32(distinctNodeLabels.Count()), //nolint:gosec // G115: distinct label count cannot realistically overflow int32
 		}
 	}
 
@@ -284,7 +316,7 @@ func esStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, err
 		if err := k8sClient.List(context.Background(), &esaList, client.InNamespace(ns)); err != nil {
 			return "", nil, err
 		}
-		stats.AutoscaledResourceCount += int32(len(esaList.Items))
+		stats.AutoscaledResourceCount += int32(len(esaList.Items)) //nolint:gosec // G115: resource count cannot realistically overflow int32
 	}
 
 	return "elasticsearches", stats, nil
@@ -331,7 +363,8 @@ func apmStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, er
 	stats := map[string]int32{
 		resourceCount:            0,
 		podCount:                 0,
-		helmManagedResourceCount: 0}
+		helmManagedResourceCount: 0,
+	}
 
 	var apmList apmv1.ApmServerList
 	for _, ns := range managedNamespaces {
@@ -356,7 +389,8 @@ func beatStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, e
 	stats := map[string]int32{
 		resourceCount:            0,
 		podCount:                 0,
-		helmManagedResourceCount: 0}
+		helmManagedResourceCount: 0,
+	}
 	for typ := range beatv1beta1.KnownTypes {
 		stats[typeToName(typ)] = 0
 	}
@@ -384,7 +418,8 @@ func entStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, er
 	stats := map[string]int32{
 		resourceCount:            0,
 		podCount:                 0,
-		helmManagedResourceCount: 0}
+		helmManagedResourceCount: 0,
+	}
 
 	var entList entv1.EnterpriseSearchList
 	for _, ns := range managedNamespaces {
@@ -411,7 +446,8 @@ func agentStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, 
 		resourceCount:            0,
 		podCount:                 0,
 		multipleRefsKey:          0,
-		helmManagedResourceCount: 0}
+		helmManagedResourceCount: 0,
+	}
 
 	var agentList agentv1alpha1.AgentList
 	for _, ns := range managedNamespaces {
@@ -455,7 +491,8 @@ func logstashStats(k8sClient k8s.Client, managedNamespaces []string) (string, an
 		serviceCount:                0,
 		pipelineCount:               0,
 		pipelineRefCount:            0,
-		helmManagedResourceCount:    0}
+		helmManagedResourceCount:    0,
+	}
 
 	var logstashList logstashv1alpha1.LogstashList
 	for _, ns := range managedNamespaces {
@@ -465,9 +502,9 @@ func logstashStats(k8sClient k8s.Client, managedNamespaces []string) (string, an
 
 		for _, ls := range logstashList.Items {
 			stats[resourceCount]++
-			stats[serviceCount] += int32(len(ls.Spec.Services))
+			stats[serviceCount] += int32(len(ls.Spec.Services)) //nolint:gosec // G115: service count cannot realistically overflow int32
 			stats[podCount] += ls.Status.AvailableNodes
-			stats[pipelineCount] += int32(len(ls.Spec.Pipelines))
+			stats[pipelineCount] += int32(len(ls.Spec.Pipelines)) //nolint:gosec // G115: pipeline count cannot realistically overflow int32
 			if ls.Spec.PipelinesRef != nil {
 				stats[pipelineRefCount]++
 			}
@@ -511,6 +548,7 @@ type stackConfigPolicyStats struct {
 		SnapshotRepositoriesCount      int `json:"snapshot_repositories_count"`
 		SnapshotLifecyclePoliciesCount int `json:"snapshot_lifecycle_policies_count"`
 		RoleMappingsCount              int `json:"role_mappings_count"`
+		RolesCount                     int `json:"roles_count"`
 		IndexLifecyclePoliciesCount    int `json:"index_lifecycle_policies_count"`
 		IngestPipelinesCount           int `json:"ingest_pipelines_count"`
 		ComponentTemplatesCount        int `json:"component_templates_count"`
@@ -540,6 +578,9 @@ func scpStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, er
 			}
 			if scp.Spec.Elasticsearch.SecurityRoleMappings != nil {
 				stats.Settings.RoleMappingsCount += len(scp.Spec.Elasticsearch.SecurityRoleMappings.Data)
+			}
+			if scp.Spec.Elasticsearch.SecurityRoles != nil {
+				stats.Settings.RolesCount += len(scp.Spec.Elasticsearch.SecurityRoles.Data)
 			}
 			if scp.Spec.Elasticsearch.IndexLifecyclePolicies != nil {
 				stats.Settings.IndexLifecyclePoliciesCount += len(scp.Spec.Elasticsearch.IndexLifecyclePolicies.Data)
@@ -578,7 +619,7 @@ func aopStats(k8sClient k8s.Client, managedNamespaces []string) (string, any, er
 
 		for _, autoopsAgentPolicy := range autoopsAgentPolicyList.Items {
 			stats.ResourceCount++
-			stats.PodCount += int32(autoopsAgentPolicy.Status.Resources)
+			stats.PodCount += int32(autoopsAgentPolicy.Status.Resources) //nolint:gosec // G115: resource count cannot realistically overflow int32
 			if isManagedByHelm(autoopsAgentPolicy.Labels) {
 				stats.HelmManagedResourceCount++
 			}

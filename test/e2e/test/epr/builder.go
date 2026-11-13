@@ -59,6 +59,21 @@ func newBuilder(name, randSuffix string) Builder {
 	return builder
 }
 
+func (b Builder) ResourceName() string {
+	return b.EPR.Name
+}
+
+func (b Builder) DeepCopy() *Builder {
+	epr := b.EPR.DeepCopy()
+	builderCopy := Builder{
+		EPR: *epr,
+	}
+	if b.MutatedFrom != nil {
+		builderCopy.MutatedFrom = b.MutatedFrom.DeepCopy()
+	}
+	return &builderCopy
+}
+
 func (b Builder) WithSuffix(suffix string) Builder {
 	if suffix != "" {
 		b.EPR.ObjectMeta.Name = b.EPR.ObjectMeta.Name + "-" + suffix
@@ -94,8 +109,8 @@ func (b Builder) WithNamespace(namespace string) Builder {
 	return b
 }
 
-func (b Builder) Ref() commonv1.ObjectSelector {
-	return commonv1.ObjectSelector{
+func (b Builder) Ref() commonv1.LocalObjectSelector {
+	return commonv1.LocalObjectSelector{
 		Name:      b.EPR.Name,
 		Namespace: b.EPR.Namespace,
 	}
@@ -106,8 +121,8 @@ func (b Builder) WithVersion(version string) Builder {
 	return b
 }
 
-func (b Builder) WithNodeCount(count int) Builder {
-	b.EPR.Spec.Count = int32(count)
+func (b Builder) WithNodeCount(count int32) Builder {
+	b.EPR.Spec.Count = count
 	return b
 }
 

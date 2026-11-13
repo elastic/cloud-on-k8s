@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	kibanav1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
@@ -46,12 +45,10 @@ func newKibanaConfigSecret(
 		},
 	})
 	kibanaConfigSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   kibana.Namespace,
-			Name:        GetPolicyConfigSecretName(kibana.Name),
-			Labels:      meta.Labels,
-			Annotations: meta.Annotations,
-		},
+		Namespace:   kibana.Namespace,
+		Name:        GetPolicyConfigSecretName(kibana.Name),
+		Labels:      meta.Labels,
+		Annotations: meta.Annotations,
 		Data: map[string][]byte{
 			KibanaConfigKey: configDataJSONBytes,
 		},

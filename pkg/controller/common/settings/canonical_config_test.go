@@ -562,3 +562,81 @@ func TestCanonicalConfig_HasChildConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestCanonicalConfig_AppendString(t *testing.T) {
+	const key = "xpack.security.http.ssl.certificate_authorities"
+
+	tests := []struct {
+		name     string
+		initial  map[string]any
+		value    string
+		wantErr  bool
+		wantVals []string
+	}{
+		{
+			name:     "appends to empty config",
+			initial:  map[string]any{},
+			value:    "/path/to/bundle.crt",
+			wantVals: []string{"/path/to/bundle.crt"},
+		},
+		{
+			name:     "appends to existing scalar string",
+			initial:  map[string]any{key: "/existing/ca.crt"},
+			value:    "/path/to/bundle.crt",
+			wantVals: []string{"/existing/ca.crt", "/path/to/bundle.crt"},
+		},
+		{
+			name:     "appends to existing array",
+			initial:  map[string]any{key: []string{"/ca1.crt", "/ca2.crt"}},
+			value:    "/path/to/bundle.crt",
+			wantVals: []string{"/ca1.crt", "/ca2.crt", "/path/to/bundle.crt"},
+		},
+		{
+			name:     "no-op when value already present in scalar",
+			initial:  map[string]any{key: "/path/to/bundle.crt"},
+			value:    "/path/to/bundle.crt",
+			wantVals: []string{"/path/to/bundle.crt"},
+		},
+		{
+			name:     "no-op when value already present in array",
+			initial:  map[string]any{key: []string{"/ca1.crt", "/path/to/bundle.crt"}},
+			value:    "/path/to/bundle.crt",
+			wantVals: []string{"/ca1.crt", "/path/to/bundle.crt"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := NewCanonicalConfigFrom(tt.initial)
+			require.NoError(t, err)
+
+			err = cfg.AppendString(key, tt.value)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+
+			var unpacked map[string]any
+			require.NoError(t, cfg.Unpack(&unpacked))
+
+			got, ok := getNestedValue(unpacked, key)
+			require.True(t, ok, "key %s not found after AppendString", key)
+
+			switch v := got.(type) {
+			case string:
+				require.Equal(t, tt.wantVals, []string{v})
+			case []any:
+				var strs []string
+				for _, item := range v {
+					s, ok := item.(string)
+					require.True(t, ok, "expected string, got %T", item)
+					strs = append(strs, s)
+				}
+				require.Equal(t, tt.wantVals, strs)
+			default:
+				t.Fatalf("unexpected type %T", got)
+			}
+		})
+	}
+}

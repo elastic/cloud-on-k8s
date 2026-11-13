@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	errNodeRolesNotSet = errors.New("node.roles must be set")
+	ErrNodeRolesNotSet = errors.New("node.roles must be set")
 )
 
 // AutoscaledNodeSets holds the node sets managed by an autoscaling policy, indexed by the autoscaling policy name.
@@ -80,6 +80,13 @@ func (ns NodeSet) GetAutoscalingSpecFor(v version.Version, as v1alpha1.Autoscali
 	return as.FindByRoles(roles), nil
 }
 
+// GetAutoscalingSpec retrieves the autoscaling spec associated to a NodeSet or nil if none.
+// It uses the minimum supported version as the baseline since the version parameter in
+// GetAutoscalingSpecFor only affects pre-7.7 role handling, which is no longer supported.
+func (ns NodeSet) GetAutoscalingSpec(as v1alpha1.AutoscalingPolicySpecs) (*v1alpha1.AutoscalingPolicySpec, error) {
+	return ns.GetAutoscalingSpecFor(version.From(8, 0, 0), as)
+}
+
 // GetMLNodesSettings computes the total number of ML nodes which can be deployed in the cluster and the maximum memory size
 // of each node in the ML tier.
 func GetMLNodesSettings(as v1alpha1.AutoscalingPolicySpecs) (nodes int32, maxMemory string) {
@@ -105,7 +112,7 @@ func getNodeSetRoles(v version.Version, nodeSet NodeSet) ([]string, error) {
 		return nil, err
 	}
 	if cfg.Node == nil {
-		return nil, errNodeRolesNotSet
+		return nil, ErrNodeRolesNotSet
 	}
 	return cfg.Node.Roles, nil
 }

@@ -42,8 +42,7 @@ func annotateWithCreatedRemoteClusters(ctx context.Context, c k8s.Client, es esv
 
 		// if the annotation exists, delete it
 		if _, ok := es.Annotations[ManagedRemoteClustersAnnotationName]; ok {
-			delete(es.Annotations, ManagedRemoteClustersAnnotationName)
-			return c.Update(ctx, &es)
+			return k8s.PatchAnnotations(ctx, c, &es, nil, ManagedRemoteClustersAnnotationName)
 		}
 
 		return nil
@@ -63,8 +62,7 @@ func annotateWithCreatedRemoteClusters(ctx context.Context, c k8s.Client, es esv
 	current, ok := es.Annotations[ManagedRemoteClustersAnnotationName]
 
 	if !ok || current != expected {
-		es.Annotations[ManagedRemoteClustersAnnotationName] = expected
-		return c.Update(ctx, &es)
+		return k8s.PatchAnnotations(ctx, c, &es, map[string]string{ManagedRemoteClustersAnnotationName: expected})
 	}
 	return nil
 }

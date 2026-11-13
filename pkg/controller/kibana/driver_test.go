@@ -19,8 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/tools/record"
-	"k8s.io/utils/ptr"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -40,25 +39,24 @@ import (
 )
 
 var customResourceLimits = corev1.ResourceRequirements{
-	Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+	Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+	Requests: corev1.ResourceList{},
 }
 
 func Test_getStrategyType(t *testing.T) {
 	// creates `count` of pods belonging to `kbName` Kibana and to `rs-kbName-version` ReplicaSet
 	getPods := func(kbName string, podCount int, version string) []client.Object {
-		var result []client.Object
+		result := make([]client.Object, 0, podCount)
 		for i := range podCount {
 			result = append(result, &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					OwnerReferences: []metav1.OwnerReference{
-						{Name: fmt.Sprintf("rs-%v-%v", kbName, version)},
-					},
-					Name:      fmt.Sprintf("pod-%v-%v-%v", kbName, version, i),
-					Namespace: "default",
-					Labels: map[string]string{
-						kblabel.KibanaNameLabelName:    kbName,
-						kblabel.KibanaVersionLabelName: version,
-					},
+				OwnerReferences: []metav1.OwnerReference{
+					{Name: fmt.Sprintf("rs-%v-%v", kbName, version)},
+				},
+				Name:      fmt.Sprintf("pod-%v-%v-%v", kbName, version, i),
+				Namespace: "default",
+				Labels: map[string]string{
+					kblabel.KibanaNameLabelName:    kbName,
+					kblabel.KibanaVersionLabelName: version,
 				},
 			})
 		}
@@ -75,6 +73,18 @@ func Test_getStrategyType(t *testing.T) {
 			delete(pod.Labels, kblabel.KibanaVersionLabelName)
 		}
 
+		return objects
+	}
+
+	// withPhase sets the phase of the given pods, e.g. to mark them as terminated.
+	withPhase := func(objects []client.Object, phase corev1.PodPhase) []client.Object {
+		for _, object := range objects {
+			pod, ok := object.(*corev1.Pod)
+			if !ok {
+				t.FailNow()
+			}
+			pod.Status.Phase = phase
+		}
 		return objects
 	}
 
@@ -149,7 +159,9 @@ func Test_getStrategyType(t *testing.T) {
 				getPods("test", 1, "8.5.0"),
 				append(
 					getPods("test", 1, "8.4.0"),
-					getPods("test", 1, "8.3.0")...)...),
+					getPods("test", 1, "8.3.0")...,
+				)...,
+			),
 			clientError:  false,
 			wantErr:      false,
 			wantStrategy: appsv1.RecreateDeploymentStrategyType,
@@ -159,6 +171,33 @@ func Test_getStrategyType(t *testing.T) {
 			expectedVersion: "8.5.0",
 			expectedKbName:  "test",
 			initialObjects:  clearVersionLabels(getPods("test", 3, "8.5.0")),
+			clientError:     false,
+			wantErr:         false,
+			wantStrategy:    appsv1.RecreateDeploymentStrategyType,
+		},
+		{
+			name:            "Version mismatch only on terminated pods (Succeeded): ignored, RollingUpdate",
+			expectedVersion: "8.5.0",
+			expectedKbName:  "test",
+			initialObjects:  append(getPods("test", 2, "8.5.0"), withPhase(getPods("test", 1, "8.4.0"), corev1.PodSucceeded)...),
+			clientError:     false,
+			wantErr:         false,
+			wantStrategy:    appsv1.RollingUpdateDeploymentStrategyType,
+		},
+		{
+			name:            "Version label missing only on terminated pods (Failed): ignored, RollingUpdate",
+			expectedVersion: "8.5.0",
+			expectedKbName:  "test",
+			initialObjects:  append(getPods("test", 2, "8.5.0"), withPhase(clearVersionLabels(getPods("test", 1, "8.4.0")), corev1.PodFailed)...),
+			clientError:     false,
+			wantErr:         false,
+			wantStrategy:    appsv1.RollingUpdateDeploymentStrategyType,
+		},
+		{
+			name:            "Version mismatch on a running pod next to terminated ones: Recreate",
+			expectedVersion: "8.5.0",
+			expectedKbName:  "test",
+			initialObjects:  append(withPhase(getPods("test", 2, "8.5.0"), corev1.PodSucceeded), getPods("test", 1, "8.4.0")...),
 			clientError:     false,
 			wantErr:         false,
 			wantStrategy:    appsv1.RecreateDeploymentStrategyType,
@@ -187,7 +226,7 @@ func Test_getStrategyType(t *testing.T) {
 				client = k8s.NewFailingClient(errors.New("client error"))
 			}
 
-			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
+			d, err := newDriver(client, w, toolsevents.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			assert.NoError(t, err)
 
 			strategy, err := d.getStrategyType(kb)
@@ -207,6 +246,43 @@ func TestDriverDeploymentParams(t *testing.T) {
 		initialObjects                func() []client.Object
 		policyAnnotations             map[string]string
 		setDefaultSecurityContextFlag bool
+		scaleToZero                   bool
+		// role of the pool, SinglePoolRole when not set
+		role kblabel.Role
+		// replicasAnnotation is the value of the replicas annotation to write on the background tasks Deployment
+		replicasAnnotation *int32
+		// omitRoleSplit and revisionHistoryLimitOverride are the selectorChangeOutcome inputs
+		omitRoleSplit                bool
+		revisionHistoryLimitOverride *int32
+	}
+
+	// kibanaWithBackgroundTasks is the fixture Kibana with background task isolation enabled,
+	// which the background tasks role requires.
+	kibanaWithBackgroundTasks := func() *kbv1.Kibana {
+		kb := kibanaFixture()
+		kb.Spec.BackgroundTasks = &kbv1.KibanaBackgroundTasks{Count: new(int32(1))}
+		return kb
+	}
+	// backgroundTasksInitialObjects adds the config secret of the background tasks pool, fetched by
+	// deploymentParams for that role, with the same content as the single pool one (same config hash).
+	backgroundTasksInitialObjects := func() []client.Object {
+		return append(defaultInitialObjects(), &corev1.Secret{
+			Name:      kbv1.BackgroundTasksConfigSecret("test"),
+			Namespace: "default",
+			Data:      map[string][]byte{"kibana.yml": []byte("server.name: test")},
+		})
+	}
+
+	// outdatedPod is a pod of the fixture Kibana running a version older than the fixture version,
+	// which makes getStrategyType choose the Recreate strategy.
+	outdatedPod := func() *corev1.Pod {
+		return &corev1.Pod{
+			Name: "test-kb-outdated", Namespace: "default",
+			Labels: map[string]string{
+				kblabel.KibanaNameLabelName:    "test",
+				kblabel.KibanaVersionLabelName: "7.16.0",
+			},
+		}
 	}
 
 	tests := []struct {
@@ -291,37 +367,29 @@ func TestDriverDeploymentParams(t *testing.T) {
 				initialObjects: func() []client.Object {
 					return []client.Object{
 						&corev1.Secret{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "es-ca-secret",
-								Namespace: "default",
-							},
+							Name:      "es-ca-secret",
+							Namespace: "default",
 							Data: map[string][]byte{
 								certificates.CAFileName: nil,
 							},
 						},
 						&corev1.Secret{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "test-auth",
-								Namespace: "default",
-							},
+							Name:      "test-auth",
+							Namespace: "default",
 							Data: map[string][]byte{
 								"kibana-user": []byte("some-secret"),
 							},
 						},
 						&corev1.Secret{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "test-kb-config",
-								Namespace: "default",
-							},
+							Name:      "test-kb-config",
+							Namespace: "default",
 							Data: map[string][]byte{
 								"kibana.yml": []byte("server.name: test"),
 							},
 						},
 						&corev1.Secret{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "test-kb-http-certs-internal",
-								Namespace: "default",
-							},
+							Name:      "test-kb-http-certs-internal",
+							Namespace: "default",
 							Data: map[string][]byte{
 								"tls.crt": []byte("this is also relevant"),
 							},
@@ -332,6 +400,156 @@ func TestDriverDeploymentParams(t *testing.T) {
 			want: func() deployment.Params {
 				p := pre710(expectedDeploymentParams())
 				p.PodTemplateSpec.Annotations["kibana.k8s.elastic.co/config-hash"] = "2368465874"
+				return p
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "version upgrade in progress: Recreate strategy",
+			args: args{
+				kb:             kibanaFixture,
+				initialObjects: func() []client.Object { return append(defaultInitialObjects(), outdatedPod()) },
+			},
+			want: func() deployment.Params {
+				p := pre710(expectedDeploymentParams())
+				p.Strategy = appsv1.DeploymentStrategy{Type: appsv1.RecreateDeploymentStrategyType}
+				return p
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "version upgrade in progress while scaling to zero: RollingUpdate strategy",
+			args: args{
+				kb:             kibanaFixture,
+				initialObjects: func() []client.Object { return append(defaultInitialObjects(), outdatedPod()) },
+				scaleToZero:    true,
+			},
+			want:    pre710(expectedDeploymentParams()),
+			wantErr: false,
+		},
+		{
+			name: "UI role: NODE_ROLES set to ui",
+			args: args{
+				kb:             kibanaFixture,
+				initialObjects: defaultInitialObjects,
+				role:           kblabel.UIRole,
+			},
+			want:    withNodeRoles(pre710(expectedDeploymentParams()), kblabel.UIRole),
+			wantErr: false,
+		},
+		{
+			name: "UI role with omitRoleSplit (selector migration in progress): no NODE_ROLES, role label kept",
+			args: args{
+				kb:             kibanaWithBackgroundTasks,
+				initialObjects: defaultInitialObjects,
+				role:           kblabel.UIRole,
+				omitRoleSplit:  true,
+			},
+			want:    pre710(expectedDeploymentParams()),
+			wantErr: false,
+		},
+		{
+			name: "background tasks role: own names, role label and NODE_ROLES",
+			args: args{
+				kb:             kibanaWithBackgroundTasks,
+				initialObjects: backgroundTasksInitialObjects,
+				role:           kblabel.BackgroundTasksRole,
+			},
+			want:    backgroundTasksPool(pre710(expectedDeploymentParams())),
+			wantErr: false,
+		},
+		{
+			name: "background tasks role is not affected by omitRoleSplit",
+			args: args{
+				kb:             kibanaWithBackgroundTasks,
+				initialObjects: backgroundTasksInitialObjects,
+				role:           kblabel.BackgroundTasksRole,
+				omitRoleSplit:  true,
+			},
+			want:    backgroundTasksPool(pre710(expectedDeploymentParams())),
+			wantErr: false,
+		},
+		{
+			name: "background tasks role with a replicas annotation value: annotation written",
+			args: args{
+				kb:                 kibanaWithBackgroundTasks,
+				initialObjects:     backgroundTasksInitialObjects,
+				role:               kblabel.BackgroundTasksRole,
+				replicasAnnotation: new(int32(5)),
+			},
+			want: func() deployment.Params {
+				p := backgroundTasksPool(pre710(expectedDeploymentParams()))
+				p.Metadata.Annotations = map[string]string{replicasAnnotationName: "5"}
+				return p
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "single pool role with a replicas annotation value: annotation absent",
+			args: args{
+				kb:                 kibanaFixture,
+				initialObjects:     defaultInitialObjects,
+				replicasAnnotation: new(int32(5)),
+			},
+			want:    pre710(expectedDeploymentParams()),
+			wantErr: false,
+		},
+		{
+			name: "UI role with a replicas annotation value: annotation absent",
+			args: args{
+				kb:                 kibanaFixture,
+				initialObjects:     defaultInitialObjects,
+				role:               kblabel.UIRole,
+				replicasAnnotation: new(int32(5)),
+			},
+			want:    withNodeRoles(pre710(expectedDeploymentParams()), kblabel.UIRole),
+			wantErr: false,
+		},
+		{
+			name: "revisionHistoryLimit: spec value used when there is no override",
+			args: args{
+				kb: func() *kbv1.Kibana {
+					kb := kibanaFixture()
+					kb.Spec.RevisionHistoryLimit = new(int32(5))
+					return kb
+				},
+				initialObjects: defaultInitialObjects,
+			},
+			want: func() deployment.Params {
+				p := pre710(expectedDeploymentParams())
+				p.RevisionHistoryLimit = new(int32(5))
+				return p
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "revisionHistoryLimit: override used when the spec has no value",
+			args: args{
+				kb:                           kibanaFixture,
+				initialObjects:               defaultInitialObjects,
+				revisionHistoryLimitOverride: new(int32(0)),
+			},
+			want: func() deployment.Params {
+				p := pre710(expectedDeploymentParams())
+				p.RevisionHistoryLimit = new(int32(0))
+				return p
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "revisionHistoryLimit: override takes precedence over the spec value",
+			args: args{
+				kb: func() *kbv1.Kibana {
+					kb := kibanaFixture()
+					kb.Spec.RevisionHistoryLimit = new(int32(5))
+					return kb
+				},
+				initialObjects:               defaultInitialObjects,
+				revisionHistoryLimitOverride: new(int32(0)),
+			},
+			want: func() deployment.Params {
+				p := pre710(expectedDeploymentParams())
+				p.RevisionHistoryLimit = new(int32(0))
 				return p
 			}(),
 			wantErr: false,
@@ -350,12 +568,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			want: func() deployment.Params {
 				p := expectedDeploymentParams()
 				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "7.17.0"
-				p.PodTemplateSpec.Spec.SecurityContext = &corev1.PodSecurityContext{
-					FSGroup: ptr.To[int64](1000),
-					SeccompProfile: &corev1.SeccompProfile{
-						Type: corev1.SeccompProfileTypeRuntimeDefault,
-					},
-				}
+				p.PodTemplateSpec.Spec.SecurityContext = &defaultPodSecurityContext
 				return p
 			}(),
 			wantErr: false,
@@ -387,10 +600,31 @@ func TestDriverDeploymentParams(t *testing.T) {
 			client := k8s.NewFakeClient(initialObjects...)
 			w := watches.NewDynamicWatches()
 
-			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
+			d, err := newDriver(client, w, toolsevents.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			require.NoError(t, err)
 
-			got, err := d.deploymentParams(context.Background(), kb, tt.args.policyAnnotations, "", tt.args.setDefaultSecurityContextFlag, metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}))
+			role := tt.args.role
+			if role == (kblabel.Role{}) {
+				role = kblabel.SinglePoolRole
+			}
+			secretName, deploymentName := kbv1.ConfigSecret(kb.Name), kbv1.KBNamer.Suffix(kb.Name)
+			if role.IsBackgroundTasks() {
+				secretName, deploymentName = kbv1.BackgroundTasksConfigSecret(kb.Name), kbv1.BackgroundTasksDeployment(kb.Name)
+			}
+
+			got, err := d.deploymentParams(context.Background(), kb, poolParameters{
+				Role:                      role,
+				SecretName:                secretName,
+				DeploymentName:            deploymentName,
+				SetDefaultSecurityContext: tt.args.setDefaultSecurityContextFlag,
+				ScaleToZero:               tt.args.scaleToZero,
+			}, new(kb.Spec.Count), tt.args.replicasAnnotation, tt.args.policyAnnotations,
+				metadata.Propagate(kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}),
+				selectorChangeOutcome{
+					expectedSelector:             kb.GetIdentityLabels(),
+					omitRoleSplit:                tt.args.omitRoleSplit,
+					revisionHistoryLimitOverride: tt.args.revisionHistoryLimitOverride,
+				})
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -433,7 +667,7 @@ func TestMinSupportedVersion(t *testing.T) {
 			client := k8s.NewFakeClient(defaultInitialObjects()...)
 			w := watches.NewDynamicWatches()
 
-			_, err := newDriver(client, w, record.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
+			_, err := newDriver(client, w, toolsevents.NewFakeRecorder(100), kb, corev1.IPv4Protocol)
 			if tc.wantErr {
 				require.Error(t, err)
 			} else {
@@ -449,14 +683,15 @@ func expectedDeploymentParams() deployment.Params {
 		Name:      "test-kb",
 		Namespace: "default",
 		Selector:  map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"},
-		Metadata:  metadata.Metadata{Labels: map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"}},
-		Replicas:  1,
+		Metadata:  metadata.Metadata{Labels: map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test", "kibana.k8s.elastic.co/role": "primary"}},
+		Replicas:  new(int32(1)),
 		Strategy:  appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType},
 		PodTemplateSpec: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
 					"common.k8s.elastic.co/type":    "kibana",
 					"kibana.k8s.elastic.co/name":    "test",
+					"kibana.k8s.elastic.co/role":    "primary",
 					"kibana.k8s.elastic.co/version": "7.17.0",
 				},
 				Annotations: map[string]string{
@@ -468,72 +703,52 @@ func expectedDeploymentParams() deployment.Params {
 				Volumes: []corev1.Volume{
 					{
 						Name: certificates.HTTPCertificatesSecretVolumeName,
-						VolumeSource: corev1.VolumeSource{
-							Secret: &corev1.SecretVolumeSource{
-								SecretName: "test-kb-http-certs-internal",
-								Optional:   &falseVal,
-							},
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "test-kb-http-certs-internal",
+							Optional:   &falseVal,
 						},
 					},
 					{
 						Name: "elastic-internal-kibana-config",
-						VolumeSource: corev1.VolumeSource{
-							Secret: &corev1.SecretVolumeSource{
-								SecretName: "test-kb-config",
-								Optional:   &falseVal,
-							},
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "test-kb-config",
+							Optional:   &falseVal,
 						},
 					},
 					{
-						Name: initcontainer.ConfigSharedVolume.VolumeName,
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
-						},
+						Name:     initcontainer.ConfigSharedVolume.VolumeName,
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
 					{
 						Name: "elasticsearch-certs",
-						VolumeSource: corev1.VolumeSource{
-							Secret: &corev1.SecretVolumeSource{
-								SecretName: "es-ca-secret",
-								Optional:   &falseVal,
-							},
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "es-ca-secret",
+							Optional:   &falseVal,
 						},
 					},
 					{
-						Name: kbvolume.DataVolumeName,
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
-						},
+						Name:     kbvolume.DataVolumeName,
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
 					{
-						Name: "kibana-logs",
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
-						},
+						Name:     "kibana-logs",
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
 					{
-						Name: "kibana-plugins",
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
-						},
+						Name:     "kibana-plugins",
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
 					{
 						Name: "kibana-scripts",
-						VolumeSource: corev1.VolumeSource{
-							ConfigMap: &corev1.ConfigMapVolumeSource{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "test-kb-scripts",
-								},
-								DefaultMode: ptr.To(int32(0755)),
-								Optional:    ptr.To(false),
-							},
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							Name:        "test-kb-scripts",
+							DefaultMode: new(int32(0o755)),
+							Optional:    new(false),
 						},
 					},
 					{
-						Name: "temp-volume",
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
-						},
+						Name:     "temp-volume",
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
 				},
 				InitContainers: []corev1.Container{
@@ -542,7 +757,7 @@ func expectedDeploymentParams() deployment.Params {
 						ImagePullPolicy: corev1.PullIfNotPresent,
 						Image:           "my-image",
 						Command:         []string{"/usr/bin/env", "bash", "-c", "/mnt/elastic-internal/scripts/init.sh"},
-						SecurityContext: nil,
+						SecurityContext: &defaultSecurityContext,
 						Env: []corev1.EnvVar{
 							{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
 								FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
@@ -672,12 +887,10 @@ func expectedDeploymentParams() deployment.Params {
 						PeriodSeconds:       10,
 						SuccessThreshold:    1,
 						TimeoutSeconds:      5,
-						ProbeHandler: corev1.ProbeHandler{
-							HTTPGet: &corev1.HTTPGetAction{
-								Port:   intstr.FromInt(5601),
-								Path:   "/login",
-								Scheme: corev1.URISchemeHTTPS,
-							},
+						HTTPGet: &corev1.HTTPGetAction{
+							Port:   intstr.FromInt(5601),
+							Path:   "/login",
+							Scheme: corev1.URISchemeHTTPS,
 						},
 					},
 					Resources:       DefaultResources,
@@ -696,6 +909,28 @@ func expectedDeploymentWithPolicyAnnotations(policyAnnotations map[string]string
 	return deploymentParams
 }
 
+// withNodeRoles prepends the NODE_ROLES env var of the given role to the Kibana container, as done for
+// the pools of a Kibana with background task isolation enabled.
+func withNodeRoles(params deployment.Params, role kblabel.Role) deployment.Params {
+	c := kbv1.GetKibanaContainer(params.PodTemplateSpec.Spec)
+	c.Env = append([]corev1.EnvVar{{Name: kblabel.NodeRolesEnvVar, Value: fmt.Sprintf(`["%s"]`, role.Name)}}, c.Env...)
+	return params
+}
+
+// backgroundTasksPool turns the expected params of the single pool into the ones of the background tasks pool:
+// its own Deployment and config secret names, the background_tasks role label and NODE_ROLES.
+func backgroundTasksPool(params deployment.Params) deployment.Params {
+	params.Name = kbv1.BackgroundTasksDeployment("test")
+	params.Metadata.Labels[kblabel.RoleLabelName] = kblabel.RoleBackgroundTasksValue
+	params.PodTemplateSpec.Labels[kblabel.RoleLabelName] = kblabel.RoleBackgroundTasksValue
+	for i := range params.PodTemplateSpec.Spec.Volumes {
+		if v := &params.PodTemplateSpec.Spec.Volumes[i]; v.Name == "elastic-internal-kibana-config" {
+			v.Secret.SecretName = kbv1.BackgroundTasksConfigSecret("test")
+		}
+	}
+	return withNodeRoles(params, kblabel.BackgroundTasksRole)
+}
+
 func pre710(params deployment.Params) deployment.Params {
 	params.PodTemplateSpec.Spec.Containers[0].SecurityContext = nil
 	params.PodTemplateSpec.Spec.InitContainers[0].SecurityContext = nil
@@ -708,16 +943,14 @@ func pre710(params deployment.Params) deployment.Params {
 
 func kibanaFixture() *kbv1.Kibana {
 	kbFixture := &kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: "default",
-		},
+		Name:      "test",
+		Namespace: "default",
 		Spec: kbv1.KibanaSpec{
 			Version: "7.17.0",
 			Image:   "my-image",
 			Count:   1,
-			ElasticsearchRef: commonv1.ObjectSelector{
-				Name: "es",
+			ElasticsearchRef: commonv1.ElasticsearchSelector{
+				ObjectSelector: commonv1.ObjectSelector{Name: "es"},
 			},
 		},
 	}
@@ -735,10 +968,8 @@ func kibanaFixture() *kbv1.Kibana {
 func kibanaFixtureWithPodTemplate() *kbv1.Kibana {
 	kbFixture := kibanaFixture()
 	kbFixture.Spec.PodTemplate = corev1.PodTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels: map[string]string{
-				"mylabel": "value",
-			},
+		Labels: map[string]string{
+			"mylabel": "value",
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
@@ -756,37 +987,29 @@ func kibanaFixtureWithPodTemplate() *kbv1.Kibana {
 func defaultInitialObjects() []client.Object {
 	return []client.Object{
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "es-ca-secret",
-				Namespace: "default",
-			},
+			Name:      "es-ca-secret",
+			Namespace: "default",
 			Data: map[string][]byte{
 				certificates.CAFileName: nil,
 			},
 		},
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-auth",
-				Namespace: "default",
-			},
+			Name:      "test-auth",
+			Namespace: "default",
 			Data: map[string][]byte{
 				"kibana-user": nil,
 			},
 		},
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-kb-config",
-				Namespace: "default",
-			},
+			Name:      "test-kb-config",
+			Namespace: "default",
 			Data: map[string][]byte{
 				"kibana.yml": []byte("server.name: test"),
 			},
 		},
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-kb-http-certs-internal",
-				Namespace: "default",
-			},
+			Name:      "test-kb-http-certs-internal",
+			Namespace: "default",
 			Data: map[string][]byte{
 				"ca.crt": nil,
 			},
@@ -868,15 +1091,13 @@ func TestNewService(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			kb := kbv1.Kibana{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "kibana-test",
-					Namespace: "test",
-				},
+				Name:      "kibana-test",
+				Namespace: "test",
 				Spec: kbv1.KibanaSpec{
 					HTTP: tc.httpConf,
 				},
 			}
-			haveSvc := NewService(kb, metadata.Propagate(&kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}))
+			haveSvc := NewService(kb, metadata.Propagate(&kb, metadata.Metadata{Labels: kb.GetIdentityLabels()}), kb.GetPoolIdentityLabels(kblabel.UIRole))
 			compare.JSONEqual(t, tc.wantSvc(), haveSvc)
 		})
 	}
@@ -884,13 +1105,11 @@ func TestNewService(t *testing.T) {
 
 func mkService() corev1.Service {
 	return corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "kibana-test-kb-http",
-			Namespace: "test",
-			Labels: map[string]string{
-				kblabel.KibanaNameLabelName: "kibana-test",
-				commonv1.TypeLabelName:      kblabel.Type,
-			},
+		Name:      "kibana-test-kb-http",
+		Namespace: "test",
+		Labels: map[string]string{
+			kblabel.KibanaNameLabelName: "kibana-test",
+			commonv1.TypeLabelName:      kblabel.Type,
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
@@ -903,6 +1122,7 @@ func mkService() corev1.Service {
 			Selector: map[string]string{
 				kblabel.KibanaNameLabelName: "kibana-test",
 				commonv1.TypeLabelName:      kblabel.Type,
+				kblabel.RoleLabelName:       kblabel.RolePrimaryValue,
 			},
 		},
 	}
@@ -917,10 +1137,8 @@ func TestDriver_buildVolumes(t *testing.T) {
 		{
 			name: "without associations",
 			kb: &kbv1.Kibana{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-kb",
-					Namespace: "test-ns",
-				},
+				Name:      "test-kb",
+				Namespace: "test-ns",
 				Spec: kbv1.KibanaSpec{
 					Version: "7.10.0",
 				},
@@ -936,16 +1154,14 @@ func TestDriver_buildVolumes(t *testing.T) {
 			name: "with EPR association and CA configured",
 			kb: func() *kbv1.Kibana {
 				kb := &kbv1.Kibana{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-kb",
-						Namespace: "test-ns",
-						Annotations: map[string]string{
-							"association.k8s.elastic.co/epr-conf": `{"authSecretName":"-","authSecretKey":"","caCertProvided":true,"caSecretName":"test-epr-ca","url":"https://test-epr:8080"}`,
-						},
+					Name:      "test-kb",
+					Namespace: "test-ns",
+					Annotations: map[string]string{
+						"association.k8s.elastic.co/epr-conf": `{"authSecretName":"-","authSecretKey":"","caCertProvided":true,"caSecretName":"test-epr-ca","url":"https://test-epr:8080"}`,
 					},
 					Spec: kbv1.KibanaSpec{
 						Version: "7.10.0",
-						PackageRegistryRef: commonv1.ObjectSelector{
+						PackageRegistryRef: commonv1.LocalObjectSelector{
 							Name: "test-epr",
 						},
 					},
@@ -974,20 +1190,18 @@ func TestDriver_buildVolumes(t *testing.T) {
 			name: "with multiple associations",
 			kb: func() *kbv1.Kibana {
 				kb := &kbv1.Kibana{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-kb",
-						Namespace: "test-ns",
-						Annotations: map[string]string{
-							"association.k8s.elastic.co/es-conf":  `{"authSecretName":"test-es-user","authSecretKey":"token","caCertProvided":true,"caSecretName":"test-es-ca","url":"https://test-es:9200"}`,
-							"association.k8s.elastic.co/epr-conf": `{"authSecretName":"-","authSecretKey":"","caCertProvided":true,"caSecretName":"test-epr-ca","url":"https://test-epr:8080"}`,
-						},
+					Name:      "test-kb",
+					Namespace: "test-ns",
+					Annotations: map[string]string{
+						"association.k8s.elastic.co/es-conf":  `{"authSecretName":"test-es-user","authSecretKey":"token","caCertProvided":true,"caSecretName":"test-es-ca","url":"https://test-es:9200"}`,
+						"association.k8s.elastic.co/epr-conf": `{"authSecretName":"-","authSecretKey":"","caCertProvided":true,"caSecretName":"test-epr-ca","url":"https://test-epr:8080"}`,
 					},
 					Spec: kbv1.KibanaSpec{
 						Version: "7.10.0",
-						ElasticsearchRef: commonv1.ObjectSelector{
-							Name: "test-es",
+						ElasticsearchRef: commonv1.ElasticsearchSelector{
+							ObjectSelector: commonv1.ObjectSelector{Name: "test-es"},
 						},
-						PackageRegistryRef: commonv1.ObjectSelector{
+						PackageRegistryRef: commonv1.LocalObjectSelector{
 							Name: "test-epr",
 						},
 					},
@@ -1021,7 +1235,7 @@ func TestDriver_buildVolumes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := &driver{}
-			volumes, err := d.buildVolumes(tt.kb)
+			volumes, err := d.buildVolumes(tt.kb, kbv1.ConfigSecret(tt.kb.Name))
 			tt.assertions(t, volumes, err)
 		})
 	}

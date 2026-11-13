@@ -6,6 +6,7 @@ package kibana
 
 import (
 	"context"
+	"maps"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
@@ -33,7 +34,14 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Kibana), &kb); err != nil {
 					return err
 				}
+				// merge annotations
+				if kb.Annotations == nil {
+					kb.Annotations = make(map[string]string)
+				}
+				maps.Copy(kb.Annotations, b.Kibana.Annotations)
+
 				kb.Spec = b.Kibana.Spec
+
 				return k.Client.Update(context.Background(), &kb)
 			}),
 		}}

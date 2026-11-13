@@ -5,6 +5,47 @@
   "labels": [
     ">renovate"
   ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.buildkite/.*\\.ya?ml$/",
+        "/^\\.buildkite/Makefile$/"
+      ],
+      "matchStrings": [
+        "(?:image:\\s+|CI_IMAGE\\s*\\?=\\s*)(?<depName>docker\\.elastic\\.co/ci-agent-images/cloud-k8s-operator/buildkite-agent):(?<currentValue>[^@]+)@(?<currentDigest>sha256:[a-f0-9]+)"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "loose"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^test/e2e/Dockerfile$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>[^\\n]+)\\nENV \\w+=(?<currentValue>[^\\n]+)"
+      ]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.custom-gcl\\.yml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>[^\\n]+)\\nversion: (?<currentValue>[^\\n]+)"
+      ]
+    }
+  ],
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/bower_components/**",
+    "**/vendor/**",
+    "**/examples/**",
+    "**/__tests__/**",
+    "**/tests/**",
+    "**/__fixtures__/**"
+  ],
   "schedule": [
     "after 1am on monday"
   ],
@@ -15,12 +56,6 @@
     "executionMode": "branch"
   },
   "packageRules": [
-    {
-      "groupName": "k8s",
-      "matchPackageNames": [
-        "/k8s.io/"
-      ]
-    },
     {
       "matchPackageNames": [
         "k8s.io/utils",
@@ -61,7 +96,8 @@
       ],
       "enabled": true,
       "postUpdateOptions": [
-        "gomodTidy"
+        "gomodTidy",
+        "gomodTidyAll"
       ],
       "matchPackageNames": [
         "github.com/elastic/{/,}**",
@@ -69,12 +105,20 @@
       ]
     },
     {
+      "description": "ubi-micro is pinned to a <major>.<minor>-<build timestamp> tag (e.g. 9.8-1793580630); only consider tags of that form so Renovate doesn't compare it against bare timestamp or 9.x tags",
+      "matchPackageNames": [
+        "registry.access.redhat.com/ubi9/ubi-micro"
+      ],
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)-(?<patch>\\d{10})$"
+    },
+    {
       "matchUpdateTypes": [
         "major"
       ],
       "enabled": true,
       "postUpdateOptions": [
-        "gomodTidy"
+        "gomodTidy",
+        "gomodTidyAll"
       ],
       "matchPackageNames": [
         "*"
@@ -88,7 +132,8 @@
       ],
       "enabled": true,
       "postUpdateOptions": [
-        "gomodTidy"
+        "gomodTidy",
+        "gomodTidyAll"
       ],
       "matchPackageNames": [
         "!github.com/elastic/{/,}**"
@@ -118,6 +163,12 @@
       ]
     },
     {
+      "groupName": "k8s",
+      "matchPackageNames": [
+        "/k8s.io/"
+      ]
+    },
+    {
       "matchPackageNames": [
         "docker.elastic.co/ci-agent-images/eck-region/go-builder-buildkite-agent",
         "go",
@@ -127,6 +178,19 @@
         "github.com/golangci/golangci-lint"
       ],
       "groupName": "go"
+    },
+    {
+      "matchPackageNames": [
+        "docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent"
+      ],
+      "groupName": "buildkite-agent",
+      "enabled": true,
+      "matchUpdateTypes": [
+        "digest"
+      ],
+      "schedule": [
+        "at any time"
+      ]
     }
   ],
   "separateMajorMinor": true

@@ -15,12 +15,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/beat/v1beta1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/beat/common/stackmon"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
@@ -53,13 +53,18 @@ func buildOutputConfig(ctx context.Context, client k8s.Client, associated beatv1
 			return settings.NewCanonicalConfig(), fmt.Errorf("error at decoding apikey from secret %s: %w", esAssocConf.AuthSecretName, err)
 		}
 		output["api_key"] = string(decodedAPIKey)
-	} else {
+	} else if !esAssocConf.NoAuthRequired() {
 		output["username"] = credentials.Username
 		output["password"] = credentials.Password
 	}
 
 	if esAssocConf.GetCACertProvided() {
 		output["ssl.certificate_authorities"] = []string{path.Join(certificatesDir(&associated), CAFileName)}
+	}
+
+	if esAssocConf.ClientCertIsConfigured() {
+		output["ssl.certificate"] = path.Join(clientCertificatesDir(&associated), certificates.CertFileName)
+		output["ssl.key"] = path.Join(clientCertificatesDir(&associated), certificates.KeyFileName)
 	}
 
 	return settings.NewCanonicalConfigFrom(map[string]any{
@@ -172,12 +177,10 @@ func reconcileConfig(
 	}
 
 	expected := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   params.Beat.Namespace,
-			Name:        ConfigSecretName(params.Beat.Spec.Type, params.Beat.Name),
-			Labels:      labels.AddCredentialsLabel(maps.Clone(meta.Labels)),
-			Annotations: meta.Annotations,
-		},
+		Namespace:   params.Beat.Namespace,
+		Name:        ConfigSecretName(params.Beat.Spec.Type, params.Beat.Name),
+		Labels:      labels.AddCredentialsLabel(maps.Clone(meta.Labels)),
+		Annotations: meta.Annotations,
 		Data: map[string][]byte{
 			ConfigFileName: cfgBytes,
 		},

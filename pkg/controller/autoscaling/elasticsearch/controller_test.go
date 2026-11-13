@@ -18,9 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -30,7 +28,6 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/autoscaling/elasticsearch/resources"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
@@ -39,9 +36,9 @@ import (
 )
 
 var (
-	fetchEvents = func(recorder *record.FakeRecorder) []string {
+	fetchEvents = func(recorder *toolsevents.FakeRecorder) []string {
 		close(recorder.Events)
-		events := make([]string, 0)
+		events := make([]string, 0, len(recorder.Events))
 		for event := range recorder.Events {
 			events = append(events, event)
 		}
@@ -50,14 +47,12 @@ var (
 
 	// fakePod is one running pod for online tests == ES considered reachable
 	fakePod = &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "testns",
-			Name:      "testes-es-master",
-			Labels: map[string]string{
-				eslabel.HTTPSchemeLabelName:      "http",
-				eslabel.StatefulSetNameLabelName: "sset",
-				eslabel.ClusterNameLabelName:     "testes",
-			},
+		Namespace: "testns",
+		Name:      "testes-es-master",
+		Labels: map[string]string{
+			eslabel.HTTPSchemeLabelName:      "http",
+			eslabel.StatefulSetNameLabelName: "sset",
+			eslabel.ClusterNameLabelName:     "testes",
 		},
 		Status: corev1.PodStatus{
 			Phase: corev1.PodRunning,
@@ -71,7 +66,7 @@ func TestReconcile(t *testing.T) {
 	}
 	type fields struct {
 		EsClient       *fakeEsClient
-		recorder       *record.FakeRecorder
+		recorder       *toolsevents.FakeRecorder
 		licenseChecker license.Checker
 	}
 	type args struct {
@@ -93,7 +88,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "User should not use the Autoscaling annotation",
 			fields: fields{
-				recorder:       record.NewFakeRecorder(1000),
+				recorder:       toolsevents.NewFakeRecorder(1000),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
@@ -111,7 +106,7 @@ func TestReconcile(t *testing.T) {
 			name: "Frozen decider only returns capacity at the tier level",
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("custom_resource/frozen-tier"),
-				recorder:       record.NewFakeRecorder(1000),
+				recorder:       toolsevents.NewFakeRecorder(1000),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
@@ -125,7 +120,7 @@ func TestReconcile(t *testing.T) {
 			name: "ML case where tier total memory was lower than node memory",
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("custom_resource/ml"),
-				recorder:       record.NewFakeRecorder(1000),
+				recorder:       toolsevents.NewFakeRecorder(1000),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
@@ -139,7 +134,7 @@ func TestReconcile(t *testing.T) {
 			name: "Simulate an error while updating the autoscaling policies, we still want to respect min nodes count set by user",
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withErrorOnDeleteAutoscalingAutoscalingPolicies(),
-				recorder:       record.NewFakeRecorder(1000),
+				recorder:       toolsevents.NewFakeRecorder(1000),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
@@ -157,7 +152,7 @@ func TestReconcile(t *testing.T) {
 			name: "Cluster is online, but answer from the API is empty, do not touch anything",
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("custom_resource/empty-autoscaling-api-response"),
-				recorder:       record.NewFakeRecorder(1000),
+				recorder:       toolsevents.NewFakeRecorder(1000),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
@@ -171,7 +166,7 @@ func TestReconcile(t *testing.T) {
 			name: "Cluster has just been created, initialize resources",
 			fields: fields{
 				EsClient:       newFakeEsClient(t),
-				recorder:       record.NewFakeRecorder(1000),
+				recorder:       toolsevents.NewFakeRecorder(1000),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
@@ -185,7 +180,7 @@ func TestReconcile(t *testing.T) {
 			name: "Cluster is online, data tier has reached max. capacity",
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("custom_resource/max-storage-reached"),
-				recorder:       record.NewFakeRecorder(1000),
+				recorder:       toolsevents.NewFakeRecorder(1000),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
@@ -203,7 +198,7 @@ func TestReconcile(t *testing.T) {
 			name: "Cluster is online, data tier needs to be scaled up from 8 to 10 nodes",
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("custom_resource/storage-scaled-horizontally"),
-				recorder:       record.NewFakeRecorder(1000),
+				recorder:       toolsevents.NewFakeRecorder(1000),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
@@ -217,23 +212,20 @@ func TestReconcile(t *testing.T) {
 			name: "Cluster does not exit",
 			fields: fields{
 				EsClient:       newFakeEsClient(t),
-				recorder:       record.NewFakeRecorder(1000),
+				recorder:       toolsevents.NewFakeRecorder(1000),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
 				manifestsDir: "",
 			},
-			want: reconcile.Result{
-				Requeue:      false,
-				RequeueAfter: 0,
-			},
+			want:       reconcile.Result{},
 			wantEvents: []string{},
 		},
 		{
 			name: "CPU autoscaling",
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("custom_resource/cpu-scaled-horizontally"),
-				recorder:       record.NewFakeRecorder(1000),
+				recorder:       toolsevents.NewFakeRecorder(1000),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
 			args: args{
@@ -269,27 +261,22 @@ func TestReconcile(t *testing.T) {
 			}
 
 			r := &ReconcileElasticsearchAutoscaler{
-				Watches: watches.NewDynamicWatches(),
-				baseReconcileAutoscaling: baseReconcileAutoscaling{
-					Client:           k8sClient,
-					esClientProvider: tt.fields.EsClient.newFakeElasticsearchClient,
-					Parameters: operator.Parameters{
-						OperatorInfo: about.OperatorInfo{
-							BuildInfo: about.BuildInfo{
-								Version: "1.5.0",
-							},
-						},
+				Watches:          watches.NewDynamicWatches(),
+				Client:           k8sClient,
+				esClientProvider: tt.fields.EsClient.newFakeElasticsearchClient,
+				OperatorInfo: about.OperatorInfo{
+					BuildInfo: about.BuildInfo{
+						Version: "1.5.0",
 					},
-					recorder:       tt.fields.recorder,
-					licenseChecker: tt.fields.licenseChecker,
 				},
+				recorder:       tt.fields.recorder,
+				licenseChecker: tt.fields.licenseChecker,
 			}
 			got, err := r.Reconcile(
 				context.Background(),
-				reconcile.Request{NamespacedName: types.NamespacedName{
+				reconcile.Request{
 					Namespace: "testns",
-					Name:      "test-autoscaler",
-				}})
+					Name:      "test-autoscaler"})
 			if (err != nil) != (tt.wantErr != nil) {
 				t.Errorf("autoscaling.Reconcile() error = %v, wantErr %v", err, tt.wantErr)
 				return

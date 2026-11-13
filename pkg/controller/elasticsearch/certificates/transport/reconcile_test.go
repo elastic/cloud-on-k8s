@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -76,6 +75,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 				// Check the labels elasticsearch.k8s.elastic.co/cluster-name and elasticsearch.k8s.elastic.co/statefulset-name
 				assert.Equal(t, testEsName, transportCerts1.Labels["elasticsearch.k8s.elastic.co/cluster-name"])
 				assert.Equal(t, "test-es-name-es-sset1", transportCerts1.Labels["elasticsearch.k8s.elastic.co/statefulset-name"])
+				assert.Equal(t, "true", transportCerts1.Labels["eck.k8s.elastic.co/watched"])
 
 				transportCerts2 := getSecret(secrets, "test-es-name-es-sset2-es-transport-certs")
 				assert.NotNil(t, transportCerts2)
@@ -86,6 +86,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 				// Check the labels elasticsearch.k8s.elastic.co/cluster-name and elasticsearch.k8s.elastic.co/statefulset-name
 				assert.Equal(t, testEsName, transportCerts2.Labels["elasticsearch.k8s.elastic.co/cluster-name"])
 				assert.Equal(t, "test-es-name-es-sset2", transportCerts2.Labels["elasticsearch.k8s.elastic.co/statefulset-name"])
+				assert.Equal(t, "true", transportCerts2.Labels["eck.k8s.elastic.co/watched"])
 
 				transportCerts3 := getSecret(secrets, "test-es-name-es-sset3-es-transport-certs")
 				assert.NotNil(t, transportCerts3)
@@ -96,6 +97,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 				// Check the labels elasticsearch.k8s.elastic.co/cluster-name and elasticsearch.k8s.elastic.co/statefulset-name
 				assert.Equal(t, testEsName, transportCerts3.Labels["elasticsearch.k8s.elastic.co/cluster-name"])
 				assert.Equal(t, "test-es-name-es-sset3", transportCerts3.Labels["elasticsearch.k8s.elastic.co/statefulset-name"])
+				assert.Equal(t, "true", transportCerts3.Labels["eck.k8s.elastic.co/watched"])
 			},
 		},
 		{
@@ -134,6 +136,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 				// Check the labels elasticsearch.k8s.elastic.co/cluster-name and elasticsearch.k8s.elastic.co/statefulset-name
 				assert.Equal(t, testEsName, transportCerts1.Labels["elasticsearch.k8s.elastic.co/cluster-name"])
 				assert.Equal(t, "test-es-name-es-sset1", transportCerts1.Labels["elasticsearch.k8s.elastic.co/statefulset-name"])
+				assert.Equal(t, "true", transportCerts1.Labels["eck.k8s.elastic.co/watched"])
 
 				transportCerts2 := getSecret(secrets, "test-es-name-es-sset2-es-transport-certs")
 				assert.NotNil(t, transportCerts2)
@@ -144,6 +147,7 @@ func TestReconcileTransportCertificatesSecrets(t *testing.T) {
 				// Check the labels elasticsearch.k8s.elastic.co/cluster-name and elasticsearch.k8s.elastic.co/statefulset-name
 				assert.Equal(t, testEsName, transportCerts2.Labels["elasticsearch.k8s.elastic.co/cluster-name"])
 				assert.Equal(t, "test-es-name-es-sset2", transportCerts2.Labels["elasticsearch.k8s.elastic.co/statefulset-name"])
+				assert.Equal(t, "true", transportCerts2.Labels["eck.k8s.elastic.co/watched"])
 			},
 		},
 		{
@@ -261,10 +265,8 @@ func TestDeleteStatefulSetTransportCertificate(t *testing.T) {
 			name: "StatefulSet transport Secret exists",
 			args: args{
 				client: k8s.NewFakeClient(&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-name-es-sset1-es-transport-certs",
-						Namespace: testNamespace,
-					},
+					Name:      "test-es-name-es-sset1-es-transport-certs",
+					Namespace: testNamespace,
 				}),
 				es:       testES,
 				ssetName: esv1.StatefulSet(testEsName, "sset1"),
@@ -311,10 +313,8 @@ func TestDeleteLegacyTransportCertificate(t *testing.T) {
 			name: "Former cluster transport Secret exists",
 			args: args{
 				client: k8s.NewFakeClient(&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-name-es-transport-certificates", // Create a Secret with the former name
-						Namespace: testNamespace,
-					},
+					Name:      "test-es-name-es-transport-certificates", // Create a Secret with the former name
+					Namespace: testNamespace,
 				}),
 				es: testES,
 			},
@@ -359,14 +359,13 @@ func (t *trackingK8sClient) Delete(ctx context.Context, obj client.Object, opts 
 
 func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 	defaultSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      esv1.StatefulSetTransportCertificatesSecret(esv1.StatefulSet(testES.Name, "sset1")),
-			Namespace: testES.Namespace,
-			Labels: map[string]string{
-				label.ClusterNameLabelName:     testES.Name,
-				"common.k8s.elastic.co/type":   "elasticsearch",
-				label.StatefulSetNameLabelName: esv1.StatefulSet(testES.Name, "sset1"),
-			},
+		Name:      esv1.StatefulSetTransportCertificatesSecret(esv1.StatefulSet(testES.Name, "sset1")),
+		Namespace: testES.Namespace,
+		Labels: map[string]string{
+			label.ClusterNameLabelName:     testES.Name,
+			"common.k8s.elastic.co/type":   "elasticsearch",
+			label.StatefulSetNameLabelName: esv1.StatefulSet(testES.Name, "sset1"),
+			"eck.k8s.elastic.co/watched":   "true",
 		},
 		Data: make(map[string][]byte),
 	}

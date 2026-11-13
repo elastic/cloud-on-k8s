@@ -5,11 +5,16 @@
 package autoops
 
 import (
+	"fmt"
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	autoopsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/autoops/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 )
 
@@ -31,6 +36,9 @@ func newState(policy autoopsv1alpha1.AutoOpsAgentPolicy) *State {
 	status.Errors = 0
 	status.Ready = 0
 	status.Resources = 0
+	status.Skipped = 0
+	// Initialize Details map to avoid nil map assignment panics
+	status.Details = make(map[string]autoopsv1alpha1.AutoOpsResourceStatus)
 	return &State{
 		Recorder: events.NewRecorder(),
 		policy:   policy,
@@ -53,9 +61,9 @@ func (s *State) UpdateWithPhase(phase autoopsv1alpha1.PolicyPhase) *State {
 
 // UpdateInvalidPhaseWithEvent is a convenient method to set the phase to InvalidPhase
 // and generate an event at the same time.
-func (s *State) UpdateInvalidPhaseWithEvent(msg string) {
+func (s *State) UpdateInvalidPhaseWithEvent(action, msg string) {
 	s.UpdateWithPhase(autoopsv1alpha1.InvalidPhase)
-	s.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, msg)
+	s.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, action, msg)
 }
 
 // UpdateMonitoredResources updates the Resources count in the status.
@@ -74,13 +82,6 @@ func (s *State) MarkResourceReady() *State {
 	return s
 }
 
-// MarkResourceError increases the Errors count in the status.
-func (s *State) MarkResourceError() *State {
-	s.status.Errors++
-	s.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
-	return s
-}
-
 // Apply takes the current AutoOpsAgentPolicy status, compares it to the previous status, and updates the status accordingly.
 // It returns the events to emit and an updated version of the AutoOpsAgentPolicy resource with
 // the current status applied to its status sub-resource.
@@ -94,16 +95,81 @@ func (s *State) Apply() ([]events.Event, *autoopsv1alpha1.AutoOpsAgentPolicy) {
 	return s.Events(), &s.policy
 }
 
-// CalculateFinalPhase updates the phase of the AutoOpsAgentPolicy status based on the results of the reconciliation.
+func (s *State) ResourceSkippedDueToRBAC(es esv1.Elasticsearch) {
+	s.ResourceSkipped(es, fmt.Sprintf("RBAC access denied for service account %s", s.policy.Spec.ServiceAccountName))
+}
+
+func (s *State) ResourceSkippedDueToVersion(es esv1.Elasticsearch) {
+	s.ResourceSkipped(es, fmt.Sprintf("ES cluster is in deprecated version %s", es.Spec.Version))
+}
+
+func (s *State) ResourceSkipped(es esv1.Elasticsearch, message string) {
+	s.status.Skipped++
+	s.status.Details[s.esResourceID(es)] = autoopsv1alpha1.AutoOpsResourceStatus{
+		Phase:   autoopsv1alpha1.SkippedResourcePhase,
+		Message: message,
+	}
+}
+
+func (s *State) ResourceError(es esv1.Elasticsearch, message string, err error) {
+	s.UpdateWithPhase(autoopsv1alpha1.ErrorPhase)
+	s.status.Errors++
+	s.status.Details[s.esResourceID(es)] = autoopsv1alpha1.AutoOpsResourceStatus{
+		Phase: autoopsv1alpha1.ErrorResourcePhase,
+		Error: fmt.Sprintf("%s: %s", message, err),
+	}
+}
+
+// SetOrchestrationPaused writes OrchestrationPaused=True on the accumulated status.
+// pendingChanges indicates whether any per-cluster Deployment hash differs from what is live.
+func (s *State) SetOrchestrationPaused(pendingChanges bool) {
+	msg := common.PausedNoChangesMessage
+	if pendingChanges {
+		msg = common.PausedWithPendingChangesMessage
+		s.AddEvent(corev1.EventTypeWarning, events.EventReasonPaused,
+			events.EventActionReconciliation, msg)
+	}
+	s.status.Conditions = s.status.Conditions.MergeWith(commonv1.Condition{
+		Type:               commonv1.OrchestrationPaused,
+		Status:             corev1.ConditionTrue,
+		LastTransitionTime: metav1.Now(),
+		Message:            msg,
+	})
+}
+
+// MaybeResetOrchestrationPaused flips OrchestrationPaused to False (and emits a Normal event) when it
+// previously was True; it is a no-op when the condition is absent or already False.
+func (s *State) MaybeResetOrchestrationPaused() {
+	idx := s.status.Conditions.Index(commonv1.OrchestrationPaused)
+	if idx < 0 || s.status.Conditions[idx].Status != corev1.ConditionTrue {
+		return
+	}
+	s.status.Conditions = s.status.Conditions.MergeWith(commonv1.Condition{
+		Type:               commonv1.OrchestrationPaused,
+		Status:             corev1.ConditionFalse,
+		LastTransitionTime: metav1.Now(),
+		Message:            common.PausedOrchestrationResumed,
+	})
+	s.AddEvent(corev1.EventTypeNormal, events.EventReasonResumed,
+		events.EventActionOrchestrationResumed, common.PausedOrchestrationResumed)
+}
+
+func (s *State) esResourceID(es esv1.Elasticsearch) string {
+	return fmt.Sprintf("%s/%s", es.Namespace, es.Name)
+}
+
+// Finalize updates the phase of the AutoOpsAgentPolicy status based on the results of the reconciliation and sets the status message and the ready count.
 // This method is solely responsible for applying the [autoopsv1alpha1.ApplyingChangesPhase], [autoopsv1alpha1.AutoOpsAgentsNotReadyPhase] and [autoopsv1alpha1.ReadyPhase].
-func (s *State) CalculateFinalPhase(isReconciled bool, reconciliationMessage string) {
+func (s *State) Finalize(isReconciled bool, reconciliationMessage string) {
 	switch {
 	case !isReconciled:
 		s.UpdateWithPhase(autoopsv1alpha1.ApplyingChangesPhase)
-		s.AddEvent(corev1.EventTypeWarning, events.EventReasonDelayed, reconciliationMessage)
+		s.AddEvent(corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionAutoOpsReconciliation, reconciliationMessage)
 	case s.status.Ready == s.status.Resources:
 		s.UpdateWithPhase(autoopsv1alpha1.ReadyPhase)
 	case s.status.Ready < s.status.Resources:
 		s.UpdateWithPhase(autoopsv1alpha1.AutoOpsAgentsNotReadyPhase)
 	}
+
+	s.status.ReadyCount = fmt.Sprintf("%d/%d", s.status.Ready, s.status.Resources)
 }

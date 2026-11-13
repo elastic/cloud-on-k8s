@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
@@ -120,14 +119,13 @@ func TestElasticsearchCluster_IsMarkedForDeletion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					DeletionTimestamp: tt.deletionTimestamp,
-				},
+				DeletionTimestamp: tt.deletionTimestamp,
 			}
 			require.Equal(t, tt.want, e.IsMarkedForDeletion())
 		})
 	}
 }
+
 func Test_GetMaxSurgeOrDefault(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -136,7 +134,7 @@ func Test_GetMaxSurgeOrDefault(t *testing.T) {
 	}{
 		{
 			name:     "negative in spec results in unbounded",
-			fromSpec: ptr.To[int32](-1),
+			fromSpec: new(int32(-1)),
 			want:     nil,
 		},
 		{
@@ -151,13 +149,13 @@ func Test_GetMaxSurgeOrDefault(t *testing.T) {
 		},
 		{
 			name:     "0 in spec results in 0",
-			fromSpec: ptr.To[int32](0),
-			want:     ptr.To[int32](0),
+			fromSpec: new(int32(0)),
+			want:     new(int32(0)),
 		},
 		{
 			name:     "1 in spec results in 1",
-			fromSpec: ptr.To[int32](1),
-			want:     ptr.To[int32](1),
+			fromSpec: new(int32(1)),
+			want:     new(int32(1)),
 		},
 	}
 
@@ -179,7 +177,7 @@ func Test_GetMaxUnavailableOrDefault(t *testing.T) {
 	}{
 		{
 			name:     "negative in spec results in unbounded",
-			fromSpec: ptr.To[int32](-1),
+			fromSpec: new(int32(-1)),
 			want:     nil,
 		},
 		{
@@ -190,17 +188,17 @@ func Test_GetMaxUnavailableOrDefault(t *testing.T) {
 		{
 			name:     "nil in spec results in default, currently 1",
 			fromSpec: nil,
-			want:     ptr.To[int32](1),
+			want:     new(int32(1)),
 		},
 		{
 			name:     "0 in spec results in 0",
-			fromSpec: ptr.To[int32](0),
-			want:     ptr.To[int32](0),
+			fromSpec: new(int32(0)),
+			want:     new(int32(0)),
 		},
 		{
 			name:     "1 in spec results in 1",
-			fromSpec: ptr.To[int32](1),
-			want:     ptr.To[int32](1),
+			fromSpec: new(int32(1)),
+			want:     new(int32(1)),
 		},
 	}
 
@@ -255,6 +253,128 @@ func TestElasticsearch_SuspendedPodNames(t *testing.T) {
 			if got := es.SuspendedPodNames(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("SuspendedPodNames() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func TestElasticsearch_DownwardNodeLabels(t *testing.T) {
+	tests := []struct {
+		name string
+		es   Elasticsearch
+		want []string
+	}{
+		{
+			name: "no annotations and no zone awareness",
+			es: Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: nil,
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "annotation with only empty entries",
+			es: Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						DownwardNodeLabelsAnnotation: " , , ",
+					},
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "annotation labels are trimmed deduplicated and sorted",
+			es: Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						DownwardNodeLabelsAnnotation: " zeta.io/rack ,alpha.io/zone,alpha.io/zone, ",
+					},
+				},
+			},
+			want: []string{"alpha.io/zone", "zeta.io/rack"},
+		},
+		{
+			name: "zone awareness adds default topology key",
+			es: Elasticsearch{
+				Spec: ElasticsearchSpec{
+					NodeSets: []NodeSet{
+						{
+							Name:          "default",
+							ZoneAwareness: &ZoneAwareness{},
+						},
+					},
+				},
+			},
+			want: []string{DefaultZoneAwarenessTopologyKey},
+		},
+		{
+			name: "zone awareness with blank topology key falls back to default",
+			es: Elasticsearch{
+				Spec: ElasticsearchSpec{
+					NodeSets: []NodeSet{
+						{
+							Name: "default",
+							ZoneAwareness: &ZoneAwareness{
+								TopologyKey: "  ",
+							},
+						},
+					},
+				},
+			},
+			want: []string{DefaultZoneAwarenessTopologyKey},
+		},
+		{
+			name: "annotation and zone awareness are merged deduplicated and sorted",
+			es: Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						DownwardNodeLabelsAnnotation: "custom.io/rack,topology.kubernetes.io/zone",
+					},
+				},
+				Spec: ElasticsearchSpec{
+					NodeSets: []NodeSet{
+						{
+							Name: "default",
+							ZoneAwareness: &ZoneAwareness{
+								TopologyKey: "custom.io/rack",
+							},
+						},
+						{
+							Name: "za-default",
+							ZoneAwareness: &ZoneAwareness{
+								TopologyKey: DefaultZoneAwarenessTopologyKey,
+							},
+						},
+					},
+				},
+			},
+			want: []string{"custom.io/rack", "topology.kubernetes.io/zone"},
+		},
+		{
+			name: "single key from annotation and zone awareness is deduplicated",
+			es: Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						DownwardNodeLabelsAnnotation: DefaultZoneAwarenessTopologyKey,
+					},
+				},
+				Spec: ElasticsearchSpec{
+					NodeSets: []NodeSet{
+						{
+							Name:          "default",
+							ZoneAwareness: &ZoneAwareness{},
+						},
+					},
+				},
+			},
+			want: []string{DefaultZoneAwarenessTopologyKey},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.es.DownwardNodeLabels())
 		})
 	}
 }
@@ -316,15 +436,64 @@ func TestElasticsearch_DisabledPredicates(t *testing.T) {
 	}
 }
 
+func TestGetRestartAllocationDelayAnnotation(t *testing.T) {
+	tests := []struct {
+		name        string
+		annotations map[string]string
+		want        *time.Duration
+		wantErr     bool
+	}{
+		{
+			name:        "annotation not present",
+			annotations: map[string]string{},
+			want:        nil,
+		},
+		{
+			name:        "annotation empty string",
+			annotations: map[string]string{RestartAllocationDelayAnnotation: ""},
+			want:        nil,
+		},
+		{
+			name:        "valid duration",
+			annotations: map[string]string{RestartAllocationDelayAnnotation: "5m"},
+			want:        new(5 * time.Minute),
+		},
+		{
+			name:        "zero duration",
+			annotations: map[string]string{RestartAllocationDelayAnnotation: "0s"},
+			want:        new(0 * time.Second),
+		},
+		{
+			name:        "negative duration",
+			annotations: map[string]string{RestartAllocationDelayAnnotation: "-1m"},
+			wantErr:     true,
+		},
+		{
+			name:        "invalid duration",
+			annotations: map[string]string{RestartAllocationDelayAnnotation: "not-a-duration"},
+			wantErr:     true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetRestartAllocationDelayAnnotation(tt.annotations)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 // Test_AssociationConfs tests that if the association configuration map in an associated object is cleared, then
 // AssociationConf() is rebuilt from the annotation.
 func Test_AssociationConfs(t *testing.T) {
 	// simple es without associations
 	es := &Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es",
-			Namespace: "default",
-		},
+		Name:      "es",
+		Namespace: "default",
 	}
 	assert.Equal(t, 0, len(es.GetAssociations()))
 	assert.Equal(t, 0, len(es.AssocConfs))
@@ -335,13 +504,11 @@ func Test_AssociationConfs(t *testing.T) {
 		Namespace: "default",
 	}
 	esMon := &Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "esmon",
-			Namespace: "default",
-			Annotations: map[string]string{
-				"association.k8s.elastic.co/es-conf-4154131866": `{"authSecretName":"es-default-metrics-beat-es-mon-user","authSecretKey":"default-es-default-esmon-beat-es-mon-user","caCertProvided":true,"caSecretName":"es-es-monitoring-default-metrics-ca","url":"https://metrics-es-http.default.svc:9200","version":"8.0.0"}`,
-				"association.k8s.elastic.co/es-conf-611214426":  `{"authSecretName":"es-default-logs-beat-es-mon-user","authSecretKey":"default-es-default-esmon-beat-es-mon-user","caCertProvided":true,"caSecretName":"es-es-monitoring-default-logs-ca","url":"https://logs-es-http.default.svc:9200","version":"8.0.0"}`,
-			},
+		Name:      "esmon",
+		Namespace: "default",
+		Annotations: map[string]string{
+			"association.k8s.elastic.co/es-conf-4154131866": `{"authSecretName":"es-default-metrics-beat-es-mon-user","authSecretKey":"default-es-default-esmon-beat-es-mon-user","caCertProvided":true,"caSecretName":"es-es-monitoring-default-metrics-ca","url":"https://metrics-es-http.default.svc:9200","version":"8.0.0"}`,
+			"association.k8s.elastic.co/es-conf-611214426":  `{"authSecretName":"es-default-logs-beat-es-mon-user","authSecretKey":"default-es-default-esmon-beat-es-mon-user","caCertProvided":true,"caSecretName":"es-es-monitoring-default-logs-ca","url":"https://logs-es-http.default.svc:9200","version":"8.0.0"}`,
 		},
 		Spec: ElasticsearchSpec{
 			Monitoring: commonv1.Monitoring{
@@ -349,9 +516,11 @@ func Test_AssociationConfs(t *testing.T) {
 					ElasticsearchRefs: []commonv1.ObjectSelector{metricsEsRef},
 				},
 				Logs: commonv1.LogsMonitoring{
-					ElasticsearchRefs: []commonv1.ObjectSelector{{
-						Name:      "logs",
-						Namespace: "default"},
+					ElasticsearchRefs: []commonv1.ObjectSelector{
+						{
+							Name:      "logs",
+							Namespace: "default",
+						},
 					},
 				},
 			},

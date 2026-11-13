@@ -237,11 +237,9 @@ func createPDBForStatefulSets(
 	}
 
 	pdb := &policyv1.PodDisruptionBudget{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      esv1.PodDisruptionBudgetNameForRole(es.Name, string(role)),
-			Namespace: es.Namespace,
-		},
-		Spec: buildRoleSpecificPDBSpec(ctx, es, role, statefulSets, allStatefulSets),
+		Name:      esv1.PodDisruptionBudgetNameForRole(es.Name, string(role)),
+		Namespace: es.Namespace,
+		Spec:      buildRoleSpecificPDBSpec(ctx, es, role, statefulSets, allStatefulSets),
 	}
 
 	if es.Spec.PodDisruptionBudget != nil {

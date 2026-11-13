@@ -9,7 +9,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	common "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1beta1"
 )
@@ -47,7 +46,7 @@ func Test_checkNodeSetNameUniqueness(t *testing.T) {
 		{
 			name: "good spec with 2 nodeSets",
 			es: &Elasticsearch{
-				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
+				APIVersion: "elasticsearch.k8s.elastic.co/v1beta1",
 				Spec: ElasticsearchSpec{
 					Version:  "7.4.0",
 					NodeSets: []NodeSet{{Name: "foo", Count: 1}, {Name: "bar", Count: 1}},
@@ -58,7 +57,7 @@ func Test_checkNodeSetNameUniqueness(t *testing.T) {
 		{
 			name: "duplicate nodeSet",
 			es: &Elasticsearch{
-				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
+				APIVersion: "elasticsearch.k8s.elastic.co/v1beta1",
 				Spec: ElasticsearchSpec{
 					Version:  "7.4.0",
 					NodeSets: []NodeSet{{Name: "foo", Count: 1}, {Name: "foo", Count: 1}},
@@ -222,20 +221,16 @@ func Test_validName(t *testing.T) {
 		{
 			name: "name length too long",
 			es: &Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "default",
-					Name:      "that-is-a-very-long-name-with-37chars",
-				},
+				Namespace: "default",
+				Name:      "that-is-a-very-long-name-with-37chars",
 			},
 			expectErrors: true,
 		},
 		{
 			name: "name length OK",
 			es: &Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "default",
-					Name:      "that-is-a-very-long-name-with-36char",
-				},
+				Namespace: "default",
+				Name:      "that-is-a-very-long-name-with-36char",
 			},
 			expectErrors: false,
 		},
@@ -348,9 +343,7 @@ func Test_pvcModified(t *testing.T) {
 							Name: "master",
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 								{
-									ObjectMeta: metav1.ObjectMeta{
-										Name: "elasticsearch-data",
-									},
+									Name: "elasticsearch-data",
 									Spec: corev1.PersistentVolumeClaimSpec{
 										Resources: corev1.VolumeResourceRequirements{
 											Requests: corev1.ResourceList{
@@ -378,9 +371,7 @@ func Test_pvcModified(t *testing.T) {
 							Name: "master",
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 								{
-									ObjectMeta: metav1.ObjectMeta{
-										Name: "elasticsearch-data",
-									},
+									Name: "elasticsearch-data",
 									Spec: corev1.PersistentVolumeClaimSpec{
 										Resources: corev1.VolumeResourceRequirements{
 											Requests: corev1.ResourceList{
@@ -408,9 +399,7 @@ func Test_pvcModified(t *testing.T) {
 							Name: "master",
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 								{
-									ObjectMeta: metav1.ObjectMeta{
-										Name: "elasticsearch-data",
-									},
+									Name: "elasticsearch-data",
 									Spec: corev1.PersistentVolumeClaimSpec{
 										Resources: corev1.VolumeResourceRequirements{
 											Requests: corev1.ResourceList{
@@ -420,9 +409,7 @@ func Test_pvcModified(t *testing.T) {
 									},
 								},
 								{
-									ObjectMeta: metav1.ObjectMeta{
-										Name: "elasticsearch-data1",
-									},
+									Name: "elasticsearch-data1",
 									Spec: corev1.PersistentVolumeClaimSpec{
 										Resources: corev1.VolumeResourceRequirements{
 											Requests: corev1.ResourceList{
@@ -450,9 +437,7 @@ func Test_pvcModified(t *testing.T) {
 							Name: "master",
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 								{
-									ObjectMeta: metav1.ObjectMeta{
-										Name: "elasticsearch-data1",
-									},
+									Name: "elasticsearch-data1",
 									Spec: corev1.PersistentVolumeClaimSpec{
 										Resources: corev1.VolumeResourceRequirements{
 											Requests: corev1.ResourceList{
@@ -480,9 +465,7 @@ func Test_pvcModified(t *testing.T) {
 							Name: "master",
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 								{
-									ObjectMeta: metav1.ObjectMeta{
-										Name: "elasticsearch-data",
-									},
+									Name: "elasticsearch-data",
 									Spec: corev1.PersistentVolumeClaimSpec{
 										Resources: corev1.VolumeResourceRequirements{
 											Requests: corev1.ResourceList{
@@ -497,9 +480,7 @@ func Test_pvcModified(t *testing.T) {
 							Name: "ingest",
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 								{
-									ObjectMeta: metav1.ObjectMeta{
-										Name: "elasticsearch-data",
-									},
+									Name: "elasticsearch-data",
 									Spec: corev1.PersistentVolumeClaimSpec{
 										Resources: corev1.VolumeResourceRequirements{
 											Requests: corev1.ResourceList{
@@ -623,11 +604,9 @@ func Test_validUpgradePath(t *testing.T) {
 // es returns an es fixture at a given version
 func es(v string) *Elasticsearch {
 	return &Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "default",
-			Name:      "foo",
-		},
-		Spec: ElasticsearchSpec{Version: v},
+		Namespace: "default",
+		Name:      "foo",
+		Spec:      ElasticsearchSpec{Version: v},
 	}
 }
 
@@ -641,9 +620,7 @@ func getEsCluster() *Elasticsearch {
 					Name: "master",
 					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "elasticsearch-data",
-							},
+							Name: "elasticsearch-data",
 							Spec: corev1.PersistentVolumeClaimSpec{
 								Resources: corev1.VolumeResourceRequirements{
 									Requests: corev1.ResourceList{
@@ -662,10 +639,8 @@ func getEsCluster() *Elasticsearch {
 func Test_noUnknownFields(t *testing.T) {
 	var GetEsWithLastApplied = func(lastApplied string) Elasticsearch {
 		return Elasticsearch{
-			ObjectMeta: metav1.ObjectMeta{
-				Annotations: map[string]string{
-					corev1.LastAppliedConfigAnnotation: lastApplied,
-				},
+			Annotations: map[string]string{
+				corev1.LastAppliedConfigAnnotation: lastApplied,
 			},
 		}
 	}

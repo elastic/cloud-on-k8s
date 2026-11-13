@@ -6,9 +6,12 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"maps"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -17,7 +20,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
+	agentcontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/pointer"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/cmd/run"
@@ -25,6 +30,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/generation"
 )
+
+const k8sRequestRetryTimeout = time.Minute
 
 func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
@@ -116,21 +123,25 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 				Name: "Creating an Agent should succeed",
 				Test: func(t *testing.T) {
 					t.Helper()
-					for _, obj := range b.RuntimeObjects() {
-						err := k.Client.Create(context.Background(), obj)
-						require.NoError(t, err)
-					}
+					require.NoError(t, k.CreateWithRetry(
+						test.IsRetryableError,
+						k8sRequestRetryTimeout,
+						b.RuntimeObjects()...,
+					))
 				},
 			},
 			test.Step{
 				Name: "Agent should be created",
-				Test: func(t *testing.T) {
-					t.Helper()
+				Test: test.RetryOnError(func() error {
 					var createdAgent agentv1alpha1.Agent
-					err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Agent), &createdAgent)
-					require.NoError(t, err)
-					require.Equal(t, b.Agent.Spec.Version, createdAgent.Spec.Version)
-				},
+					if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Agent), &createdAgent); err != nil {
+						return err
+					}
+					if b.Agent.Spec.Version != createdAgent.Spec.Version {
+						return fmt.Errorf("expected version %s but got %s", b.Agent.Spec.Version, createdAgent.Spec.Version)
+					}
+					return nil
+				}, test.IsRetryableError, k8sRequestRetryTimeout),
 			},
 		})
 }
@@ -138,21 +149,44 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{
+			Name: "Agent Elasticsearch associations should be established",
+			Test: test.Eventually(func() error {
+				var agent agentv1alpha1.Agent
+				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Agent), &agent); err != nil {
+					return err
+				}
+				expected := len(b.Agent.Spec.ElasticsearchRefs)
+				got := len(agent.Status.ElasticsearchAssociationsStatus)
+				if expected != got {
+					return fmt.Errorf("expected %d ES association(s) in status, got %d", expected, got)
+				}
+				for ref, s := range agent.Status.ElasticsearchAssociationsStatus {
+					if s != commonv1.AssociationEstablished {
+						return fmt.Errorf("ES association %s is %q, expected %q", ref, s, commonv1.AssociationEstablished)
+					}
+				}
+				return nil
+			}),
+			Skip: func() bool {
+				return len(b.Agent.Spec.ElasticsearchRefs) == 0
+			},
+		},
+		{
 			Name: "Agent status should be updated",
 			Test: test.Eventually(func() error {
 				var agent agentv1alpha1.Agent
 				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Agent), &agent); err != nil {
 					return err
 				}
-				// don't check association statuses that may vary across tests
 				agent.Status.ElasticsearchAssociationsStatus = nil
 				agent.Status.KibanaAssociationStatus = ""
 				agent.Status.FleetServerAssociationStatus = ""
 				agent.Status.ObservedGeneration = 0
 
 				expected := agentv1alpha1.AgentStatus{
-					Version: b.Agent.Spec.Version,
-					Health:  "green",
+					Version:    b.Agent.Spec.Version,
+					Health:     "green",
+					Conditions: agent.Status.Conditions, // Ignore Conditions whose LastTransitionTime is unpredictable
 				}
 
 				switch {
@@ -175,6 +209,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 				return nil
 			}),
 		},
+		test.CheckFieldsNotOwnedByOperator(&b.Agent, k, nil),
 	}
 }
 
@@ -244,7 +279,14 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Agent), &agent); err != nil {
 					return err
 				}
-				agent.Spec = b.Agent.Spec
+				// merge annotations
+				if agent.Annotations == nil {
+					agent.Annotations = make(map[string]string)
+				}
+				maps.Copy(agent.Annotations, b.Agent.Annotations)
+				// Apply the same OCP-specific security context that RuntimeObjects() applies on
+				// creation so the spec stays consistent and no spurious pending changes are detected.
+				agent.Spec = b.withOCPSecurityContext().Agent.Spec
 				if err := k.Client.Update(context.Background(), &agent); err != nil {
 					return err
 				}
@@ -290,14 +332,57 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 	}
 }
 
+// CheckFleetServerConnected returns a step that verifies at least one agent pod reports
+// FleetState == 2 (connected) by running elastic-agent status --output=json inside each container.
+func (b Builder) CheckFleetServerConnected(k *test.K8sClient) test.StepList {
+	return test.StepList{
+		{
+			Name: "At least one Agent pod should be connected to Fleet Server",
+			Test: test.Eventually(func() error {
+				pods, err := k.GetPods(test.AgentPodListOptions(b.Agent.Namespace, b.Agent.Name)...)
+				if err != nil {
+					return err
+				}
+				// One successful connection is enough: if any pod reached Fleet Server the
+				// path is verified. Checking all pods would require every replica to
+				// reconnect before the step passes, increasing test time unnecessarily.
+				return test.OnAnyPod(pods, func(p corev1.Pod) error {
+					stdout, stderr, err := k.ExecInContainer(
+						k8s.ExtractNamespacedName(&p),
+						agentcontroller.ContainerName,
+						[]string{"elastic-agent", "status", "--output=json"},
+					)
+					if err != nil {
+						return fmt.Errorf("err:%w,stdout:\n%s\nstderr:\n%s", err, stdout, stderr)
+					}
+					var agentStatus struct {
+						FleetState int `json:"FleetState"`
+					}
+					if err := json.Unmarshal([]byte(stdout), &agentStatus); err != nil {
+						return err
+					}
+					if agentStatus.FleetState != 2 {
+						return fmt.Errorf("agent not connected to fleet-server, state: %d", agentStatus.FleetState)
+					}
+					return nil
+				})
+			}),
+		},
+	}
+}
+
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	var agentGenerationBeforeMutation, agentObservedGenerationBeforeMutation int64
 
 	isMutated := b.MutatedFrom != nil
 
-	return test.StepList{
-		generation.RetrieveGenerationsStep(&b.Agent, k, &agentGenerationBeforeMutation, &agentObservedGenerationBeforeMutation),
-	}.WithSteps(b.UpgradeTestSteps(k)).
+	steps := test.StepList{}
+	if b.MutatedFrom != nil {
+		steps = test.AnnotatePodsWithBuilderHash(b, b.MutatedFrom, k)
+	}
+	return steps.
+		WithStep(generation.RetrieveGenerationsStep(&b.Agent, k, &agentGenerationBeforeMutation, &agentObservedGenerationBeforeMutation)).
+		WithSteps(b.UpgradeTestSteps(k)).
 		WithSteps(b.CheckK8sTestSteps(k)).
 		WithSteps(b.CheckStackTestSteps(k)).
 		WithStep(generation.CompareObjectGenerationsStep(&b.Agent, k, isMutated, agentGenerationBeforeMutation, agentObservedGenerationBeforeMutation))

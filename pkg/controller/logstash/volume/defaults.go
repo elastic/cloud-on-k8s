@@ -7,7 +7,6 @@ package volume
 import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/volume"
@@ -26,9 +25,7 @@ var (
 	// DefaultDataVolumeClaim is the default data volume claim for Logstash pods.
 	// We default to a 1.5Gi persistent volume, using the default storage class.
 	DefaultDataVolumeClaim = corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: LogstashDataVolumeName,
-		},
+		Name: LogstashDataVolumeName,
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{
 				corev1.ReadWriteOnce,

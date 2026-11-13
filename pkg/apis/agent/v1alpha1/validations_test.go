@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -170,12 +169,22 @@ func Test_checkIfVersionDeprecated(t *testing.T) {
 		want    string
 	}{
 		{
-			name:    "not deprecated",
-			version: "7.17.0",
+			name:    "not deprecated - greater than max deprecated version",
+			version: "8.0.1",
 			want:    "",
 		},
 		{
-			name:    "deprecated",
+			name:    "deprecated - equal to max deprecated version",
+			version: "7.17.29",
+			want:    "Version 7.17.29 is EOL and support for it will be removed in a future release of the ECK operator",
+		},
+		{
+			name:    "deprecated - equal to min deprecated version",
+			version: "7.0.0",
+			want:    "Version 7.0.0 is EOL and support for it will be removed in a future release of the ECK operator",
+		},
+		{
+			name:    "deprecated - middle of the pack",
 			version: "7.4.0",
 			want:    "Version 7.4.0 is EOL and support for it will be removed in a future release of the ECK operator",
 		},
@@ -304,8 +313,8 @@ func Test_checkAtMostOneDefaultESRef(t *testing.T) {
 					Spec: AgentSpec{
 						ElasticsearchRefs: []Output{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								OutputName:     "default",
+								Name: "bla", Namespace: "blub",
+								OutputName: "default",
 							},
 						},
 					},
@@ -320,12 +329,12 @@ func Test_checkAtMostOneDefaultESRef(t *testing.T) {
 					Spec: AgentSpec{
 						ElasticsearchRefs: []Output{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								OutputName:     "default",
+								Name: "bla", Namespace: "blub",
+								OutputName: "default",
 							},
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								OutputName:     "bla",
+								Name: "bla", Namespace: "blub",
+								OutputName: "bla",
 							},
 						},
 					},
@@ -340,12 +349,12 @@ func Test_checkAtMostOneDefaultESRef(t *testing.T) {
 					Spec: AgentSpec{
 						ElasticsearchRefs: []Output{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								OutputName:     "default",
+								Name: "bla", Namespace: "blub",
+								OutputName: "default",
 							},
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								OutputName:     "default",
+								Name: "bla", Namespace: "blub",
+								OutputName: "default",
 							},
 						},
 					},
@@ -385,7 +394,7 @@ func Test_checkESRefsNamed(t *testing.T) {
 					Spec: AgentSpec{
 						ElasticsearchRefs: []Output{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								Name: "bla", Namespace: "blub",
 							},
 						},
 					},
@@ -400,12 +409,12 @@ func Test_checkESRefsNamed(t *testing.T) {
 					Spec: AgentSpec{
 						ElasticsearchRefs: []Output{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								OutputName:     "bla",
+								Name: "bla", Namespace: "blub",
+								OutputName: "bla",
 							},
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								OutputName:     "blub",
+								Name: "bla", Namespace: "blub",
+								OutputName: "blub",
 							},
 						},
 					},
@@ -420,12 +429,12 @@ func Test_checkESRefsNamed(t *testing.T) {
 					Spec: AgentSpec{
 						ElasticsearchRefs: []Output{
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								OutputName:     "",
+								Name: "bla", Namespace: "blub",
+								OutputName: "",
 							},
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
-								OutputName:     "default",
+								Name: "bla", Namespace: "blub",
+								OutputName: "default",
 							},
 						},
 					},
@@ -564,7 +573,7 @@ func Test_checkFleetServerOrFleetServerRef(t *testing.T) {
 			a: &Agent{
 				Spec: AgentSpec{
 					FleetServerEnabled: true,
-					FleetServerRef:     commonv1.ObjectSelector{Name: "name"},
+					FleetServerRef:     commonv1.FleetServerSelector{Name: "name"},
 				},
 			},
 			wantErr: true,
@@ -588,7 +597,7 @@ func Test_checkHTTPConfigOnlyForFleetServer(t *testing.T) {
 			a: &Agent{
 				Spec: AgentSpec{
 					FleetServerEnabled: true,
-					HTTP:               commonv1.HTTPConfig{},
+					HTTP:               commonv1.HTTPConfigWithClientOptions{},
 				},
 			},
 			wantErr: false,
@@ -598,11 +607,13 @@ func Test_checkHTTPConfigOnlyForFleetServer(t *testing.T) {
 			a: &Agent{
 				Spec: AgentSpec{
 					FleetServerEnabled: false,
-					HTTP: commonv1.HTTPConfig{TLS: commonv1.TLSOptions{
-						Certificate: commonv1.SecretRef{
-							SecretName: "name",
-						},
-					}},
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{TLSOptions: commonv1.TLSOptions{
+							Certificate: commonv1.SecretRef{
+								SecretName: "name",
+							},
+						}},
+					},
 				},
 			},
 			wantErr: true,
@@ -635,7 +646,7 @@ func Test_checkReferenceSetForMode(t *testing.T) {
 			a: &Agent{
 				Spec: AgentSpec{
 					Mode:           AgentStandaloneMode,
-					FleetServerRef: commonv1.ObjectSelector{Name: "name"},
+					FleetServerRef: commonv1.FleetServerSelector{Name: "name"},
 				},
 			},
 			wantErr: true,
@@ -655,7 +666,7 @@ func Test_checkReferenceSetForMode(t *testing.T) {
 			a: &Agent{
 				Spec: AgentSpec{
 					Mode:           AgentStandaloneMode,
-					FleetServerRef: commonv1.ObjectSelector{Name: "name"},
+					FleetServerRef: commonv1.FleetServerSelector{Name: "name"},
 					KibanaRef:      commonv1.ObjectSelector{Name: "name"},
 				},
 			},
@@ -668,8 +679,8 @@ func Test_checkReferenceSetForMode(t *testing.T) {
 					Mode:               AgentFleetMode,
 					FleetServerEnabled: true,
 					ElasticsearchRefs: []Output{{
-						ObjectSelector: commonv1.ObjectSelector{Name: "name"},
-						OutputName:     "name",
+						Name:       "name",
+						OutputName: "name",
 					}},
 				},
 			},
@@ -682,8 +693,8 @@ func Test_checkReferenceSetForMode(t *testing.T) {
 					Mode:               AgentFleetMode,
 					FleetServerEnabled: false,
 					ElasticsearchRefs: []Output{{
-						ObjectSelector: commonv1.ObjectSelector{Name: "name"},
-						OutputName:     "name",
+						Name:       "name",
+						OutputName: "name",
 					}},
 				},
 			},
@@ -720,14 +731,14 @@ func Test_checkAssociations(t *testing.T) {
 					Spec: AgentSpec{
 						ElasticsearchRefs: []Output{
 							{
-								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla"},
+								SecretName: "bla",
 							},
 							{
-								ObjectSelector: commonv1.ObjectSelector{Name: "bla", Namespace: "blub"},
+								Name: "bla", Namespace: "blub",
 							},
 						},
 						KibanaRef:      commonv1.ObjectSelector{Name: "bli", Namespace: "blub"},
-						FleetServerRef: commonv1.ObjectSelector{SecretName: "ble"},
+						FleetServerRef: commonv1.FleetServerSelector{SecretName: "ble"},
 					},
 				},
 			},
@@ -740,13 +751,55 @@ func Test_checkAssociations(t *testing.T) {
 					Spec: AgentSpec{
 						ElasticsearchRefs: []Output{
 							{
-								ObjectSelector: commonv1.ObjectSelector{SecretName: "bla", Name: "bla"},
+								SecretName: "bla", Name: "bla",
 							},
 						},
 					},
 				},
 			},
 			wantErr: true,
+		},
+		{
+			name: "PKI with user-provided client certificate: OK",
+			args: args{
+				b: &Agent{Spec: AgentSpec{ElasticsearchRefs: []Output{{
+					Name:                        "es",
+					ClientCertificateSecretName: "client-cert",
+					AuthenticationMode:          commonv1.AuthenticationModePKI,
+				}}}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "PKI with secret named ref: NOK",
+			args: args{
+				b: &Agent{Spec: AgentSpec{ElasticsearchRefs: []Output{{
+					SecretName:         "ext",
+					AuthenticationMode: commonv1.AuthenticationModePKI,
+				}}}},
+			},
+			wantErr: true,
+		},
+		{
+			name: "PKI with named ref: OK",
+			args: args{
+				b: &Agent{Spec: AgentSpec{ElasticsearchRefs: []Output{{
+					Name:               "es",
+					AuthenticationMode: commonv1.AuthenticationModePKI,
+				}}}},
+			},
+			wantErr: false,
+		},
+		{
+			// accepted before PKI was introduced, so existing Agents must stay valid
+			name: "client certificate with secret named ref: OK",
+			args: args{
+				b: &Agent{Spec: AgentSpec{ElasticsearchRefs: []Output{{
+					SecretName:                  "ext",
+					ClientCertificateSecretName: "client-cert",
+				}}}},
+			},
+			wantErr: false,
 		},
 		{
 			name: "no name or secret name with namespace: NOK",
@@ -764,7 +817,7 @@ func Test_checkAssociations(t *testing.T) {
 			args: args{
 				b: &Agent{
 					Spec: AgentSpec{
-						FleetServerRef: commonv1.ObjectSelector{ServiceName: "ble"},
+						FleetServerRef: commonv1.FleetServerSelector{ServiceName: "ble"},
 					},
 				},
 			},
@@ -775,6 +828,245 @@ func Test_checkAssociations(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := checkAssociations(tt.args.b)
 			assert.Equal(t, tt.wantErr, len(got) > 0)
+		})
+	}
+}
+
+func Test_checkClientAuthentication(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		a       *Agent
+		wantErr bool
+		wantMsg string
+	}{
+		{
+			name: "authentication false: OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					FleetServerEnabled: true,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "authentication true, fleet server disabled: NOK",
+			a: &Agent{
+				Spec: AgentSpec{
+					FleetServerEnabled: false,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: true,
+			wantMsg: "client certificate authentication is only supported when Fleet Server is enabled",
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS disabled: NOK",
+			a: &Agent{
+				Spec: AgentSpec{
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							TLSOptions: commonv1.TLSOptions{
+								SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: true},
+							},
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: true,
+			wantMsg: "client certificate authentication requires TLS to be enabled",
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS enabled (default): OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS enabled, version 8.15.0: NOK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Version:            "8.15.0",
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS enabled, version 9.3.5 (below boundary): NOK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Version:            "9.3.5",
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS enabled, version 8.19.18 (below boundary): NOK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Version:            "8.19.18",
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS enabled, version 8.19.19 (boundary): OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Version:            "8.19.19",
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS enabled, version 9.3.7 (below boundary): NOK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Version:            "9.3.7",
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS enabled, version 9.3.8 (boundary): OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Version:            "9.3.8",
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS enabled, version 9.4.1 (below boundary): NOK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Version:            "9.4.1",
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS enabled, version 9.4.3 (below boundary): NOK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Version:            "9.4.3",
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS enabled, version 9.4.4 (boundary): OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Version:            "9.4.4",
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS enabled, version 9.5.0: OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Version:            "9.5.0",
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "authentication true, fleet server enabled, TLS enabled, version 9.3.8-SNAPSHOT: OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Version:            "9.3.8-SNAPSHOT",
+					FleetServerEnabled: true,
+					HTTP: commonv1.HTTPConfigWithClientOptions{
+						TLS: commonv1.TLSWithClientOptions{
+							Client: commonv1.ClientOptions{Authentication: true},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got := checkClientAuthentication(tt.a)
+			assert.Equal(t, tt.wantErr, len(got) > 0)
+			if tt.wantMsg != "" {
+				assert.Contains(t, got[0].Detail, tt.wantMsg)
+			}
 		})
 	}
 }
@@ -809,9 +1101,9 @@ func Test_checkNoDowngrade(t *testing.T) {
 			name: "Downgrade with override OK",
 			args: args{
 				prev: &Agent{Spec: AgentSpec{Version: "8.2.0"}},
-				curr: &Agent{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+				curr: &Agent{Annotations: map[string]string{
 					commonv1.DisableDowngradeValidationAnnotation: "true",
-				}}, Spec: AgentSpec{Version: "8.1.0"}},
+				}, Spec: AgentSpec{Version: "8.1.0"}},
 			},
 			want: nil,
 		},
@@ -819,6 +1111,94 @@ func Test_checkNoDowngrade(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equalf(t, tt.want, checkNoDowngrade(tt.args.prev, tt.args.curr), "checkNoDowngrade(%v, %v)", tt.args.prev, tt.args.curr)
+		})
+	}
+}
+
+func Test_checkNoPKIAuthentication(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		a       *Agent
+		wantErr bool
+		wantMsg string
+	}{
+		{
+			name: "standalone with PKI: OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Mode: AgentStandaloneMode,
+					ElasticsearchRefs: []Output{
+						{
+							Name:               "es",
+							AuthenticationMode: commonv1.AuthenticationModePKI},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "fleet server with PKI: NOK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Mode:               AgentFleetMode,
+					FleetServerEnabled: true,
+					ElasticsearchRefs: []Output{
+						{
+							Name:               "es",
+							AuthenticationMode: commonv1.AuthenticationModePKI},
+					},
+				},
+			},
+			wantErr: true,
+			wantMsg: "PKI authentication mode is not supported for Fleet server",
+		},
+		{
+			name: "fleet-managed agent with PKI: NOK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Mode: AgentFleetMode,
+					ElasticsearchRefs: []Output{
+						{
+							Name:               "es",
+							AuthenticationMode: commonv1.AuthenticationModePKI},
+					},
+				},
+			},
+			wantErr: true,
+			wantMsg: "PKI authentication mode is not supported for fleet-managed Elastic Agent",
+		},
+		{
+			name: "fleet server without PKI: OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Mode:               AgentFleetMode,
+					FleetServerEnabled: true,
+					ElasticsearchRefs: []Output{
+						{
+							Name: "es"},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "fleet mode without ES refs: OK",
+			a: &Agent{
+				Spec: AgentSpec{
+					Mode: AgentFleetMode,
+				},
+			},
+			wantErr: false,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got := checkNoPKIAuthentication(tt.a)
+			assert.Equal(t, tt.wantErr, len(got) > 0)
+			var detail string
+			if len(got) > 0 {
+				detail = got[0].Detail
+			}
+			assert.Contains(t, detail, tt.wantMsg)
 		})
 	}
 }

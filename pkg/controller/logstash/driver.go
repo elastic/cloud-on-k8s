@@ -13,7 +13,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
@@ -25,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/configs"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/logstash/labels"
@@ -41,10 +42,11 @@ type Params struct {
 	Meta metadata.Metadata
 
 	Client        k8s.Client
-	EventRecorder record.EventRecorder
+	EventRecorder toolsevents.EventRecorder
 	Watches       watches.DynamicWatches
 
 	Logstash logstashv1alpha1.Logstash
+	Version  version.Version
 	Status   logstashv1alpha1.LogstashStatus
 
 	OperatorParams    operator.Parameters
@@ -62,7 +64,7 @@ func (p Params) K8sClient() k8s.Client {
 }
 
 // Recorder returns the Kubernetes event recorder.
-func (p Params) Recorder() record.EventRecorder {
+func (p Params) Recorder() toolsevents.EventRecorder {
 	return p.EventRecorder
 }
 
@@ -119,13 +121,13 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 	}.ReconcileCAAndHTTPCerts(params.Context)
 	if results.HasError() {
 		_, err := results.Aggregate()
-		k8s.MaybeEmitErrorEvent(params.Recorder(), err, &params.Logstash, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
+		k8s.MaybeEmitErrorEventf(params.Recorder(), err, &params.Logstash, events.EventReconciliationError, events.EventActionCertificateReconciliation, "Certificate reconciliation error: %v", err)
 		return results, params.Status
 	}
 
 	configHash := fnv.New32a()
 
-	if _, params.APIServerConfig, err = reconcileConfig(params, apiSvcTLS.Enabled(), configHash); err != nil {
+	if params.APIServerConfig, err = reconcileConfig(params, apiSvcTLS.Enabled(), configHash); err != nil {
 		return results.WithError(err), params.Status
 	}
 

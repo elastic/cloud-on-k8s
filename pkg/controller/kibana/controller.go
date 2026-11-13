@@ -15,12 +15,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common"
@@ -28,6 +28,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/keystore"
+	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
@@ -40,13 +41,20 @@ import (
 const (
 	controllerName           = "kibana-controller"
 	configHashAnnotationName = "kibana.k8s.elastic.co/config-hash"
+	replicasAnnotationName   = "kibana.k8s.elastic.co/prev-replicas"
 )
 
 // Add creates a new Kibana Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
-	c, err := common.NewController(mgr, controllerName, reconciler, params)
+	c, err := common.NewNamespacedController(
+		mgr, controllerName, reconciler, params,
+		watches.ReconcileObjectsInNamespace(
+			mgr.GetCache(),
+			func() client.ObjectList { return &kbv1.KibanaList{} },
+		),
+	)
 	if err != nil {
 		return err
 	}
@@ -57,20 +65,22 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKibana {
 	return &ReconcileKibana{
 		Client:         mgr.GetClient(),
-		recorder:       mgr.GetEventRecorderFor(controllerName),
+		recorder:       mgr.GetEventRecorder(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		params:         params,
+		licenseChecker: commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace),
 	}
 }
 
 func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileKibana) error {
+	m := r.params.NamespaceMatcher
 	// Watch for changes to Kibana
-	if err := c.Watch(source.Kind(mgr.GetCache(), &kbv1.Kibana{}, &handler.TypedEnqueueRequestForObject[*kbv1.Kibana]{})); err != nil {
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &kbv1.Kibana{}, &handler.TypedEnqueueRequestForObject[*kbv1.Kibana]{})); err != nil {
 		return err
 	}
 
 	// Watch deployments
-	if err := c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}, handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &appsv1.Deployment{}, handler.TypedEnqueueRequestForOwner[*appsv1.Deployment](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&kbv1.Kibana{}, handler.OnlyControllerOwner(),
 	))); err != nil {
@@ -79,30 +89,30 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileKibana
 
 	// Watch Pods, to ensure `status.version` and version upgrades are correctly reconciled on any change.
 	// Watching Deployments only may lead to missing some events.
-	if err := watches.WatchPods(mgr, c, kblabel.KibanaNameLabelName); err != nil {
+	if err := watches.WatchPods(mgr, c, m, kblabel.KibanaNameLabelName); err != nil {
 		return err
 	}
 
 	// Watch services
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Service{}, handler.TypedEnqueueRequestForOwner[*corev1.Service](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&kbv1.Kibana{}, handler.OnlyControllerOwner(),
 	))); err != nil {
 		return err
 	}
 	// Watch owned and soft-owned secrets
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, handler.TypedEnqueueRequestForOwner[*corev1.Secret](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&kbv1.Kibana{}, handler.OnlyControllerOwner(),
 	))); err != nil {
 		return err
 	}
-	if err := watches.WatchSoftOwnedSecrets(mgr, c, kbv1.Kind); err != nil {
+	if err := watches.WatchSoftOwnedSecrets(mgr, c, m, kbv1.Kind); err != nil {
 		return err
 	}
 
 	// Watch configmaps
-	if err := c.Watch(source.Kind(mgr.GetCache(), &corev1.ConfigMap{}, handler.TypedEnqueueRequestForOwner[*corev1.ConfigMap](
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.ConfigMap{}, handler.TypedEnqueueRequestForOwner[*corev1.ConfigMap](
 		mgr.GetScheme(), mgr.GetRESTMapper(),
 		&kbv1.Kibana{}, handler.OnlyControllerOwner(),
 	))); err != nil {
@@ -110,19 +120,25 @@ func addWatches(mgr manager.Manager, c controller.Controller, r *ReconcileKibana
 	}
 
 	// dynamically watch referenced secrets to connect to Elasticsearch
-	return c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets))
+	if err := c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.Secret{}, r.dynamicWatches.Secrets)); err != nil {
+		return err
+	}
+	// Watch ConfigMaps referenced dynamically (additional HTTP certificate authorities)
+	return c.Watch(watches.NamespacedKind(m, mgr.GetCache(), &corev1.ConfigMap{}, r.dynamicWatches.ConfigMaps))
 }
 
-var _ reconcile.Reconciler = &ReconcileKibana{}
+var _ reconcile.Reconciler = (*ReconcileKibana)(nil)
 
 // ReconcileKibana reconciles a Kibana object
 type ReconcileKibana struct {
 	k8s.Client
-	recorder record.EventRecorder
+	recorder toolsevents.EventRecorder
 
 	dynamicWatches watches.DynamicWatches
 
 	params operator.Parameters
+
+	licenseChecker commonlicense.Checker
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
@@ -194,6 +210,19 @@ func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Req
 		return result, err
 	}
 
+	var admitted bool
+	admitted, err = r.gateBackgroundTasksOnLicense(ctx, kb)
+	if err != nil {
+		// fail closed
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
+	}
+	if !admitted {
+		// nothing was applied: do not report the current generation as observed
+		state.Kibana.Status.ObservedGeneration = state.originalKibana.Status.ObservedGeneration
+		// no watch on license changes: requeue with a long delay
+		return reconcile.Result{RequeueAfter: common.DefaultRequeueInterval}, nil
+	}
+
 	var driver *driver
 	driver, err = newDriver(r, r.dynamicWatches, r.recorder, kb, r.params.IPFamily)
 	if err != nil {
@@ -203,18 +232,53 @@ func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Req
 	results := driver.Reconcile(ctx, &state, kb, r.params)
 
 	result, err = results.WithError(err).Aggregate()
-	k8s.MaybeEmitErrorEvent(r.recorder, err, kb, events.EventReconciliationError, "Reconciliation error: %v", err)
+	k8s.MaybeEmitErrorEventf(r.recorder, err, kb, events.EventReconciliationError, events.EventActionReconciliation, "Reconciliation error: %v", err)
 	return result, err
+}
+
+// gateBackgroundTasksOnLicense gates spec.backgroundTasks behind an Enterprise license and reports whether the
+// Kibana is admitted to reconciliation. It is independent of the validating webhook, which may be disabled. Whether
+// background tasks were already enabled is read from the cluster state: the background tasks Deployment of this
+// Kibana exists.
+//   - already enabled: a warning is logged, a warning event is emitted and the Kibana is admitted, so the existing
+//     pools keep being managed.
+//   - being enabled for the first time, or the Kibana is new: an error is logged, a warning event is emitted and
+//     the Kibana is not admitted. The caller requeues to check the license again later.
+//
+// A license check or lookup error is returned as is so that the caller fails closed.
+func (r *ReconcileKibana) gateBackgroundTasksOnLicense(ctx context.Context, kb *kbv1.Kibana) (admitted bool, err error) {
+	state, err := backgroundTasksStateOf(ctx, r.Client, kb, r.licenseChecker)
+	if err != nil {
+		return false, err
+	}
+	log := ulog.FromContext(ctx)
+	switch state {
+	case backgroundTasksAlreadyEnabledUnlicensed:
+		log.Info(backgroundTasksLicenseRejectMsg, "namespace", kb.Namespace, "kibana_name", kb.Name)
+		k8s.EmitEvent(r.recorder, kb, corev1.EventTypeWarning, events.EventReasonInvalidLicense, events.EventActionLicenseCheck, backgroundTasksLicenseRejectMsg)
+		return true, nil
+	case backgroundTasksNewlyEnabledUnlicensed:
+		const msg = backgroundTasksLicenseRejectMsg + ". Enterprise features are disabled, skipping reconciliation"
+		log.Error(errors.New(msg), msg, "namespace", kb.Namespace, "kibana_name", kb.Name)
+		k8s.EmitEvent(r.recorder, kb, corev1.EventTypeWarning, events.EventReconciliationError, events.EventActionLicenseCheck, msg)
+		return false, nil
+	default:
+		return true, nil
+	}
 }
 
 func (r *ReconcileKibana) validate(ctx context.Context, kb *kbv1.Kibana) error {
 	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	defer span.End()
 
-	if _, err := kb.ValidateCreate(); err != nil {
+	warnings, err := kbv1.Validate(kb, nil)
+	if err != nil {
 		ulog.FromContext(ctx).Error(err, "Validation failed")
-		k8s.MaybeEmitErrorEvent(r.recorder, err, kb, events.EventReasonValidation, err.Error())
+		k8s.MaybeEmitErrorEvent(r.recorder, err, kb, events.EventReasonValidation, events.EventActionValidation, err.Error())
 		return tracing.CaptureError(vctx, err)
+	}
+	for _, warning := range warnings {
+		k8s.EmitEvent(r.recorder, kb, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, warning)
 	}
 
 	return nil
@@ -229,9 +293,10 @@ func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
 		return nil
 	}
 	if state.Kibana.Status.DeploymentStatus.IsDegraded(current.Status.DeploymentStatus) {
-		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Kibana health degraded")
+		k8s.EmitEvent(r.recorder, current, corev1.EventTypeWarning, events.EventReasonUnhealthy, events.EventActionStatusUpdate, "Kibana health degraded")
 	}
-	ulog.FromContext(ctx).V(1).Info("Updating status",
+	ulog.FromContext(ctx).V(1).Info(
+		"Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),
 		"namespace", state.Kibana.Namespace,
 		"kibana_name", state.Kibana.Name,
@@ -240,11 +305,15 @@ func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
 	return common.UpdateStatus(ctx, r.Client, state.Kibana)
 }
 
-func (r *ReconcileKibana) onDelete(ctx context.Context, obj types.NamespacedName) error {
-	// Clean up watches set on secure settings
+// OnNamespaceOutOfScope releases all controller-local state associated with the given Kibana
+// resource when its namespace no longer matches the operator's namespace selector.
+func (r *ReconcileKibana) OnNamespaceOutOfScope(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
-	// Clean up watches set on custom http tls certificates
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(kbv1.KBNamer, obj.Name))
+	certificates.RemoveHTTPCertWatches(r.dynamicWatches, kbv1.KBNamer, obj)
+}
+
+func (r *ReconcileKibana) onDelete(ctx context.Context, obj types.NamespacedName) error {
+	r.OnNamespaceOutOfScope(obj)
 	return reconciler.GarbageCollectSoftOwnedSecrets(ctx, r.Client, obj, kbv1.Kind)
 }
 

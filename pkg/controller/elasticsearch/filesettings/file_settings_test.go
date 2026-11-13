@@ -449,3 +449,14 @@ func Test_updateState(t *testing.T) {
 		})
 	}
 }
+
+func Test_newEmptySettingsState(t *testing.T) {
+	state := newEmptySettingsState()
+	assert.NotNil(t, state.IndexLifecyclePolicies, "should include ILM")
+	assert.NotNil(t, state.ClusterSettings)
+	assert.NotNil(t, state.SnapshotRepositories)
+	assert.NotNil(t, state.SLM)
+	assert.NotNil(t, state.RoleMappings)
+	assert.NotNil(t, state.IngestPipelines)
+	assert.NotNil(t, state.IndexTemplates)
+}

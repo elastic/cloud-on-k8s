@@ -15,7 +15,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -31,9 +31,7 @@ const (
 
 var (
 	esUserSecret = corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns", Name: "es-user-secret",
-		},
+		Namespace: "ns", Name: "es-user-secret",
 		Data: map[string][]byte{
 			esUser: []byte(esPassword),
 		},
@@ -44,7 +42,7 @@ var (
 )
 
 func entWithVersion(version string, annotations map[string]string) entv1.EnterpriseSearch {
-	ent := entv1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent", Annotations: annotations},
+	ent := entv1.EnterpriseSearch{Namespace: "ns", Name: "ent", Annotations: annotations,
 		Spec: entv1.EnterpriseSearchSpec{Version: version}}
 	ent.SetAssociationConf(&associationConf)
 	return ent
@@ -52,19 +50,17 @@ func entWithVersion(version string, annotations map[string]string) entv1.Enterpr
 
 func podWithVersion(name string, version string) *corev1.Pod {
 	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns", Name: name, Labels: map[string]string{
-				EnterpriseSearchNameLabelName: "ent",
-				commonv1.TypeLabelName:        Type,
-				VersionLabelName:              version,
-			},
+		Namespace: "ns", Name: name, Labels: map[string]string{
+			EnterpriseSearchNameLabelName: "ent",
+			commonv1.TypeLabelName:        Type,
+			VersionLabelName:              version,
 		},
 	}
 }
 
 func deploymentWithVersion(version string) *appsv1.Deployment {
 	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: DeploymentName("ent")},
+		Namespace: "ns", Name: DeploymentName("ent"),
 		Spec: appsv1.DeploymentSpec{Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
 				VersionLabelName: version,
@@ -205,7 +201,7 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 				k8sClient:  k8sClient,
 				ent:        tt.ent,
 				httpClient: httpClient,
-				recorder:   record.NewFakeRecorder(10),
+				recorder:   toolsevents.NewFakeRecorder(10),
 			}
 			err := r.Handle(context.Background())
 			if tt.wantErr == "" {

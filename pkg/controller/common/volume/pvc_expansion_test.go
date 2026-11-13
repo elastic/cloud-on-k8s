@@ -17,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -32,29 +31,29 @@ import (
 )
 
 var (
-	sampleStorageClass = storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{
-		Name: "sample-sc"}}
+	sampleStorageClass = storagev1.StorageClass{
+		Name: "sample-sc"}
 
 	sampleClaim = corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim"},
+		Name: "sample-claim",
 		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: ptr.To[string](sampleStorageClass.Name),
+			StorageClassName: new(sampleStorageClass.Name),
 			Resources: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}}}}
 	sampleClaim2 = corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim-2"},
+		Name: "sample-claim-2",
 		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: ptr.To[string](sampleStorageClass.Name),
+			StorageClassName: new(sampleStorageClass.Name),
 			Resources: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}}}}
 
-	sampleSset = appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample-sset"}}
+	sampleSset = appsv1.StatefulSet{Namespace: "ns", Name: "sample-sset"}
 )
 
 func withVolumeExpansion(sc storagev1.StorageClass) *storagev1.StorageClass {
-	sc.AllowVolumeExpansion = ptr.To[bool](true)
+	sc.AllowVolumeExpansion = new(true)
 	return &sc
 }
 
@@ -72,26 +71,26 @@ func withStorageReq(claim corev1.PersistentVolumeClaim, size string) corev1.Pers
 
 func Test_handleVolumeExpansionElasticsearch(t *testing.T) {
 	sset := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample-sset"},
+		Namespace: "ns", Name: "sample-sset",
 		Spec: appsv1.StatefulSetSpec{
-			Replicas:             ptr.To[int32](3),
+			Replicas:             new(int32(3)),
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim},
 		},
 	}
 	resizedSset := *sset.DeepCopy()
 	resizedSset.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage] = resource.MustParse("3Gi")
 	pvcsWithSize := func(size ...string) []corev1.PersistentVolumeClaim {
-		var pvcs []corev1.PersistentVolumeClaim
+		pvcs := make([]corev1.PersistentVolumeClaim, 0, len(size))
 		for i, s := range size {
 			pvcs = append(pvcs, withStorageReq(corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: fmt.Sprintf("sample-claim-sample-sset-%d", i)},
-				Spec:       sampleClaim.Spec,
+				Namespace: "ns", Name: fmt.Sprintf("sample-claim-sample-sset-%d", i),
+				Spec: sampleClaim.Spec,
 			}, s))
 		}
 		return pvcs
 	}
 	pvcPtrs := func(pvcs []corev1.PersistentVolumeClaim) []client.Object {
-		var ptrs []client.Object
+		ptrs := make([]client.Object, 0, len(pvcs))
 		for i := range pvcs {
 			ptrs = append(ptrs, &pvcs[i])
 		}
@@ -194,8 +193,8 @@ func Test_handleVolumeExpansionElasticsearch(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			es := esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
-				TypeMeta:   metav1.TypeMeta{Kind: esv1.Kind},
+				Namespace: "ns", Name: "es",
+				Kind: esv1.Kind,
 			}
 
 			k8sClient := k8s.NewFakeClient(append(tt.runtimeObjs, &es)...)
@@ -245,26 +244,26 @@ func Test_handleVolumeExpansionElasticsearch(t *testing.T) {
 
 func Test_handleVolumeExpansionLogstash(t *testing.T) {
 	sset := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample-sset"},
+		Namespace: "ns", Name: "sample-sset",
 		Spec: appsv1.StatefulSetSpec{
-			Replicas:             ptr.To[int32](3),
+			Replicas:             new(int32(3)),
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim},
 		},
 	}
 	resizedSset := *sset.DeepCopy()
 	resizedSset.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage] = resource.MustParse("3Gi")
 	pvcsWithSize := func(size ...string) []corev1.PersistentVolumeClaim {
-		var pvcs []corev1.PersistentVolumeClaim
+		pvcs := make([]corev1.PersistentVolumeClaim, 0, len(size))
 		for i, s := range size {
 			pvcs = append(pvcs, withStorageReq(corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: fmt.Sprintf("sample-claim-sample-sset-%d", i)},
-				Spec:       sampleClaim.Spec,
+				Namespace: "ns", Name: fmt.Sprintf("sample-claim-sample-sset-%d", i),
+				Spec: sampleClaim.Spec,
 			}, s))
 		}
 		return pvcs
 	}
 	pvcPtrs := func(pvcs []corev1.PersistentVolumeClaim) []client.Object {
-		var ptrs []client.Object
+		ptrs := make([]client.Object, 0, len(pvcs))
 		for i := range pvcs {
 			ptrs = append(ptrs, &pvcs[i])
 		}
@@ -367,8 +366,8 @@ func Test_handleVolumeExpansionLogstash(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ls := logstashv1alpha1.Logstash{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ls"},
-				TypeMeta:   metav1.TypeMeta{Kind: logstashv1alpha1.Kind}}
+				Namespace: "ns", Name: "ls",
+				Kind: logstashv1alpha1.Kind}
 			k8sClient := k8s.NewFakeClient(append(tt.runtimeObjs, &ls)...)
 			recreate, err := HandleVolumeExpansion(context.Background(), k8sClient, &ls,
 				tt.args.expectedSset, tt.args.actualSset, tt.args.validateStorageClass)
@@ -462,7 +461,7 @@ func Test_needsRecreate(t *testing.T) {
 func Test_recreateStatefulSets(t *testing.T) {
 	controllerscheme.SetupScheme()
 	es := func() *esv1.Elasticsearch {
-		return &esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es", UID: "es-uid"}, TypeMeta: metav1.TypeMeta{Kind: esv1.Kind}}
+		return &esv1.Elasticsearch{Namespace: "ns", Name: "es", UID: "es-uid", Kind: esv1.Kind}
 	}
 	withAnnotation := func(es *esv1.Elasticsearch, key, value string) *esv1.Elasticsearch {
 		if es.Annotations == nil {
@@ -472,17 +471,17 @@ func Test_recreateStatefulSets(t *testing.T) {
 		return es
 	}
 
-	sset1 := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset1", UID: "sset1-uid"}}
+	sset1 := &appsv1.StatefulSet{Namespace: "ns", Name: "sset1", UID: "sset1-uid"}
 	sset1Bytes, _ := json.Marshal(sset1)
 	sset1JSON := string(sset1Bytes)
-	sset1DifferentUID := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset1", UID: "sset1-differentuid"}}
-	pod1 := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset1-0", Labels: map[string]string{
+	sset1DifferentUID := &appsv1.StatefulSet{Namespace: "ns", Name: "sset1", UID: "sset1-differentuid"}
+	pod1 := &corev1.Pod{Namespace: "ns", Name: "sset1-0", Labels: map[string]string{
 		label.StatefulSetNameLabelName: sset1.Name,
-	}}}
+	}}
 	pod1WithOwnerRef := pod1.DeepCopy()
 	require.NoError(t, controllerutil.SetOwnerReference(es(), pod1WithOwnerRef, clientgoscheme.Scheme))
 
-	sset2 := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset2", UID: "sset2-uid"}}
+	sset2 := &appsv1.StatefulSet{Namespace: "ns", Name: "sset2", UID: "sset2-uid"}
 	sset2Bytes, _ := json.Marshal(sset2)
 	sset2JSON := string(sset2Bytes)
 
@@ -499,57 +498,47 @@ func Test_recreateStatefulSets(t *testing.T) {
 		wantRecreations int
 	}{
 		{
-			name: "no annotation: nothing to do",
-			args: args{
-				runtimeObjs: []client.Object{sset1, pod1},
-				es:          *es(),
-			},
+			name:            "no annotation: nothing to do",
+			runtimeObjs:     []client.Object{sset1, pod1},
+			es:              *es(),
 			wantES:          *es(),
 			wantPods:        []corev1.Pod{*pod1},
 			wantRecreations: 0,
 		},
 		{
-			name: "StatefulSet to delete",
-			args: args{
-				runtimeObjs: []client.Object{sset1, pod1}, // sset exists with the same UID
-				es:          *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
-			},
+			name:            "StatefulSet to delete",
+			runtimeObjs:     []client.Object{sset1, pod1}, // sset exists with the same UID
+			es:              *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
 			wantES:          *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
 			wantSsets:       nil,                             // deleted
 			wantPods:        []corev1.Pod{*pod1WithOwnerRef}, // owner ref set to the ES resource
 			wantRecreations: 1,
 		},
 		{
-			name: "StatefulSet to create",
-			args: args{
-				runtimeObjs: []client.Object{pod1}, // sset doesn't exist
-				es:          *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
-			},
-			wantES: *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
+			name:        "StatefulSet to create",
+			runtimeObjs: []client.Object{pod1}, // sset doesn't exist
+			es:          *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
+			wantES:      *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
 			// created, no UUID due to how the fake client creates objects
-			wantSsets:       []appsv1.StatefulSet{{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset1"}}},
+			wantSsets:       []appsv1.StatefulSet{{Namespace: "ns", Name: "sset1"}},
 			wantPods:        []corev1.Pod{*pod1}, // unmodified
 			wantRecreations: 1,
 		},
 		{
-			name: "StatefulSet already recreated: remove the annotation",
-			args: args{
-				runtimeObjs: []client.Object{sset1DifferentUID, pod1WithOwnerRef}, // sset recreated
-				es:          *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
-			},
+			name:            "StatefulSet already recreated: remove the annotation",
+			runtimeObjs:     []client.Object{sset1DifferentUID, pod1WithOwnerRef}, // sset recreated
+			es:              *withAnnotation(es(), "elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
 			wantES:          *es(),                                    // annotation removed
 			wantSsets:       []appsv1.StatefulSet{*sset1DifferentUID}, // same
 			wantPods:        []corev1.Pod{*pod1},                      // ownerRef removed
 			wantRecreations: 0,
 		},
 		{
-			name: "multiple statefulsets to handle",
-			args: args{
-				runtimeObjs: []client.Object{sset1, sset2, pod1},
-				es: *withAnnotation(withAnnotation(es(),
-					"elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
-					"elasticsearch.k8s.elastic.co/recreate-sset2", sset2JSON),
-			},
+			name:        "multiple statefulsets to handle",
+			runtimeObjs: []client.Object{sset1, sset2, pod1},
+			es: *withAnnotation(withAnnotation(es(),
+				"elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
+				"elasticsearch.k8s.elastic.co/recreate-sset2", sset2JSON),
 			wantES: *withAnnotation(withAnnotation(es(),
 				"elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
 				"elasticsearch.k8s.elastic.co/recreate-sset2", sset2JSON),
@@ -558,13 +547,11 @@ func Test_recreateStatefulSets(t *testing.T) {
 			wantRecreations: 2,
 		},
 		{
-			name: "additional annotations are ignored",
-			args: args{
-				runtimeObjs: []client.Object{sset1DifferentUID, pod1}, // sset recreated
-				es: *withAnnotation(withAnnotation(es(),
-					"elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
-					"another-annotation-key", sset2JSON),
-			},
+			name:        "additional annotations are ignored",
+			runtimeObjs: []client.Object{sset1DifferentUID, pod1}, // sset recreated
+			es: *withAnnotation(withAnnotation(es(),
+				"elasticsearch.k8s.elastic.co/recreate-sset1", sset1JSON),
+				"another-annotation-key", sset2JSON),
 			// sset annotation removed, other annotation preserved
 			wantES:          *withAnnotation(es(), "another-annotation-key", sset2JSON),
 			wantSsets:       nil,
@@ -604,14 +591,14 @@ func Test_recreateStatefulSets(t *testing.T) {
 }
 
 var (
-	sampleEs = esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es", UID: "es-uid"}, TypeMeta: metav1.TypeMeta{Kind: esv1.Kind}}
-	sset1    = appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset1", UID: "sset1-uid"}}
-	pod1     = corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset1-0", Labels: map[string]string{
+	sampleEs = esv1.Elasticsearch{Namespace: "ns", Name: "es", UID: "es-uid", Kind: esv1.Kind}
+	sset1    = appsv1.StatefulSet{Namespace: "ns", Name: "sset1", UID: "sset1-uid"}
+	pod1     = corev1.Pod{Namespace: "ns", Name: "sset1-0", Labels: map[string]string{
 		label.StatefulSetNameLabelName: sset1.Name,
-	}}}
-	pod2 = corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset1-1", Labels: map[string]string{
+	}}
+	pod2 = corev1.Pod{Namespace: "ns", Name: "sset1-1", Labels: map[string]string{
 		label.StatefulSetNameLabelName: sset1.Name,
-	}}}
+	}}
 	pod1WithOwnerRef = *pod1.DeepCopy()
 	pod2WithOwnerRef = *pod2.DeepCopy()
 )

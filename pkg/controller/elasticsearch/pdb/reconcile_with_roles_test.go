@@ -20,7 +20,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -36,11 +35,9 @@ import (
 func TestReconcileRoleSpecificPDBs(t *testing.T) {
 	rolePDB := func(esName, namespace string, role esv1.NodeRole, statefulSetNames []string, maxUnavailable int32) *policyv1.PodDisruptionBudget {
 		pdb := &policyv1.PodDisruptionBudget{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      esv1.PodDisruptionBudgetNameForRole(esName, string(role)),
-				Namespace: namespace,
-				Labels:    map[string]string{label.ClusterNameLabelName: esName},
-			},
+			Name:      esv1.PodDisruptionBudgetNameForRole(esName, string(role)),
+			Namespace: namespace,
+			Labels:    map[string]string{label.ClusterNameLabelName: esName},
 			Spec: policyv1.PodDisruptionBudgetSpec{
 				MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: maxUnavailable},
 			},
@@ -70,7 +67,7 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 	}
 
 	defaultEs := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"},
+		Name: "cluster", Namespace: "ns",
 		Spec: esv1.ElasticsearchSpec{
 			Version: "9.0.1",
 		},
@@ -207,7 +204,7 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 			name: "PDB disabled in ES spec: should delete existing PDBs and not create new ones",
 			args: func() args {
 				es := esv1.Elasticsearch{
-					ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"},
+					Name: "cluster", Namespace: "ns",
 					Spec: esv1.ElasticsearchSpec{
 						PodDisruptionBudget: &commonv1.PodDisruptionBudgetTemplate{},
 					},
@@ -231,11 +228,9 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 				initObjs: []client.Object{
 					// Existing PDB with different configuration
 					&policyv1.PodDisruptionBudget{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      esv1.PodDisruptionBudgetNameForRole("cluster", string(esv1.MasterRole)),
-							Namespace: "ns",
-							Labels:    map[string]string{label.ClusterNameLabelName: "cluster"},
-						},
+						Name:      esv1.PodDisruptionBudgetNameForRole("cluster", string(esv1.MasterRole)),
+						Namespace: "ns",
+						Labels:    map[string]string{label.ClusterNameLabelName: "cluster"},
 						Spec: policyv1.PodDisruptionBudgetSpec{
 							MaxUnavailable: &intstr.IntOrString{Type: intstr.Int, IntVal: 2}, // Wrong value
 							Selector: &metav1.LabelSelector{
@@ -304,10 +299,8 @@ func TestReconcileRoleSpecificPDBs(t *testing.T) {
 
 func TestExpectedRolePDBs(t *testing.T) {
 	defaultUnhealthyES := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-es",
-			Namespace: "ns",
-		},
+		Name:      "test-es",
+		Namespace: "ns",
 		Spec: esv1.ElasticsearchSpec{
 			Version: "8.0.0",
 		},
@@ -358,23 +351,21 @@ func TestExpectedRolePDBs(t *testing.T) {
 			meta: defaultMeta.Merge(metadata.Metadata{Annotations: map[string]string{"custom": "annotation"}}),
 			expected: []*policyv1.PodDisruptionBudget{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-es-default-master",
-						Namespace: "ns",
-						Annotations: map[string]string{
-							"custom": "annotation",
-						},
-						Labels: map[string]string{
-							label.ClusterNameLabelName: "test-es",
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion:         "elasticsearch.k8s.elastic.co/v1",
-								Kind:               "Elasticsearch",
-								Name:               "test-es",
-								Controller:         ptr.To[bool](true),
-								BlockOwnerDeletion: ptr.To[bool](true),
-							},
+					Name:      "test-es-es-default-master",
+					Namespace: "ns",
+					Annotations: map[string]string{
+						"custom": "annotation",
+					},
+					Labels: map[string]string{
+						label.ClusterNameLabelName: "test-es",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "elasticsearch.k8s.elastic.co/v1",
+							Kind:               "Elasticsearch",
+							Name:               "test-es",
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						},
 					},
 					Spec: policyv1.PodDisruptionBudgetSpec{
@@ -407,24 +398,22 @@ func TestExpectedRolePDBs(t *testing.T) {
 			meta: defaultMeta.Merge(metadata.Metadata{Annotations: map[string]string{"custom": "annotation"}}),
 			expected: []*policyv1.PodDisruptionBudget{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-es-default-master",
-						Namespace: "ns",
-						Annotations: map[string]string{
-							"custom": "annotation",
-						},
-						Labels: map[string]string{
-							"mykey":                    "myvalue",
-							label.ClusterNameLabelName: "test-es",
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion:         "elasticsearch.k8s.elastic.co/v1",
-								Kind:               "Elasticsearch",
-								Name:               "test-es",
-								Controller:         ptr.To[bool](true),
-								BlockOwnerDeletion: ptr.To[bool](true),
-							},
+					Name:      "test-es-es-default-master",
+					Namespace: "ns",
+					Annotations: map[string]string{
+						"custom": "annotation",
+					},
+					Labels: map[string]string{
+						"mykey":                    "myvalue",
+						label.ClusterNameLabelName: "test-es",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "elasticsearch.k8s.elastic.co/v1",
+							Kind:               "Elasticsearch",
+							Name:               "test-es",
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						},
 					},
 					Spec: policyv1.PodDisruptionBudgetSpec{
@@ -457,20 +446,18 @@ func TestExpectedRolePDBs(t *testing.T) {
 			meta: defaultMeta,
 			expected: []*policyv1.PodDisruptionBudget{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-es-default-coordinating",
-						Namespace: "ns",
-						Labels: map[string]string{
-							label.ClusterNameLabelName: "test-es",
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion:         "elasticsearch.k8s.elastic.co/v1",
-								Kind:               "Elasticsearch",
-								Name:               "test-es",
-								Controller:         ptr.To[bool](true),
-								BlockOwnerDeletion: ptr.To[bool](true),
-							},
+					Name:      "test-es-es-default-coordinating",
+					Namespace: "ns",
+					Labels: map[string]string{
+						label.ClusterNameLabelName: "test-es",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "elasticsearch.k8s.elastic.co/v1",
+							Kind:               "Elasticsearch",
+							Name:               "test-es",
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						},
 					},
 					Spec: policyv1.PodDisruptionBudgetSpec{
@@ -505,20 +492,18 @@ func TestExpectedRolePDBs(t *testing.T) {
 			meta: defaultMeta,
 			expected: []*policyv1.PodDisruptionBudget{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-es-default-data",
-						Namespace: "ns",
-						Labels: map[string]string{
-							label.ClusterNameLabelName: "test-es",
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion:         "elasticsearch.k8s.elastic.co/v1",
-								Kind:               "Elasticsearch",
-								Name:               "test-es",
-								Controller:         ptr.To[bool](true),
-								BlockOwnerDeletion: ptr.To[bool](true),
-							},
+					Name:      "test-es-es-default-data",
+					Namespace: "ns",
+					Labels: map[string]string{
+						label.ClusterNameLabelName: "test-es",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "elasticsearch.k8s.elastic.co/v1",
+							Kind:               "Elasticsearch",
+							Name:               "test-es",
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						},
 					},
 					Spec: policyv1.PodDisruptionBudgetSpec{
@@ -540,20 +525,18 @@ func TestExpectedRolePDBs(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-es-default-master",
-						Namespace: "ns",
-						Labels: map[string]string{
-							label.ClusterNameLabelName: "test-es",
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion:         "elasticsearch.k8s.elastic.co/v1",
-								Kind:               "Elasticsearch",
-								Name:               "test-es",
-								Controller:         ptr.To[bool](true),
-								BlockOwnerDeletion: ptr.To[bool](true),
-							},
+					Name:      "test-es-es-default-master",
+					Namespace: "ns",
+					Labels: map[string]string{
+						label.ClusterNameLabelName: "test-es",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "elasticsearch.k8s.elastic.co/v1",
+							Kind:               "Elasticsearch",
+							Name:               "test-es",
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						},
 					},
 					Spec: policyv1.PodDisruptionBudgetSpec{
@@ -575,20 +558,18 @@ func TestExpectedRolePDBs(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-es-default-ingest",
-						Namespace: "ns",
-						Labels: map[string]string{
-							label.ClusterNameLabelName: "test-es",
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion:         "elasticsearch.k8s.elastic.co/v1",
-								Kind:               "Elasticsearch",
-								Name:               "test-es",
-								Controller:         ptr.To[bool](true),
-								BlockOwnerDeletion: ptr.To[bool](true),
-							},
+					Name:      "test-es-es-default-ingest",
+					Namespace: "ns",
+					Labels: map[string]string{
+						label.ClusterNameLabelName: "test-es",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "elasticsearch.k8s.elastic.co/v1",
+							Kind:               "Elasticsearch",
+							Name:               "test-es",
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						},
 					},
 					Spec: policyv1.PodDisruptionBudgetSpec{
@@ -621,20 +602,18 @@ func TestExpectedRolePDBs(t *testing.T) {
 			meta: defaultMeta,
 			expected: []*policyv1.PodDisruptionBudget{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-es-default-master",
-						Namespace: "ns",
-						Labels: map[string]string{
-							label.ClusterNameLabelName: "test-es",
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion:         "elasticsearch.k8s.elastic.co/v1",
-								Kind:               "Elasticsearch",
-								Name:               "test-es",
-								Controller:         ptr.To[bool](true),
-								BlockOwnerDeletion: ptr.To[bool](true),
-							},
+					Name:      "test-es-es-default-master",
+					Namespace: "ns",
+					Labels: map[string]string{
+						label.ClusterNameLabelName: "test-es",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "elasticsearch.k8s.elastic.co/v1",
+							Kind:               "Elasticsearch",
+							Name:               "test-es",
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						},
 					},
 					Spec: policyv1.PodDisruptionBudgetSpec{
@@ -669,20 +648,18 @@ func TestExpectedRolePDBs(t *testing.T) {
 			meta: defaultMeta,
 			expected: []*policyv1.PodDisruptionBudget{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-es-default-coordinating",
-						Namespace: "ns",
-						Labels: map[string]string{
-							label.ClusterNameLabelName: "test-es",
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion:         "elasticsearch.k8s.elastic.co/v1",
-								Kind:               "Elasticsearch",
-								Name:               "test-es",
-								Controller:         ptr.To[bool](true),
-								BlockOwnerDeletion: ptr.To[bool](true),
-							},
+					Name:      "test-es-es-default-coordinating",
+					Namespace: "ns",
+					Labels: map[string]string{
+						label.ClusterNameLabelName: "test-es",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "elasticsearch.k8s.elastic.co/v1",
+							Kind:               "Elasticsearch",
+							Name:               "test-es",
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						},
 					},
 					Spec: policyv1.PodDisruptionBudgetSpec{
@@ -717,20 +694,18 @@ func TestExpectedRolePDBs(t *testing.T) {
 			meta: defaultMeta,
 			expected: []*policyv1.PodDisruptionBudget{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-es-default-data",
-						Namespace: "ns",
-						Labels: map[string]string{
-							label.ClusterNameLabelName: "test-es",
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion:         "elasticsearch.k8s.elastic.co/v1",
-								Kind:               "Elasticsearch",
-								Name:               "test-es",
-								Controller:         ptr.To[bool](true),
-								BlockOwnerDeletion: ptr.To[bool](true),
-							},
+					Name:      "test-es-es-default-data",
+					Namespace: "ns",
+					Labels: map[string]string{
+						label.ClusterNameLabelName: "test-es",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "elasticsearch.k8s.elastic.co/v1",
+							Kind:               "Elasticsearch",
+							Name:               "test-es",
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						},
 					},
 					Spec: policyv1.PodDisruptionBudgetSpec{
@@ -752,20 +727,18 @@ func TestExpectedRolePDBs(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-es-default-ml",
-						Namespace: "ns",
-						Labels: map[string]string{
-							label.ClusterNameLabelName: "test-es",
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion:         "elasticsearch.k8s.elastic.co/v1",
-								Kind:               "Elasticsearch",
-								Name:               "test-es",
-								Controller:         ptr.To[bool](true),
-								BlockOwnerDeletion: ptr.To[bool](true),
-							},
+					Name:      "test-es-es-default-ml",
+					Namespace: "ns",
+					Labels: map[string]string{
+						label.ClusterNameLabelName: "test-es",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "elasticsearch.k8s.elastic.co/v1",
+							Kind:               "Elasticsearch",
+							Name:               "test-es",
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						},
 					},
 					Spec: policyv1.PodDisruptionBudgetSpec{
@@ -800,20 +773,18 @@ func TestExpectedRolePDBs(t *testing.T) {
 			meta: defaultMeta,
 			expected: []*policyv1.PodDisruptionBudget{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-es-default-coordinating",
-						Namespace: "ns",
-						Labels: map[string]string{
-							label.ClusterNameLabelName: "test-es",
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion:         "elasticsearch.k8s.elastic.co/v1",
-								Kind:               "Elasticsearch",
-								Name:               "test-es",
-								Controller:         ptr.To[bool](true),
-								BlockOwnerDeletion: ptr.To[bool](true),
-							},
+					Name:      "test-es-es-default-coordinating",
+					Namespace: "ns",
+					Labels: map[string]string{
+						label.ClusterNameLabelName: "test-es",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "elasticsearch.k8s.elastic.co/v1",
+							Kind:               "Elasticsearch",
+							Name:               "test-es",
+							Controller:         new(true),
+							BlockOwnerDeletion: new(true),
 						},
 					},
 					Spec: policyv1.PodDisruptionBudgetSpec{
@@ -1125,10 +1096,8 @@ func TestGetRolesFromStatefulSet(t *testing.T) {
 			args: args{
 				statefulSetName: "no-labels",
 				statefulSet: &appsv1.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "no-labels",
-						Namespace: "ns",
-					},
+					Name:      "no-labels",
+					Namespace: "ns",
 				},
 				version: "8.0.0",
 			},

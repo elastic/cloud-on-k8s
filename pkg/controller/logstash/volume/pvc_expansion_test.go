@@ -14,8 +14,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	logstashv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/logstash/v1alpha1"
@@ -24,20 +22,20 @@ import (
 )
 
 var (
-	sampleStorageClass = storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{
-		Name: "sample-sc"}}
+	sampleStorageClass = storagev1.StorageClass{
+		Name: "sample-sc"}
 
 	sampleClaim = corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: "sample-claim"},
+		Name: "sample-claim",
 		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: ptr.To[string](sampleStorageClass.Name),
+			StorageClassName: new(sampleStorageClass.Name),
 			Resources: corev1.VolumeResourceRequirements{Requests: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}}}}
 )
 
 func withVolumeExpansion(sc storagev1.StorageClass) *storagev1.StorageClass {
-	sc.AllowVolumeExpansion = ptr.To[bool](true)
+	sc.AllowVolumeExpansion = new(true)
 	return &sc
 }
 
@@ -49,26 +47,26 @@ func withStorageReq(claim corev1.PersistentVolumeClaim, size string) corev1.Pers
 
 func Test_handleVolumeExpansion(t *testing.T) {
 	sset := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sample-sset"},
+		Namespace: "ns", Name: "sample-sset",
 		Spec: appsv1.StatefulSetSpec{
-			Replicas:             ptr.To[int32](3),
+			Replicas:             new(int32(3)),
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{sampleClaim},
 		},
 	}
 	resizedSset := *sset.DeepCopy()
 	resizedSset.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage] = resource.MustParse("3Gi")
 	pvcsWithSize := func(size ...string) []corev1.PersistentVolumeClaim {
-		var pvcs []corev1.PersistentVolumeClaim
+		pvcs := make([]corev1.PersistentVolumeClaim, 0, len(size))
 		for i, s := range size {
 			pvcs = append(pvcs, withStorageReq(corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: fmt.Sprintf("sample-claim-sample-sset-%d", i)},
-				Spec:       sampleClaim.Spec,
+				Namespace: "ns", Name: fmt.Sprintf("sample-claim-sample-sset-%d", i),
+				Spec: sampleClaim.Spec,
 			}, s))
 		}
 		return pvcs
 	}
 	pvcPtrs := func(pvcs []corev1.PersistentVolumeClaim) []client.Object {
-		var ptrs []client.Object
+		ptrs := make([]client.Object, 0, len(pvcs))
 		for i := range pvcs {
 			ptrs = append(ptrs, &pvcs[i])
 		}
@@ -171,8 +169,8 @@ func Test_handleVolumeExpansion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ls := logstashv1alpha1.Logstash{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ls"},
-				TypeMeta:   metav1.TypeMeta{Kind: logstashv1alpha1.Kind}}
+				Namespace: "ns", Name: "ls",
+				Kind: logstashv1alpha1.Kind}
 			k8sClient := k8s.NewFakeClient(append(tt.runtimeObjs, &ls)...)
 			recreate, err := HandleVolumeExpansion(context.Background(), k8sClient, ls,
 				tt.args.expectedSset, tt.args.actualSset, tt.args.validateStorageClass)

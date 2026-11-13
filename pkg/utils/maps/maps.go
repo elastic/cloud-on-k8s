@@ -63,8 +63,8 @@ func MergePreservingExistingKeys(dest, src map[string]string) map[string]string 
 	return dest
 }
 
-// ContainsKeys determines if a set of label (keys) are present in a map of labels (keys and values).
-func ContainsKeys(m map[string]string, labels ...string) bool {
+// ContainsKeys determines if a set of keys are present in a map.
+func ContainsKeys[K comparable, V any](m map[K]V, labels ...K) bool {
 	for _, label := range labels {
 		if _, exists := m[label]; !exists {
 			return false

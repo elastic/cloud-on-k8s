@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -42,6 +41,10 @@ func certificatesDir(associationType commonv1.AssociationType) string {
 	return fmt.Sprintf("config/%s-certs", associationType)
 }
 
+func clientCertificatesDir(associationType commonv1.AssociationType) string {
+	return fmt.Sprintf("config/%s-client-certs", associationType)
+}
+
 func apmServerSecretTokenKeyFor(v version.Version) string {
 	if v.GTE(version.MinFor(8, 0, 0)) {
 		return APMServerSecretToken
@@ -65,11 +68,9 @@ func reconcileApmServerConfig(ctx context.Context, client k8s.Client, as *apmv1.
 
 	// reconcile the configuration in a secret
 	expectedConfigSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: as.Namespace,
-			Name:      Config(as.Name),
-			Labels:    as.GetIdentityLabels(),
-		},
+		Namespace: as.Namespace,
+		Name:      Config(as.Name),
+		Labels:    as.GetIdentityLabels(),
 		Data: map[string][]byte{
 			ApmCfgSecretKey: cfgBytes,
 		},
@@ -130,12 +131,18 @@ func newElasticsearchConfigFromSpec(ctx context.Context, c k8s.Client, esAssocia
 	}
 
 	tmpOutputCfg := map[string]any{
-		"output.elasticsearch.hosts":    []string{esAssocConf.GetURL()},
-		"output.elasticsearch.username": credentials.Username,
-		"output.elasticsearch.password": credentials.Password,
+		"output.elasticsearch.hosts": []string{esAssocConf.GetURL()},
+	}
+	if !esAssocConf.NoAuthRequired() {
+		tmpOutputCfg["output.elasticsearch.username"] = credentials.Username
+		tmpOutputCfg["output.elasticsearch.password"] = credentials.Password
 	}
 	if esAssocConf.GetCACertProvided() {
 		tmpOutputCfg["output.elasticsearch.ssl.certificate_authorities"] = []string{filepath.Join(certificatesDir(esAssociation.AssociationType()), certificates.CAFileName)}
+	}
+	if esAssocConf.ClientCertIsConfigured() {
+		tmpOutputCfg["output.elasticsearch.ssl.certificate"] = filepath.Join(clientCertificatesDir(esAssociation.AssociationType()), certificates.CertFileName)
+		tmpOutputCfg["output.elasticsearch.ssl.key"] = filepath.Join(clientCertificatesDir(esAssociation.AssociationType()), certificates.KeyFileName)
 	}
 
 	return settings.MustCanonicalConfig(tmpOutputCfg), nil

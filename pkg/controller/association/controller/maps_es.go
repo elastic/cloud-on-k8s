@@ -14,9 +14,9 @@ import (
 	emsv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/maps/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	eslabel "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/rbac"
 )
 
@@ -38,6 +38,7 @@ const (
 func AddMapsES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
 		AssociatedObjTemplate:     func() commonv1.Associated { return &emsv1alpha1.ElasticMapsServer{} },
+		AssociatedObjListTemplate: func() client.ObjectList { return &emsv1alpha1.ElasticMapsServerList{} },
 		ReferencedObjTemplate:     func() client.Object { return &esv1.Elasticsearch{} },
 		ReferencedResourceVersion: referencedElasticsearchStatusVersion,
 		ExternalServiceURL:        getElasticsearchExternalURL,
@@ -56,14 +57,27 @@ func AddMapsES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params o
 		AssociationResourceNameLabelName:      eslabel.ClusterNameLabelName,
 		AssociationResourceNamespaceLabelName: eslabel.ClusterNamespaceLabelName,
 
+		ElasticsearchRef: directElasticsearchRef,
 		ElasticsearchUserCreation: &association.ElasticsearchUserCreation{
-			ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
-				return true, association.AssociationRef(), nil
-			},
 			UserSecretSuffix: "maps-user",
 			ESUserRole: func(associated commonv1.Associated) (string, error) {
 				return MapsSystemUserBuiltinRole, nil
 			},
+			SupportsAuthentication: mapsSupportsAuthentication,
 		},
 	})
+}
+
+// mapsSupportsAuthentication reports whether Elastic Maps Server supports the given authentication mode towards
+// Elasticsearch. PKI requires an Elastic Maps Server version that can authenticate with a client certificate only.
+func mapsSupportsAuthentication(associated commonv1.Associated, mode commonv1.AuthenticationMode) bool {
+	if mode == commonv1.AuthenticationModeCredentials {
+		return true
+	}
+	ems, ok := associated.(*emsv1alpha1.ElasticMapsServer)
+	if !ok {
+		return false
+	}
+	v, err := version.Parse(ems.Spec.Version)
+	return err == nil && v.GTE(commonv1.PKIAuthMinVersion)
 }

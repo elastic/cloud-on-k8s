@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -19,7 +20,7 @@ import (
 	"go.elastic.co/apm/module/apmhttp/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	toolsevents "k8s.io/client-go/tools/events"
 
 	agentv1alpha1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/agent/v1alpha1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -28,6 +29,7 @@ import (
 	commonhttp "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/http"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
@@ -79,10 +81,32 @@ type fleetAPI struct {
 	username      string
 	password      string
 	kibanaVersion string
+	spacePrefix   string
 	log           logr.Logger
 }
 
-func newFleetAPI(dialer net.Dialer, settings connectionSettings, logger logr.Logger) fleetAPI {
+func newFleetAPI(
+	dialer net.Dialer,
+	agent agentv1alpha1.Agent,
+	settings connectionSettings,
+	logger logr.Logger,
+	eventRecorder toolsevents.EventRecorder,
+) fleetAPI {
+	spaceID := agent.Spec.SpaceID
+	spacePrefix := ""
+	nonDefaultSpace := spaceID != "" && spaceID != "default"
+	kibanaVersion, err := version.Parse(settings.version)
+	switch {
+	case err != nil:
+		logger.Error(err, "cannot parse Kibana version for Fleet API", "kibana_version", settings.version)
+	case nonDefaultSpace && kibanaVersion.GTE(v1.KibanaSpacesMinVersion):
+		spacePrefix = fmt.Sprintf("/s/%s", url.PathEscape(spaceID))
+	case nonDefaultSpace:
+		const message = "Kibana version does not support space-scoped Fleet APIs"
+		logger.Info(message, "space_id", spaceID, "kibana_version", settings.version)
+		k8s.EmitEvent(eventRecorder, &agent, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, message)
+	}
+
 	return fleetAPI{
 		client: apmhttp.WrapClient(
 			commonhttp.Client(dialer, settings.caCerts, 60*time.Second),
@@ -93,6 +117,7 @@ func newFleetAPI(dialer net.Dialer, settings connectionSettings, logger logr.Log
 		endpoint:      settings.host,
 		username:      settings.credentials.Username,
 		password:      settings.credentials.Password,
+		spacePrefix:   spacePrefix,
 		log:           logger,
 	}
 }
@@ -111,7 +136,7 @@ func (f fleetAPI) request(
 		body = bytes.NewBuffer(outData)
 	}
 
-	request, err := http.NewRequestWithContext(ctx, method, stringsutil.Concat(f.endpoint, "/api/fleet/", pathWithQuery), body)
+	request, err := http.NewRequestWithContext(ctx, method, stringsutil.Concat(f.endpoint, f.spacePrefix, "/api/fleet/", pathWithQuery), body)
 	if err != nil {
 		return err
 	}
@@ -233,7 +258,7 @@ func (f fleetAPI) setupFleet(ctx context.Context) error {
 }
 
 func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) EnrollmentAPIKey {
-	if !params.Agent.Spec.KibanaRef.IsDefined() {
+	if !params.Agent.Spec.KibanaRef.IsSet() {
 		return EnrollmentAPIKey{}
 	}
 
@@ -246,9 +271,9 @@ func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) En
 	}
 	if !reachable {
 		// we requeue if Kibana is unavailable: surface this condition to the user
-		message := "Delaying deployment of Elastic Agent in Fleet Mode as Kibana is not available yet"
+		const message = "Delaying deployment of Elastic Agent in Fleet Mode as Kibana is not available yet"
 		log.Info(message)
-		params.EventRecorder.Event(&params.Agent, corev1.EventTypeWarning, events.EventReasonDelayed, message)
+		k8s.EmitEvent(params.EventRecorder, &params.Agent, corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionAccessCheck, message)
 		result.WithRequeue()
 		return EnrollmentAPIKey{}
 	}
@@ -263,20 +288,23 @@ func maybeReconcileFleetEnrollment(params Params, result *reconciler.Results) En
 		params,
 		newFleetAPI(
 			params.OperatorParams.Dialer,
+			params.Agent,
 			kbConnectionSettings,
-			log),
+			log,
+			params.EventRecorder,
+		),
 	)
 	switch {
 	case commonhttp.IsUnauthorized(err):
-		message := "ECK cannot setup Fleet enrollment. Waiting for Kibana credentials. This should be a transient issue."
+		const message = "ECK cannot setup Fleet enrollment. Waiting for Kibana credentials. This should be a transient issue."
 		log.V(1).Info(err.Error())
 		log.Info(message)
-		params.EventRecorder.Event(&params.Agent, corev1.EventTypeWarning, events.EventReasonDelayed, message)
+		k8s.EmitEvent(params.EventRecorder, &params.Agent, corev1.EventTypeWarning, events.EventReasonDelayed, events.EventActionAssociationPreconditionCheck, message)
 		result.WithRequeue()
 	case commonhttp.IsNotFound(err):
 		message := fmt.Sprintf("ECK cannot setup Fleet enrollment. This is likely a mis-configuration. %s", err.Error())
 		log.Info(message)
-		params.EventRecorder.Event(&params.Agent, corev1.EventTypeWarning, events.EventReasonUnexpected, message)
+		k8s.EmitEvent(params.EventRecorder, &params.Agent, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionEnrollment, message)
 		result.WithRequeue()
 	case err != nil:
 		result.WithError(err)
@@ -342,23 +370,18 @@ FindOrCreate:
 		return EnrollmentAPIKey{}, err
 	}
 
-	// this potentially creates conflicts we could introduce reconciler state similar to the ES controller and handle it  on the top level
-	if agent.Annotations == nil {
-		agent.Annotations = map[string]string{}
-	}
-	agent.Annotations[FleetTokenAnnotation] = key.ID
-	err = params.Client.Update(ctx, &agent)
+	err = k8s.PatchAnnotations(ctx, params.Client, &agent, map[string]string{FleetTokenAnnotation: key.ID})
 	if err != nil {
 		return EnrollmentAPIKey{}, err
 	}
 	return key, nil
 }
 
-func findPolicyID(ctx context.Context, recorder record.EventRecorder, agent agentv1alpha1.Agent, api fleetAPI) (string, error) {
+func findPolicyID(ctx context.Context, recorder toolsevents.EventRecorder, agent agentv1alpha1.Agent, api fleetAPI) (string, error) {
 	if agent.Spec.PolicyID != "" {
 		return agent.Spec.PolicyID, nil
 	}
-	recorder.Event(&agent, corev1.EventTypeWarning, events.EventReasonValidation, agentv1alpha1.MissingPolicyIDMessage)
+	k8s.EmitEvent(recorder, &agent, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionPolicyRetrieval, agentv1alpha1.MissingPolicyIDMessage)
 	ulog.FromContext(ctx).Info(agentv1alpha1.MissingPolicyIDMessage)
 	if agent.Spec.FleetServerEnabled {
 		return api.defaultFleetServerPolicyID(ctx)

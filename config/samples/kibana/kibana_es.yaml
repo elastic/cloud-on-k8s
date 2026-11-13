@@ -4,10 +4,10 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: 9.3.0
+  version: 9.5.1
   nodeSets:
   - name: default
-    count: 1
+    count: 2
     config:
       # This setting could have performance implications for production clusters.
       # See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
@@ -18,7 +18,7 @@ kind: Kibana
 metadata:
   name: kibana-sample
 spec:
-  version: 9.3.0
+  version: 9.5.1
   count: 1
   elasticsearchRef:
     name: "elasticsearch-sample"
@@ -37,5 +37,5 @@ spec:
       - name: kibana
         resources:
           limits:
-            memory: 1Gi
+            memory: 2Gi
             cpu: 1

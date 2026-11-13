@@ -35,6 +35,8 @@ type Job struct {
 	// Job artefacts directory that contains files to download when the pod is ready
 	artefactsDir        string
 	artefactsDownloaded bool // keep track of download attempts
+	podName             string
+	podNamespace        string
 }
 
 func NewJob(podName, templatePath string, writer io.Writer, timestampExtractor timestampExtractor) *Job {
@@ -77,6 +79,8 @@ func (j *Job) WithArtefactsDir(d string) *Job {
 // received from the informer.
 func (j *Job) onPodEvent(client *kubernetes.Clientset, pod *corev1.Pod) {
 	if pod.Status.Phase == corev1.PodRunning && !j.jobStarted {
+		j.podName = pod.Name
+		j.podNamespace = pod.Namespace
 		j.jobStarted = true
 		j.runningWg.Done() // notify dependent that this job has started
 		log.Info("Pod started", "namespace", pod.Namespace, "name", pod.Name)

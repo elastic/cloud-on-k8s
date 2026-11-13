@@ -90,6 +90,7 @@ func reconcileKeystore(params Params, configHash hash.Hash) (*keystore.Resources
 		&params.Logstash,
 		logstashv1alpha1.Namer,
 		params.Meta,
+		params.OperatorParams.OperatorNamespace,
 		initContainersParameters,
 	); err != nil {
 		return nil, err

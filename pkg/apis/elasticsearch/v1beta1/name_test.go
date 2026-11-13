@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestValidate(t *testing.T) {
@@ -58,11 +57,9 @@ func TestValidate(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			es := &Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      tc.esName,
-					Namespace: "test",
-				},
-				Spec: ElasticsearchSpec{},
+				Name:      tc.esName,
+				Namespace: "test",
+				Spec:      ElasticsearchSpec{},
 			}
 
 			for _, nodeSpecName := range tc.nodeSpecNames {

@@ -19,6 +19,9 @@ var (
 
 	// CommonNameObjectIdentifier is the OID for a CommonName field in x509
 	CommonNameObjectIdentifier = asn1.ObjectIdentifier{2, 5, 4, 3}
+
+	// OrganizationalUnitIdentifier is the OID for an OrganizationalUnit field in x509
+	OrganizationalUnitIdentifier = asn1.ObjectIdentifier{2, 5, 4, 11}
 )
 
 /*

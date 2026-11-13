@@ -12,9 +12,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/volume"
@@ -24,10 +24,8 @@ import (
 // newPodWithIP creates a new Pod potentially labeled as master with a given podIP
 func newPodWithIP(name, ip string, master bool) corev1.Pod {
 	p := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   name,
-			Labels: make(map[string]string),
-		},
+		Name:   name,
+		Labels: make(map[string]string),
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{{}},
 		},
@@ -41,10 +39,8 @@ func newPodWithIP(name, ip string, master bool) corev1.Pod {
 
 func TestUpdateSeedHostsConfigMap(t *testing.T) {
 	es := esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es1",
-			Namespace: "ns1",
-		},
+		Name:      "es1",
+		Namespace: "ns1",
 	}
 	type args struct {
 		c    k8s.Client
@@ -166,6 +162,9 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 			}
 			assert.Equal(t, len(file.Data), 1)
 			assert.Equal(t, tt.expectedContent, file.Data[volume.UnicastHostsFile])
+			assert.Equal(t, map[string]string{
+				commonv1.RestrictWatchedResourcesLabelName: commonv1.RestrictWatchedResourcesLabelValue,
+			}, file.Labels)
 		})
 	}
 }

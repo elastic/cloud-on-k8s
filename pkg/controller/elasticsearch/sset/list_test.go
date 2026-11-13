@@ -107,28 +107,22 @@ func TestAtLeastOneESVersionMatch(t *testing.T) {
 func TestStatefulSetList_GetExistingPods(t *testing.T) {
 	// 2 pods that belong to the sset
 	pod1 := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "pod1",
-			Labels: map[string]string{
-				label.StatefulSetNameLabelName: ssetv7.Name,
-			},
+		Name: "pod1",
+		Labels: map[string]string{
+			label.StatefulSetNameLabelName: ssetv7.Name,
 		},
 	}
 	pod2 := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "pod2",
-			Labels: map[string]string{
-				label.StatefulSetNameLabelName: ssetv7.Name,
-			},
+		Name: "pod2",
+		Labels: map[string]string{
+			label.StatefulSetNameLabelName: ssetv7.Name,
 		},
 	}
 	// pod not belonging to the sset
 	podNotInSset := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "pod-not-in-sset",
-			Labels: map[string]string{
-				label.StatefulSetNameLabelName: "different-sset",
-			},
+		Name: "pod-not-in-sset",
+		Labels: map[string]string{
+			label.StatefulSetNameLabelName: "different-sset",
 		},
 	}
 	client := k8s.NewFakeClient(&pod1, &pod2, &podNotInSset)
@@ -217,7 +211,7 @@ func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
 
 func TestStatefulSetList_GetByName(t *testing.T) {
 	sset := func(name string) appsv1.StatefulSet {
-		return appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: name}}
+		return appsv1.StatefulSet{Name: name}
 	}
 	tests := []struct {
 		name       string
@@ -261,16 +255,16 @@ func TestStatefulSetList_GetByName(t *testing.T) {
 
 func TestStatefulSetList_ToUpdate(t *testing.T) {
 	toUpdate1 := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{Name: "toUpdate1"},
-		Status:     appsv1.StatefulSetStatus{UpdatedReplicas: 1, Replicas: 2},
+		Name:   "toUpdate1",
+		Status: appsv1.StatefulSetStatus{UpdatedReplicas: 1, Replicas: 2},
 	}
 	toUpdate2 := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{Name: "toUpdate2"},
-		Status:     appsv1.StatefulSetStatus{UpdatedReplicas: 1, Replicas: 2},
+		Name:   "toUpdate2",
+		Status: appsv1.StatefulSetStatus{UpdatedReplicas: 1, Replicas: 2},
 	}
 	updateMatchCurrent := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{Name: "updateMatchCurrent"},
-		Status:     appsv1.StatefulSetStatus{UpdatedReplicas: 1, Replicas: 1},
+		Name:   "updateMatchCurrent",
+		Status: appsv1.StatefulSetStatus{UpdatedReplicas: 1, Replicas: 1},
 	}
 	tests := []struct {
 		name string
@@ -341,17 +335,13 @@ func TestStatefulSetList_StatusReconciliationDone(t *testing.T) {
 			name: "status.observedGeneration == metadata.generation",
 			l: StatefulSetList{
 				appsv1.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Generation: 1,
-					},
+					Generation: 1,
 					Status: appsv1.StatefulSetStatus{
 						ObservedGeneration: 1,
 					},
 				},
 				appsv1.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Generation: 3,
-					},
+					Generation: 3,
 					Status: appsv1.StatefulSetStatus{
 						ObservedGeneration: 3,
 					},
@@ -363,17 +353,13 @@ func TestStatefulSetList_StatusReconciliationDone(t *testing.T) {
 			name: "status.observedGeneration != metadata.generation",
 			l: StatefulSetList{
 				appsv1.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Generation: 1,
-					},
+					Generation: 1,
 					Status: appsv1.StatefulSetStatus{
 						ObservedGeneration: 1,
 					},
 				},
 				appsv1.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Generation: 3,
-					},
+					Generation: 3,
 					Status: appsv1.StatefulSetStatus{
 						ObservedGeneration: 2, // lagging behind
 					},
@@ -385,18 +371,14 @@ func TestStatefulSetList_StatusReconciliationDone(t *testing.T) {
 			name: "status.observedGeneration not set yet",
 			l: StatefulSetList{
 				appsv1.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Generation: 1,
-					},
+					Generation: 1,
 					Status: appsv1.StatefulSetStatus{
 						ObservedGeneration: 1,
 					},
 				},
 				appsv1.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Generation: 3,
-					},
-					Status: appsv1.StatefulSetStatus{}, // empty status
+					Generation: 3,
+					Status:     appsv1.StatefulSetStatus{}, // empty status
 				},
 			},
 			want: false,

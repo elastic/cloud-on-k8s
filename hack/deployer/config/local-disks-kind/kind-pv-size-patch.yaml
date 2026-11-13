@@ -1,0 +1,20 @@
+# Kind: 4x5 GiB loop-backed PVs so each ES Pod sees individual volume capacity via df,
+# preventing multiple pods from all trying to allocate 90% of the shared host disk for cache.
+# PV_SIZE_GB=5: backing files are sparse but grow as ES writes (cache, indices). All PVs
+# share the Docker Desktop VM disk, so keep them small to avoid saturation (12 × 5 GiB max).
+# Keep PV_COUNT low: Kind nodes are containers on a single kernel, sharing one loop device
+# pool (see losetup_attach in ssd-provisioner.yaml). 4 PVs × 3 nodes = 12 loop devices.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: local-volume-provisioner
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: disk-mounts
+          env:
+            - name: PV_SIZE_GB
+              value: "5"
+            - name: PV_COUNT
+              value: "4"

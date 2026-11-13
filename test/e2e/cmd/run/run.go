@@ -14,12 +14,13 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"text/template"
 	"time"
 
-	sprig "github.com/Masterminds/sprig/v3"
+	"github.com/Masterminds/sprig/v3"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -165,29 +166,31 @@ func (h *helper) initTestContext() error {
 			ManagedNamespaces: make([]string, len(h.managedNamespaces)),
 			Replicas:          h.operatorReplicas,
 		},
-		OperatorImage:         h.operatorImage,
-		OperatorImageRepo:     imageParts[0],
-		OperatorImageTag:      imageParts[1],
-		TestLicense:           h.testLicense,
-		TestLicensePKeyPath:   h.testLicensePKeyPath,
-		MonitoringSecrets:     h.monitoringSecrets,
-		TestRegex:             h.testRegex,
-		TestRun:               h.testRunName,
-		TestTimeout:           h.testTimeout,
-		Pipeline:              h.pipeline,
-		BuildNumber:           h.buildNumber,
-		Provider:              h.provider,
-		ClusterName:           h.clusterName,
-		KubernetesVersion:     getKubernetesVersion(h),
-		IgnoreWebhookFailures: h.ignoreWebhookFailures,
-		OcpCluster:            isOcpCluster(h),
-		AksCluster:            isAKSCluster(h),
-		DeployChaosJob:        h.deployChaosJob,
-		TestEnvTags:           h.testEnvTags,
-		E2ETags:               h.e2eTags,
-		LogToFile:             h.logToFile,
-		AutopilotCluster:      isAutopilotCluster(h),
-		ArtefactsDir:          artefactsDir,
+		OperatorImage:            h.operatorImage,
+		OperatorImageRepo:        imageParts[0],
+		OperatorImageTag:         imageParts[1],
+		TestLicense:              h.testLicense,
+		TestLicensePKeyPath:      h.testLicensePKeyPath,
+		MonitoringSecrets:        h.monitoringSecrets,
+		TestRegex:                h.testRegex,
+		TestRun:                  h.testRunName,
+		TestTimeout:              h.testTimeout,
+		Pipeline:                 h.pipeline,
+		BuildNumber:              h.buildNumber,
+		Provider:                 h.provider,
+		ClusterName:              h.clusterName,
+		KubernetesVersion:        getKubernetesVersion(h),
+		IgnoreWebhookFailures:    h.ignoreWebhookFailures,
+		OcpCluster:               isOcpCluster(h),
+		AksCluster:               isAKSCluster(h),
+		DeployChaosJob:           h.deployChaosJob,
+		TestEnvTags:              h.testEnvTags,
+		E2ETags:                  h.e2eTags,
+		LogToFile:                h.logToFile,
+		AutopilotCluster:         isAutopilotCluster(h),
+		ArtefactsDir:             artefactsDir,
+		RestrictWatchedResources: h.restrictWatchedResources,
+		ContainerSuffix:          h.containerSuffix,
 	}
 
 	for i, ns := range h.managedNamespaces {
@@ -379,7 +382,8 @@ func (h *helper) renderManifestFromHelm(valuesFile, namespace string, installCRD
 		return fmt.Errorf("failed to generate Helm values from %s: %w", valuesFile, err)
 	}
 
-	cmd := command.New("hack/manifest-gen/manifest-gen.sh",
+	cmd := command.New(
+		"hack/manifest-gen/manifest-gen.sh",
 		"-g",
 		"-n", namespace,
 		fmt.Sprintf("--set=global.kubeVersion=%s", h.testContext.KubernetesVersion),
@@ -392,7 +396,7 @@ func (h *helper) renderManifestFromHelm(valuesFile, namespace string, installCRD
 		return fmt.Errorf("failed to generate manifest %s: %w", manifestFile, err)
 	}
 
-	if err := os.WriteFile(manifestFile, manifestBytes, 0600); err != nil {
+	if err := os.WriteFile(manifestFile, manifestBytes, 0o600); err != nil {
 		return fmt.Errorf("failed to write manifest %s: %w", manifestFile, err)
 	}
 
@@ -469,7 +473,8 @@ func (h *helper) deployMonitoring() error {
 
 func (h *helper) deployTestSecrets() error {
 	log.Info("Deploying e2e test secret")
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/secrets.yaml",
+	return h.kubectlApplyTemplateWithCleanup(
+		"config/e2e/secrets.yaml",
 		struct {
 			Secrets         map[string]string
 			OperatorSecrets map[string]string
@@ -483,8 +488,8 @@ func (h *helper) deployTestSecrets() error {
 }
 
 func (h *helper) runTestsLocally() error {
-	log.Info("Running local test script", "timeout", h.testTimeout.String())
-	ctx, cancelFunc := context.WithTimeout(context.Background(), h.testTimeout)
+	log.Info("Running local test script. Ctrl+C to cancel")
+	ctx, cancelFunc := context.WithCancel(context.Background())
 
 	cmd := exec.Command("test/e2e/run.sh", "-run", os.Getenv("TESTS_MATCH"), "-args", "-testContextPath", h.testContextOutPath) //nolint:gosec,noctx
 	cmd.Stderr = os.Stderr
@@ -650,40 +655,54 @@ func streamTestJobOutput(
 				streamErrors <- err
 				continue // retry
 			}
-			defer stream.Close()
 
-			pastPreviousLogStream := false
-			scan := bufio.NewScanner(stream)
-			for scan.Scan() {
-				line := scan.Bytes()
+			// Process this stream - must close before retry to avoid leaking file descriptors.
+			lastTimestamp = processLogStream(stream, timestampExtractor, writer, streamErrors, lastTimestamp)
+			stream.Close()
+			log.Info("Log stream ended", "pod_name", streamProvider)
 
-				timestamp, err := timestampExtractor(line)
-				if err != nil {
-					streamErrors <- err
-					continue
-				}
-
-				// don't re-write logs that have been already written in a previous log stream attempt
-				if !pastPreviousLogStream && !timestamp.After(lastTimestamp) {
-					continue
-				}
-
-				// new log to process
-				pastPreviousLogStream = true
-				lastTimestamp = timestamp
-				if _, err := writer.Write([]byte(string(line) + "\n")); err != nil {
-					streamErrors <- err
-					return
-				}
-			}
-			if err := scan.Err(); err != nil {
-				log.Error(err, "Log stream ended", "pod_name", streamProvider)
-			} else {
-				log.Info("Log stream ended", "pod_name", streamProvider)
-			}
 			// retry
 		}
 	}
+}
+
+// processLogStream reads logs from a stream and writes them to the writer.
+// Returns the timestamp of the last processed log entry.
+func processLogStream(
+	stream io.ReadCloser,
+	timestampExtractor timestampExtractor,
+	writer io.Writer,
+	streamErrors chan<- error,
+	lastTimestamp time.Time,
+) time.Time {
+	pastPreviousLogStream := false
+	scan := bufio.NewScanner(stream)
+	for scan.Scan() {
+		line := scan.Bytes()
+
+		timestamp, err := timestampExtractor(line)
+		if err != nil {
+			streamErrors <- err
+			continue
+		}
+
+		// don't re-write logs that have been already written in a previous log stream attempt
+		if !pastPreviousLogStream && !timestamp.After(lastTimestamp) {
+			continue
+		}
+
+		// new log to process
+		pastPreviousLogStream = true
+		lastTimestamp = timestamp
+		if _, err := writer.Write([]byte(string(line) + "\n")); err != nil {
+			streamErrors <- err
+			return lastTimestamp
+		}
+	}
+	if err := scan.Err(); err != nil {
+		log.Error(err, "Log stream scan error")
+	}
+	return lastTimestamp
 }
 
 type GoLangJSONLogLine struct {
@@ -744,8 +763,16 @@ func (h *helper) kubectl(command string, args ...string) (string, string, error)
 	return h.exec(h.kubectlWrapper.Command(command, args...))
 }
 
+func (h *helper) kubectlWithTimeout(timeout time.Duration, command string, args ...string) (string, string, error) {
+	return h.execWithTimeout(timeout, h.kubectlWrapper.Command(command, args...))
+}
+
 func (h *helper) exec(cmd *command.Command) (string, string, error) {
-	ctx, cancelFunc := context.WithTimeout(context.Background(), h.commandTimeout)
+	return h.execWithTimeout(h.commandTimeout, cmd)
+}
+
+func (h *helper) execWithTimeout(timeout time.Duration, cmd *command.Command) (string, string, error) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	defer cancelFunc()
 
 	log.V(1).Info("Executing command", "command", cmd)
@@ -809,8 +836,7 @@ func (h *helper) runCleanup() {
 	}
 
 	// run the cleanup functions in the reverse order they were added
-	for i := len(h.cleanupFuncs) - 1; i >= 0; i-- {
-		cf := h.cleanupFuncs[i]
+	for _, cf := range slices.Backward(h.cleanupFuncs) {
 		cf()
 	}
 }
@@ -833,7 +859,7 @@ func (h *helper) runECKDiagnostics() {
 	operatorNS := h.testContext.Operator.Namespace
 	// include the default namespace to have diagnostics on the local disk provisioner used in some environments
 	otherNS := append([]string{h.testContext.E2ENamespace, "default"}, h.testContext.Operator.ManagedNamespaces...)
-	cmd := exec.Command("eck-diagnostics", "-o", operatorNS, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics") //nolint:noctx
+	cmd := exec.Command("eck-diagnostics", "-o", operatorNS, "-r", strings.Join(otherNS, ","), "--run-agent-diagnostics", "--keep-secret-data") //nolint:noctx
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {

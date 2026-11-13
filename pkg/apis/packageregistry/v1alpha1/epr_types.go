@@ -14,7 +14,7 @@ import (
 
 const (
 	EPRContainerName = "package-registry"
-	// Kind is inferred from the struct name using reflection in SchemeBuilder.Register()
+	// Kind is inferred from the struct name using reflection in scheme.AddKnownTypes()
 	// we duplicate it as a constant here for practical purposes.
 	Kind = "PackageRegistry"
 )
@@ -45,7 +45,13 @@ type PackageRegistrySpec struct {
 	// HTTP holds the HTTP layer configuration for Elastic Package Registry.
 	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
 
-	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Package Registry pods
+	// Resources provides a shorthand to set CPU and Memory resources on the Elastic Package Registry container.
+	// When set, these values override any CPU or memory resource settings specified in the PodTemplate for the
+	// primary Elastic Package Registry container. To set resources on other containers, use the PodTemplate.
+	// +kubebuilder:validation:Optional
+	Resources commonv1.Resources `json:"resources,omitzero"`
+
+	// PodTemplate provides customization options (labels, annotations, affinity rules, resource requests, and so on) for the Elastic Package Registry pods
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
@@ -94,6 +100,16 @@ func (m *PackageRegistry) GetObservedGeneration() int64 {
 	return m.Status.ObservedGeneration
 }
 
+// MergeConditions provides a nil-safe way to merge the PackageRegistryStatus's Conditions with the new Condition(s).
+func (m *PackageRegistry) MergeConditions(conditions ...commonv1.Condition) {
+	m.Status.Conditions = m.Status.Conditions.MergeWith(conditions...)
+}
+
+// Conditions returns this PackageRegistry's PackageRegistry Conditions.
+func (m *PackageRegistry) Conditions() commonv1.Conditions {
+	return m.Status.Conditions
+}
+
 // +kubebuilder:object:root=true
 
 // PackageRegistryList contains a list of PackageRegistry
@@ -101,8 +117,4 @@ type PackageRegistryList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []PackageRegistry `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&PackageRegistry{}, &PackageRegistryList{})
 }

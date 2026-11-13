@@ -19,7 +19,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
@@ -282,10 +281,8 @@ func Test_validCustomCertificatesOrNil_WithCustomCA(t *testing.T) {
 		pemKey, err := EncodePEMPrivateKey(ca.PrivateKey)
 		require.NoError(t, err)
 		return &v1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: owner.Namespace,
-				Name:      secretName,
-			},
+			Namespace: owner.Namespace,
+			Name:      secretName,
 			Data: map[string][]byte{
 				CAFileName:    EncodePEMCert(ca.Cert.Raw),
 				CAKeyFileName: pemKey,

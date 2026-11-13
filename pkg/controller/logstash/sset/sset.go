@@ -36,12 +36,10 @@ type Params struct {
 
 func New(params Params) appsv1.StatefulSet {
 	sset := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        params.Name,
-			Namespace:   params.Namespace,
-			Labels:      params.Meta.Labels,
-			Annotations: params.Meta.Annotations,
-		},
+		Name:        params.Name,
+		Namespace:   params.Namespace,
+		Labels:      params.Meta.Labels,
+		Annotations: params.Meta.Annotations,
 		Spec: appsv1.StatefulSetSpec{
 			UpdateStrategy: params.UpdateStrategy,
 			// we don't care much about pods creation ordering, and manage deletion ordering ourselves,

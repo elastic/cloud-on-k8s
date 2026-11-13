@@ -34,13 +34,11 @@ import (
 
 func defaultPDB() *policyv1.PodDisruptionBudget {
 	return &policyv1.PodDisruptionBudget{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      esv1.DefaultPodDisruptionBudget("cluster"),
-			Namespace: "ns",
-			Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
-		},
+		Name:      esv1.DefaultPodDisruptionBudget("cluster"),
+		Namespace: "ns",
+		Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
 		Spec: policyv1.PodDisruptionBudgetSpec{
-			MinAvailable: intStrPtr(intstr.FromInt(3)),
+			MinAvailable: new(intstr.FromInt(3)),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					label.ClusterNameLabelName: "cluster",
@@ -52,7 +50,7 @@ func defaultPDB() *policyv1.PodDisruptionBudget {
 }
 
 func TestReconcile(t *testing.T) {
-	defaultEs := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"}, Spec: esv1.ElasticsearchSpec{Version: "9.0.1"}}
+	defaultEs := esv1.Elasticsearch{Name: "cluster", Namespace: "ns", Spec: esv1.ElasticsearchSpec{Version: "9.0.1"}}
 	type args struct {
 		initObjs []client.Object
 		es       esv1.Elasticsearch
@@ -97,13 +95,11 @@ func TestReconcile(t *testing.T) {
 					WithNodeSet("master-data", 5, esv1.MasterRole, esv1.DataRole),
 			},
 			wantPDB: &policyv1.PodDisruptionBudget{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      esv1.DefaultPodDisruptionBudget("cluster"),
-					Namespace: "ns",
-					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
-				},
+				Name:      esv1.DefaultPodDisruptionBudget("cluster"),
+				Namespace: "ns",
+				Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
 				Spec: policyv1.PodDisruptionBudgetSpec{
-					MinAvailable: intStrPtr(intstr.FromInt(5)),
+					MinAvailable: new(intstr.FromInt(5)),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							label.ClusterNameLabelName: "cluster",
@@ -177,10 +173,6 @@ func withOwnerRef(pdb *policyv1.PodDisruptionBudget, es esv1.Elasticsearch) *pol
 	return pdb
 }
 
-func intStrPtr(intStr intstr.IntOrString) *intstr.IntOrString {
-	return &intStr
-}
-
 func Test_expectedPDB(t *testing.T) {
 	type args struct {
 		es      esv1.Elasticsearch
@@ -212,13 +204,11 @@ func Test_expectedPDB(t *testing.T) {
 					WithNodeSet("master-data", 3, esv1.MasterRole, esv1.DataRole),
 			},
 			want: &policyv1.PodDisruptionBudget{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      esv1.DefaultPodDisruptionBudget("cluster"),
-					Namespace: "ns",
-					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
-				},
+				Name:      esv1.DefaultPodDisruptionBudget("cluster"),
+				Namespace: "ns",
+				Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
 				Spec: policyv1.PodDisruptionBudgetSpec{
-					MinAvailable: intStrPtr(intstr.FromInt(3)),
+					MinAvailable: new(intstr.FromInt(3)),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							label.ClusterNameLabelName: "cluster",
@@ -246,13 +236,11 @@ func Test_expectedPDB(t *testing.T) {
 					WithNodeSet("master-data", 3, esv1.MasterRole, esv1.DataRole),
 			},
 			want: &policyv1.PodDisruptionBudget{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      esv1.DefaultPodDisruptionBudget("cluster"),
-					Namespace: "ns",
-					Labels:    map[string]string{"a": "b", "c": "d", label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
-				},
+				Name:      esv1.DefaultPodDisruptionBudget("cluster"),
+				Namespace: "ns",
+				Labels:    map[string]string{"a": "b", "c": "d", label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
 				Spec: policyv1.PodDisruptionBudgetSpec{
-					MinAvailable: intStrPtr(intstr.FromInt(3)),
+					MinAvailable: new(intstr.FromInt(3)),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							label.ClusterNameLabelName: "cluster",
@@ -269,7 +257,7 @@ func Test_expectedPDB(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"},
 					Spec: esv1.ElasticsearchSpec{
 						PodDisruptionBudget: &commonv1.PodDisruptionBudgetTemplate{
-							Spec: policyv1.PodDisruptionBudgetSpec{MinAvailable: intStrPtr(intstr.FromInt(42))}},
+							Spec: policyv1.PodDisruptionBudgetSpec{MinAvailable: new(intstr.FromInt(42))}},
 					},
 				},
 				builder: NewBuilder("cluster").
@@ -278,13 +266,11 @@ func Test_expectedPDB(t *testing.T) {
 					WithNodeSet("master-data", 3, esv1.MasterRole, esv1.DataRole),
 			},
 			want: &policyv1.PodDisruptionBudget{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      esv1.DefaultPodDisruptionBudget("cluster"),
-					Namespace: "ns",
-					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
-				},
+				Name:      esv1.DefaultPodDisruptionBudget("cluster"),
+				Namespace: "ns",
+				Labels:    map[string]string{label.ClusterNameLabelName: "cluster", commonv1.TypeLabelName: label.Type},
 				Spec: policyv1.PodDisruptionBudgetSpec{
-					MinAvailable: intStrPtr(intstr.FromInt(42)),
+					MinAvailable: new(intstr.FromInt(42)),
 				},
 			},
 		},

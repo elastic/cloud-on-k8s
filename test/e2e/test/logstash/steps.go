@@ -7,6 +7,7 @@ package logstash
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -89,6 +90,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		CheckServices(b, k),
 		CheckServicesEndpoints(b, k),
 		checks.CheckPods(b, k),
+		test.CheckFieldsNotOwnedByOperator(&b.Logstash, k, nil),
 	}
 }
 
@@ -101,6 +103,10 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				if err := k.Client.Get(context.Background(), k8s.ExtractNamespacedName(&b.Logstash), &logstash); err != nil {
 					return err
 				}
+				if logstash.Annotations == nil {
+					logstash.Annotations = make(map[string]string)
+				}
+				maps.Copy(logstash.Annotations, b.Logstash.Annotations)
 				logstash.Spec = b.Logstash.Spec
 				return k.Client.Update(context.Background(), &logstash)
 			}),

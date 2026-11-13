@@ -59,10 +59,6 @@ func TestFromLabels(t *testing.T) {
 	}
 }
 
-func ptr(v Version) *Version {
-	return &v
-}
-
 func TestMinInPods(t *testing.T) {
 	type args struct {
 		pods      []corev1.Pod
@@ -78,34 +74,34 @@ func TestMinInPods(t *testing.T) {
 			name: "returns the min version of the list",
 			args: args{
 				pods: []corev1.Pod{
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.1"}}},
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.0"}}},
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.0"}}},
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.1"}}},
+					{Labels: map[string]string{"version-label": "7.7.1"}},
+					{Labels: map[string]string{"version-label": "7.7.0"}},
+					{Labels: map[string]string{"version-label": "7.7.0"}},
+					{Labels: map[string]string{"version-label": "7.7.1"}},
 				},
 				labelName: "version-label",
 			},
-			want:    ptr(semver.MustParse("7.7.0")),
+			want:    new(semver.MustParse("7.7.0")),
 			wantErr: false,
 		},
 		{
 			name: "all Pods run the same version",
 			args: args{
 				pods: []corev1.Pod{
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.1"}}},
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.1"}}},
+					{Labels: map[string]string{"version-label": "7.7.1"}},
+					{Labels: map[string]string{"version-label": "7.7.1"}},
 				},
 				labelName: "version-label",
 			},
-			want:    ptr(semver.MustParse("7.7.1")),
+			want:    new(semver.MustParse("7.7.1")),
 			wantErr: false,
 		},
 		{
 			name: "invalid version: error out",
 			args: args{
 				pods: []corev1.Pod{
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "invalid"}}},
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.1"}}},
+					{Labels: map[string]string{"version-label": "invalid"}},
+					{Labels: map[string]string{"version-label": "7.7.1"}},
 				},
 				labelName: "version-label",
 			},
@@ -115,8 +111,8 @@ func TestMinInPods(t *testing.T) {
 			name: "no value for the version label: error out",
 			args: args{
 				pods: []corev1.Pod{
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"version-label": "7.7.1"}}},
-					{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"another-label": "7.7.1"}}},
+					{Labels: map[string]string{"version-label": "7.7.1"}},
+					{Labels: map[string]string{"another-label": "7.7.1"}},
 				},
 				labelName: "another-label",
 			},
@@ -171,7 +167,7 @@ func TestMinInStatefulSets(t *testing.T) {
 				},
 				labelName: "version-label",
 			},
-			want:    ptr(semver.MustParse("7.7.0")),
+			want:    new(semver.MustParse("7.7.0")),
 			wantErr: false,
 		},
 		{
@@ -183,7 +179,7 @@ func TestMinInStatefulSets(t *testing.T) {
 				},
 				labelName: "version-label",
 			},
-			want:    ptr(semver.MustParse("7.7.1")),
+			want:    new(semver.MustParse("7.7.1")),
 			wantErr: false,
 		},
 		{
@@ -320,7 +316,7 @@ func TestMinFrom(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			gotVer := MinFor(tt.major, tt.minor, tt.patch)
-			require.True(t, gotVer.LT(From(int(tt.major), int(tt.minor), int(tt.patch))))
+			require.True(t, gotVer.LT(From(tt.major, tt.minor, tt.patch)))
 			require.True(t, gotVer.EQ(MustParse(fmt.Sprintf("%d.%d.%d-1", tt.major, tt.minor, tt.patch))))
 		})
 	}

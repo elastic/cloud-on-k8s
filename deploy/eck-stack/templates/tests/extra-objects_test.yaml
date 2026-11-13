@@ -58,3 +58,47 @@ tests:
         equal:
           path: metadata.name
           value: test-secret-1
+  - it: should render extra object when provided as a map
+    set:
+      extraObjects:
+        myConfigMap: |
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: test-extra-cm
+          data:
+            key: value
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: test-extra-cm
+  - it: should render multiple extra objects when provided as a map
+    set:
+      extraObjects:
+        myConfigMap: |
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: test-cm-map
+          data:
+            key: value1
+        mySecret: |
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: test-secret-map
+          stringData:
+            key: value2
+    asserts:
+      - hasDocuments:
+          count: 2
+  - it: should fail with descriptive error when extraObjects is not a list or map
+    set:
+      extraObjects: "invalid"
+    asserts:
+      - failedTemplate:
+          errorMessage: "extraObjects must be a list or map, got: string"
