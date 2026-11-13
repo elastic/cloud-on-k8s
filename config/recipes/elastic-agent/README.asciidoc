@@ -48,7 +48,7 @@ Starting with Elastic Agent 8.16.0, Elastic Agent changes the ownership of its s
 
 If the Agent state uses an `emptyDir` volume instead of a hostPath, Elastic Agent can run as non-root with privilege escalation disabled and all capabilities dropped.
 
-NOTE: On OpenShift, the Fleet examples need additional changes, as root and as non-root. The Agent DaemonSet uses `hostNetwork` and a hostPath volume, which only the `privileged` SCC allows. The hostPath state directories also need an SELinux change, for example `seLinuxOptions.type: spc_t` on the `agent` container, or the `chcon` command in the init container of `fleet-kubernetes-integration-nonroot.yaml`.
+NOTE: On OpenShift, the Fleet examples need additional changes, as root and as non-root. The Agent DaemonSet uses `hostNetwork` and a hostPath volume, so its service account needs an SCC that sets `allowHostNetwork` and `allowHostDirVolumePlugin`, for example `privileged` or a custom SCC. As root, the SCC must also allow user 0. As non-root, it must set `allowPrivilegeEscalation` and list in `allowedCapabilities` any capability that the `agent` container adds. The hostPath state directories also need an SELinux change, for example `seLinuxOptions.type: spc_t` on the `agent` container, which the SCC must allow, or the `chcon` command in the init container of `fleet-kubernetes-integration-nonroot.yaml`.
 
 ===== Custom logs integration with autodiscover - `fleet-custom-logs-integration.yaml`
 
