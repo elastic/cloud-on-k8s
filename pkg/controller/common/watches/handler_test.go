@@ -99,12 +99,11 @@ func TestNewDynamicWatches_HandlerKinds(t *testing.T) {
 
 func TestDynamicEnqueueRequest_DynamicWatchesMetric(t *testing.T) {
 	const kind = secretsHandlerKind
-	const testCtrName = "testCtr"
-	// Other tests may register handlers of this kind; assert relative to the baseline.
-	baseline := dynamicWatchesValue(testCtrName, kind)
-	
-	d := NewDynamicEnqueueRequest[*corev1.Secret]("testCtr")
-	_ = baseline // baseline checked at start
+	// Use a dedicated controller name so the (controller, handler) series starts at 0
+	// and does not interfere with other tests.
+	const testCtrName = "dynamic-watches-metric-test"
+
+	d := NewDynamicEnqueueRequest[*corev1.Secret](testCtrName)
 
 	steps := []struct {
 		name             string
