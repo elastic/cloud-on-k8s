@@ -51,7 +51,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		Namer,
 		meta,
 		r.OperatorNamespace,
-		initContainerParameters,
+		keystoreInitContainerParameters(version),
 	)
 	if err != nil {
 		return state, err

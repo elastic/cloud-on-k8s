@@ -27,6 +27,10 @@ type InitContainerParameters struct {
 	KeystoreCreateCommand string
 	// CustomScript is the bash script to override the default Keystore script
 	CustomScript string
+	// Command when set is run as the init container command instead of the keystore bash script.
+	// It takes precedence over CustomScript, and KeystoreCreateCommand, KeystoreAddCommand, SkipInitializedFlag and
+	// KeystorePasswordPath are ignored.
+	Command []string
 	// Resources for the init container
 	Resources corev1.ResourceRequirements
 	// SkipInitializedFlag when true do not use a flag to ensure the keystore is created only once. This should only be set
@@ -75,17 +79,21 @@ echo "Keystore initialization successful."
 
 var scriptTemplate = template.Must(template.New("").Parse(script))
 
-// initContainer returns an init container that executes a bash script to load
+// initContainer returns an init container that executes a bash script, or the given command if any, to load
 // secure settings in a keystore from a given volume mount.
 func initContainer(
 	secureSettingsVolumeMount corev1.VolumeMount,
 	parameters InitContainerParameters,
 ) (corev1.Container, error) {
 	privileged := false
-	tplBuffer := bytes.Buffer{}
 
-	if err := getScriptTemplate(parameters.CustomScript).Execute(&tplBuffer, parameters); err != nil {
-		return corev1.Container{}, err
+	command := parameters.Command
+	if len(command) == 0 {
+		tplBuffer := bytes.Buffer{}
+		if err := getScriptTemplate(parameters.CustomScript).Execute(&tplBuffer, parameters); err != nil {
+			return corev1.Container{}, err
+		}
+		command = []string{"/usr/bin/env", "bash", "-c", tplBuffer.String()}
 	}
 
 	container := corev1.Container{
@@ -95,7 +103,7 @@ func initContainer(
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &privileged,
 		},
-		Command: []string{"/usr/bin/env", "bash", "-c", tplBuffer.String()},
+		Command: command,
 		VolumeMounts: []corev1.VolumeMount{
 			// access secure settings
 			secureSettingsVolumeMount,
