@@ -125,7 +125,7 @@ func (r *baseReconcileAutoscaling) attemptOnlineReconciliation(
 	}
 
 	// Update autoscaling policies in Elasticsearch
-	if err := updatePolicies(ctx, log, autoscalingResource, esClient); err != nil {
+	if err := updatePolicies(ctx, log, autoscalingSpec, esClient); err != nil {
 		log.Error(err, "Error while updating the autoscaling policies")
 		return nil, err
 	}
@@ -194,6 +194,13 @@ func (r *baseReconcileAutoscaling) attemptOnlineReconciliation(
 		}
 		// Add the result to the list of the next resources
 		nextClusterResources = append(nextClusterResources, nodeSetsResources)
+	}
+
+	// Reuse the capacity response for cleanup after computing recommendations. Desired policies
+	// stay in place, and discovering obsolete policies does not require a second capacity calculation.
+	// Cleanup failures must not discard valid recommendations; the next reconciliation retries cleanup.
+	if err := deleteObsoletePolicies(ctx, autoscalingSpec, autoscalingCapacityResult, esClient); err != nil {
+		log.Error(err, "Error while deleting obsolete autoscaling policies, will retry on next reconciliation")
 	}
 
 	// Emit the K8S events

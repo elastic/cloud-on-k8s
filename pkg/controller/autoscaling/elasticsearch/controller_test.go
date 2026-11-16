@@ -133,7 +133,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "Simulate an error while updating the autoscaling policies, we still want to respect min nodes count set by user",
 			fields: fields{
-				EsClient:       newFakeEsClient(t).withErrorOnDeleteAutoscalingAutoscalingPolicies(),
+				EsClient:       newFakeEsClient(t).withErrorOnCreateAutoscalingPolicy(),
 				recorder:       toolsevents.NewFakeRecorder(1000),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
@@ -143,7 +143,7 @@ func TestReconcile(t *testing.T) {
 			},
 			want: defaultRequeue, // we still expect the default requeue to be set even if there was an error
 			wantErr: &wantedErr{ // Autoscaling API error should be returned.
-				message: "simulated error while calling DeleteAutoscalingAutoscalingPolicies",
+				message: "simulated error while calling CreateAutoscalingPolicy",
 				fatal:   false, // We do expect the controller to fall back on the offline mode.
 			},
 			wantEvents: []string{},
@@ -198,6 +198,20 @@ func TestReconcile(t *testing.T) {
 			name: "Cluster is online, data tier needs to be scaled up from 8 to 10 nodes",
 			fields: fields{
 				EsClient:       newFakeEsClient(t).withCapacity("custom_resource/storage-scaled-horizontally"),
+				recorder:       toolsevents.NewFakeRecorder(1000),
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
+			},
+			args: args{
+				manifestsDir: "storage-scaled-horizontally",
+				isOnline:     true,
+			},
+			wantEvents: []string{},
+			want:       defaultRequeue,
+		},
+		{
+			name: "Obsolete policy cleanup failure does not prevent scaling from 8 to 10 nodes",
+			fields: fields{
+				EsClient:       newFakeEsClient(t).withCapacity("custom_resource/storage-scaled-horizontally").withErrorOnDeleteAutoscalingPolicy(),
 				recorder:       toolsevents.NewFakeRecorder(1000),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
@@ -365,10 +379,9 @@ type fakeEsClient struct {
 	t *testing.T
 	esclient.Client
 
-	autoscalingPolicies                         esclient.AutoscalingCapacityResult
-	policiesCleaned                             bool
-	errorOnDeleteAutoscalingAutoscalingPolicies bool
-	updatedPolicies                             map[string]v1alpha1.AutoscalingPolicy
+	autoscalingPolicies            esclient.AutoscalingCapacityResult
+	errorOnCreateAutoscalingPolicy bool
+	errorOnDeleteAutoscalingPolicy bool
 }
 
 func newFakeEsClient(t *testing.T) *fakeEsClient {
@@ -376,7 +389,6 @@ func newFakeEsClient(t *testing.T) *fakeEsClient {
 	return &fakeEsClient{
 		t:                   t,
 		autoscalingPolicies: esclient.AutoscalingCapacityResult{Policies: make(map[string]esclient.AutoscalingPolicyResult)},
-		updatedPolicies:     make(map[string]v1alpha1.AutoscalingPolicy),
 	}
 }
 
@@ -393,8 +405,14 @@ func (f *fakeEsClient) withCapacity(testdata string) *fakeEsClient {
 	return f
 }
 
-func (f *fakeEsClient) withErrorOnDeleteAutoscalingAutoscalingPolicies() *fakeEsClient {
-	f.errorOnDeleteAutoscalingAutoscalingPolicies = true
+func (f *fakeEsClient) withErrorOnCreateAutoscalingPolicy() *fakeEsClient {
+	f.errorOnCreateAutoscalingPolicy = true
+	return f
+}
+
+func (f *fakeEsClient) withErrorOnDeleteAutoscalingPolicy() *fakeEsClient {
+	f.errorOnDeleteAutoscalingPolicy = true
+	f.autoscalingPolicies.Policies["stale"] = esclient.AutoscalingPolicyResult{}
 	return f
 }
 
@@ -402,14 +420,16 @@ func (f *fakeEsClient) newFakeElasticsearchClient(_ context.Context, _ k8s.Clien
 	return f, nil
 }
 
-func (f *fakeEsClient) DeleteAutoscalingPolicies(_ context.Context) error {
-	f.policiesCleaned = true
-	if f.errorOnDeleteAutoscalingAutoscalingPolicies {
-		return fmt.Errorf("simulated error while calling DeleteAutoscalingAutoscalingPolicies")
+func (f *fakeEsClient) DeleteAutoscalingPolicy(_ context.Context, _ string) error {
+	if f.errorOnDeleteAutoscalingPolicy {
+		return fmt.Errorf("simulated error while calling DeleteAutoscalingPolicy")
 	}
 	return nil
 }
 func (f *fakeEsClient) CreateAutoscalingPolicy(_ context.Context, _ string, _ v1alpha1.AutoscalingPolicy) error {
+	if f.errorOnCreateAutoscalingPolicy {
+		return fmt.Errorf("simulated error while calling CreateAutoscalingPolicy")
+	}
 	return nil
 }
 func (f *fakeEsClient) GetAutoscalingCapacity(_ context.Context) (esclient.AutoscalingCapacityResult, error) {
