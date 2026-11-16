@@ -14,7 +14,7 @@ steps:
       - make build
       - buildkite-agent artifact upload bin/releaser
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:9ee3e673bd95db1b6f16ac755257fc7e003ab26d3170d5c90661cb18b08939be
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:bbdb17bbea8499ba574d24f869e342a93fedb7f660667774ae7ac8da0ef9fd17
       memory: "2G"
 
   - label: "operator dev helm chart"
@@ -35,7 +35,7 @@ steps:
     artifact_paths:
       - eck-helm-dev-operator-oci-artifacts-digest.txt
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:9ee3e673bd95db1b6f16ac755257fc7e003ab26d3170d5c90661cb18b08939be
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:bbdb17bbea8499ba574d24f869e342a93fedb7f660667774ae7ac8da0ef9fd17
       memory: "2G"
 
   - label: "eck-stack dev helm charts"
@@ -57,7 +57,7 @@ steps:
     artifact_paths:
       - eck-helm-dev-stack-oci-artifacts-digest.txt
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:9ee3e673bd95db1b6f16ac755257fc7e003ab26d3170d5c90661cb18b08939be
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:bbdb17bbea8499ba574d24f869e342a93fedb7f660667774ae7ac8da0ef9fd17
       memory: "2G"
 
   - label: "operator prod helm chart"
@@ -76,7 +76,7 @@ steps:
     artifact_paths:
       - eck-helm-prod-operator-oci-artifacts-digest.txt
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:9ee3e673bd95db1b6f16ac755257fc7e003ab26d3170d5c90661cb18b08939be
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:bbdb17bbea8499ba574d24f869e342a93fedb7f660667774ae7ac8da0ef9fd17
       memory: "2G"
 
   - label: "eck-stack prod helm charts"
@@ -95,7 +95,7 @@ steps:
     artifact_paths:
       - eck-helm-prod-stack-oci-artifacts-digest.txt
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:9ee3e673bd95db1b6f16ac755257fc7e003ab26d3170d5c90661cb18b08939be
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:bbdb17bbea8499ba574d24f869e342a93fedb7f660667774ae7ac8da0ef9fd17
       memory: "2G"
 
   - label: ":key: sign helm charts"
@@ -134,5 +134,5 @@ steps:
               UPLOAD_SIGNATURE: "true"
       YAML
     agents:
-      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:9ee3e673bd95db1b6f16ac755257fc7e003ab26d3170d5c90661cb18b08939be
+      image: docker.elastic.co/ci-agent-images/cloud-k8s-operator/buildkite-agent:latest@sha256:bbdb17bbea8499ba574d24f869e342a93fedb7f660667774ae7ac8da0ef9fd17
       memory: "256Mi"
