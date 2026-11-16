@@ -199,7 +199,7 @@ func (r *baseReconcileAutoscaling) attemptOnlineReconciliation(
 	// Reuse the capacity response for cleanup after computing recommendations. Desired policies
 	// stay in place, and discovering obsolete policies does not require a second capacity calculation.
 	// Cleanup failures must not discard valid recommendations; the next reconciliation retries cleanup.
-	if err := deleteObsoletePolicies(ctx, autoscalingSpec, autoscalingCapacityResult, esClient); err != nil {
+	if err := deleteObsoletePolicies(ctx, log, autoscalingSpec, autoscalingCapacityResult, esClient); err != nil {
 		log.Error(err, "Error while deleting obsolete autoscaling policies, will retry on next reconciliation")
 	}
 

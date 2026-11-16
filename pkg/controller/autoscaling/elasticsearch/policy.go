@@ -43,6 +43,7 @@ func updatePolicies(
 // even during a policy rename.
 func deleteObsoletePolicies(
 	ctx context.Context,
+	log logr.Logger,
 	autoscalingPolicySpecs v1alpha1.AutoscalingPolicySpecs,
 	capacity client.AutoscalingCapacityResult,
 	esclient client.AutoscalingClient,
@@ -55,9 +56,13 @@ func deleteObsoletePolicies(
 		if desiredPolicies.Has(policyName) {
 			continue
 		}
-		if err := esclient.DeleteAutoscalingPolicy(ctx, policyName); err != nil && !client.IsNotFound(err) {
+		if err := esclient.DeleteAutoscalingPolicy(ctx, policyName); err != nil {
+			if client.IsNotFound(err) {
+				continue
+			}
 			return fmt.Errorf("delete obsolete autoscaling policy %q: %w", policyName, err)
 		}
+		log.Info("Deleted obsolete autoscaling policy", "policy", policyName)
 	}
 	return nil
 }
