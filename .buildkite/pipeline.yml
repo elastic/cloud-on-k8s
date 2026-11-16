@@ -82,7 +82,7 @@ steps:
       - label: ":buildkite: generate image build steps"
         key: "operator-image-build-step"
         agents:
-          image: "docker.elastic.co/ci-agent-images/serverless-docker-builder:0.11.2@sha256:5e103ffbd9bf06af18e01dc6c20e3f2e75141fd54977812d03b7c4a92dbbbc5e"
+          image: "docker.elastic.co/ci-agent-images/serverless-docker-builder:0.11.4@sha256:d22ca452a3a56cab44fb8db3102157805cbde2f63efdde2cc52bf228f91e2309"
         commands: make -C /agent generate-docker-images
         env:
           DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic
@@ -108,7 +108,7 @@ steps:
     steps:
       - label: ":buildkite: generate image build steps"
         agents:
-          image: "docker.elastic.co/ci-agent-images/serverless-docker-builder:0.11.2@sha256:5e103ffbd9bf06af18e01dc6c20e3f2e75141fd54977812d03b7c4a92dbbbc5e"
+          image: "docker.elastic.co/ci-agent-images/serverless-docker-builder:0.11.4@sha256:d22ca452a3a56cab44fb8db3102157805cbde2f63efdde2cc52bf228f91e2309"
         commands: make -C /agent generate-docker-images
         env:
           DOCKER_REGISTRY_VAULT_PATH: secret/ci/elastic-cloud-on-k8s/docker-registry-elastic
