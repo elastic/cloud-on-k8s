@@ -146,7 +146,8 @@
       "enabled": false,
       "matchPackageNames": [
         "!github.com/elastic/{/,}**",
-        "!docker.elastic.co/wolfi/{/,}**"
+        "!docker.elastic.co/wolfi/{/,}**",
+        "!docker.io/library/golang"
       ]
     },
     {
@@ -170,7 +171,6 @@
     },
     {
       "matchPackageNames": [
-        "docker.elastic.co/ci-agent-images/eck-region/go-builder-buildkite-agent",
         "go",
         "golang",
         "docker.io/library/golang",
