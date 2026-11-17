@@ -56,9 +56,11 @@ spec:
   {{- $nodeSets = list }}
   {{- range $name, $nodeSet := .Values.nodeSets }}
   {{- if $nodeSet }}
-  {{- $nodeSets = append $nodeSets (merge (deepCopy $nodeSet) (dict "name" $name)) }}
+  {{- $nodeSets = append $nodeSets (mergeOverwrite (dict "name" $name) $nodeSet) }}
   {{- end }}
   {{- end }}
+  {{- else if not (kindIs "slice" .Values.nodeSets) }}
+  {{- fail (printf "nodeSets must be a list or map, got: %s" (kindOf .Values.nodeSets)) }}
   {{- end }}
   {{- if eq (len $nodeSets) 0 }}
   {{ fail "At least one nodeSet is required" }}
