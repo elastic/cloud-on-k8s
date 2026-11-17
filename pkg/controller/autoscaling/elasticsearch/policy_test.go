@@ -304,11 +304,12 @@ func Test_deleteObsoletePolicies(t *testing.T) {
 
 			err := deleteObsoletePolicies(ctx, logTest, specs, capacity, es)
 			assert.Equal(t, tt.wantCalls, calls)
-			if tt.canceled {
+			switch {
+			case tt.canceled:
 				require.ErrorIs(t, err, context.Canceled)
-			} else if len(tt.wantFailed) == 0 {
+			case len(tt.wantFailed) == 0:
 				require.NoError(t, err)
-			} else {
+			default:
 				require.Error(t, err)
 				for _, policyName := range tt.wantFailed {
 					assert.ErrorContains(t, err, fmt.Sprintf("delete obsolete autoscaling policy %q", policyName))
