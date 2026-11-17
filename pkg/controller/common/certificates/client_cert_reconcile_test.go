@@ -1228,7 +1228,7 @@ func TestReconcileAdditionalTrustedClientCAs(t *testing.T) {
 				},
 			}).Build()
 			r := newTestReconciler(c, server, nil)
-			r.DynamicWatches = watches.NewDynamicWatches()
+			r.DynamicWatches = watches.NewDynamicWatches("testCtr")
 
 			recorder := toolsevents.NewFakeRecorder(10)
 

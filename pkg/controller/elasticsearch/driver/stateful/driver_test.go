@@ -889,7 +889,7 @@ func TestDriver_reconcileWithSharedState_additionalTrustedClientCAsErr(t *testin
 			d.ES = es
 			d.Version = version.MustParse(es.Spec.Version)
 			d.LicenseChecker = license.MockLicenseChecker{}
-			d.Parameters.DynamicWatches = watches.NewDynamicWatches()
+			d.Parameters.DynamicWatches = watches.NewDynamicWatches("testCtr")
 			d.ReconcileState = reconcileState
 			d.Expectations = expectations.NewExpectations(k8sClient, &appsv1.StatefulSet{})
 			// the critical steps reconciled while paused clear the completed restart shutdowns

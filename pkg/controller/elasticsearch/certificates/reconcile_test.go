@@ -178,7 +178,7 @@ func TestReconcileOperatorClientCertAndTrustBundle_AdditionalTrustedCAs(t *testi
 						return c.Get(ctx, key, obj, opts...)
 					},
 				}).Build(),
-				Watches:      watches.NewDynamicWatches(),
+				Watches:      watches.NewDynamicWatches("testCtr"),
 				FakeRecorder: toolsevents.NewFakeRecorder(10),
 			}
 			if tt.previouslyReconciled {
