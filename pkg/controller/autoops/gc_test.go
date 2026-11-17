@@ -298,7 +298,7 @@ func TestAgentPolicyReconciler_cleanupOrphanedSecrets_removesWatchHandlers(t *te
 	keepSecret := newPolicySecret("policy-1-autoops-ca-keep", "ns-1", "policy-1", "ns-1", "es-keep", "ns-3", caSecretType)
 
 	k8sClient := k8s.NewFakeClient(orphanedCASecret, orphanedClientCertSecret, keepSecret)
-	dynWatches := watches.NewDynamicWatches()
+	dynWatches := watches.NewDynamicWatches("testCtr")
 
 	// Pre-register dynamic watches for all three secrets to mirror what
 	// reconcileAutoOpsESCASecret / reconcileAutoOpsESClientCertSecret would have done.

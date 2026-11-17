@@ -134,7 +134,7 @@ func Test_buildPodTemplate(t *testing.T) {
 			args: args{
 				initialHash: newHash("foobar"), // SHA224 for foobar is de76c3e567fca9d246f5f8d3b2e704a38c3c5e258988ab525f941db8
 				params: DriverParams{
-					Watches: watches.NewDynamicWatches(),
+					Watches: watches.NewDynamicWatches("testCtr"),
 					Client:  clientWithMonitoringEnabled,
 					Beat:    beatWithMonitoring,
 				},
@@ -158,7 +158,7 @@ func Test_buildPodTemplate(t *testing.T) {
 			args: args{
 				initialHash: newHash("foobar"), // SHA224 for foobar is de76c3e567fca9d246f5f8d3b2e704a38c3c5e258988ab525f941db8
 				params: DriverParams{
-					Watches: watches.NewDynamicWatches(),
+					Watches: watches.NewDynamicWatches("testCtr"),
 					Client:  k8s.NewFakeClient(),
 					Beat: beatv1beta1.Beat{
 						ObjectMeta: metav1.ObjectMeta{
@@ -204,7 +204,7 @@ func Test_buildPodTemplate(t *testing.T) {
 			args: args{
 				initialHash: newHash("foobar"),
 				params: DriverParams{
-					Watches: watches.NewDynamicWatches(),
+					Watches: watches.NewDynamicWatches("testCtr"),
 					Client: k8s.NewFakeClient(
 						// Secret maintained by the operator
 						&corev1.Secret{
@@ -348,7 +348,7 @@ func Test_buildPodTemplate_clientCertVolume(t *testing.T) {
 
 			params := DriverParams{
 				Context: context.Background(),
-				Watches: watches.NewDynamicWatches(),
+				Watches: watches.NewDynamicWatches("testCtr"),
 				Client: k8s.NewFakeClient(&corev1.Secret{
 					Name: "auth-secret", Namespace: "ns",
 					Data: map[string][]byte{"elastic": []byte("pass")},

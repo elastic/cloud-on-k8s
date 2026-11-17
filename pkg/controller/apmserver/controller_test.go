@@ -60,7 +60,7 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 			fields: fields{
 				resources:      []client.Object{},
 				recorder:       toolsevents.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 				Parameters: operator.Parameters{
 					CACertRotation: certificates.RotationParams{
 						Validity:     certificates.DefaultCertValidity,
@@ -84,7 +84,7 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 			fields: fields{
 				resources:      []client.Object{},
 				recorder:       toolsevents.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 				Parameters:     operator.Parameters{},
 			},
 			wantErr: true,
@@ -436,7 +436,7 @@ func TestReconcileApmServer_Reconcile(t *testing.T) {
 			r := &ReconcileApmServer{
 				Client:         tt.fields.Client,
 				recorder:       toolsevents.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 				Parameters:     operator.Parameters{},
 			}
 			got, err := r.Reconcile(context.Background(), tt.args.request)

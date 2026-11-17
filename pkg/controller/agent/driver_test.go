@@ -393,7 +393,7 @@ func Test_reconcileFleetServerClientAuth(t *testing.T) {
 				require.NoError(t, fakeClient.Create(context.Background(), &initObjs[i]))
 			}
 
-			dynamicWatches := watches.NewDynamicWatches()
+			dynamicWatches := watches.NewDynamicWatches("testCtr")
 			if tt.existingWatch {
 				require.NoError(t, dynamicWatches.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{
 					Name:    additionalTrustedCAsWatchKey,
@@ -600,7 +600,7 @@ func Test_internalReconcile_clientAuth(t *testing.T) {
 				},
 			}
 			agentObj.Spec.HTTP.TLS.Client.Authentication = tt.clientAuth
-			dynamicWatches := watches.NewDynamicWatches()
+			dynamicWatches := watches.NewDynamicWatches("testCtr")
 			additionalTrustedCAsWatchKey := certificates.AdditionalTrustedClientCAsWatchKey(Namer, k8s.ExtractNamespacedName(agentObj))
 			if tt.notFleetServer {
 				agentObj.Spec.FleetServerEnabled = false

@@ -66,7 +66,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKi
 	return &ReconcileKibana{
 		Client:         mgr.GetClient(),
 		recorder:       mgr.GetEventRecorder(controllerName),
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches(controllerName),
 		params:         params,
 		licenseChecker: commonlicense.NewLicenseChecker(mgr.GetClient(), params.OperatorNamespace),
 	}

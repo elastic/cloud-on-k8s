@@ -171,7 +171,7 @@ func TestReconcileBeat_Reconcile(t *testing.T) {
 			r := &ReconcileBeat{
 				Client:         tt.Client,
 				recorder:       toolsevents.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 				Parameters:     operator.Parameters{},
 			}
 			got, err := r.Reconcile(context.Background(), tt.request)

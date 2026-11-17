@@ -473,7 +473,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.NewFakeClient(tt.args.initialObjects...)
-			w := watches.NewDynamicWatches()
+			w := watches.NewDynamicWatches("testCtr")
 			r := &ReconcileApmServer{
 				Client:                    client,
 				recorder:                  toolsevents.NewFakeRecorder(100),

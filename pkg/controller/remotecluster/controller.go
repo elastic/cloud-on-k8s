@@ -62,7 +62,7 @@ func NewReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 		Client:           c,
 		accessReviewer:   accessReviewer,
 		keystoreProvider: keystore.NewProvider(c),
-		watches:          watches.NewDynamicWatches(),
+		watches:          watches.NewDynamicWatches(name),
 		recorder:         mgr.GetEventRecorder(name),
 		licenseChecker:   license.NewLicenseChecker(c, params.OperatorNamespace),
 		Parameters:       params,

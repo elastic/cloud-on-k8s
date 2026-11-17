@@ -65,7 +65,7 @@ func newReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 		accessReviewer:   accessReviewer,
 		recorder:         mgr.GetEventRecorder(controllerName),
 		params:           params,
-		dynamicWatches:   watches.NewDynamicWatches(),
+		dynamicWatches:   watches.NewDynamicWatches(controllerName),
 		esClientProvider: commonesclient.NewClient,
 		licenseChecker:   license.NewLicenseChecker(k8sClient, params.OperatorNamespace),
 	}
