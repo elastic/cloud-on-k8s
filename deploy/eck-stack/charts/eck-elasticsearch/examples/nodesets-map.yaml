@@ -1,0 +1,17 @@
+---
+# nodeSets given as a map keyed by nodeSet name. Unlike a list, a map is merged by Helm across
+# values files, so a later file can override a single field, for example:
+#
+#   nodeSets:
+#     data:
+#       count: 5
+#
+nodeSets:
+  masters:
+    count: 3
+    config:
+      node.roles: ["master"]
+  data:
+    count: 2
+    config:
+      node.roles: ["data", "ingest"]

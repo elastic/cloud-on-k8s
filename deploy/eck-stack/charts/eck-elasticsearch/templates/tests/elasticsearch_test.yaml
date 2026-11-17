@@ -275,3 +275,57 @@ tests:
       - equal:
           path: spec.revisionHistoryLimit
           value: 2
+  - it: should render nodeSets given as a map
+    set:
+      nodeSets:
+        masters:
+          count: 3
+          config:
+            node.roles: ["master"]
+        data:
+          count: 2
+    asserts:
+      - equal:
+          path: spec.nodeSets
+          value:
+            - name: data
+              count: 2
+            - name: masters
+              count: 3
+              config:
+                node.roles: ["master"]
+  - it: should merge nodeSets given as a map across values files
+    values:
+      - ../../examples/nodesets-map.yaml
+    set:
+      nodeSets:
+        data:
+          count: 5
+    asserts:
+      - equal:
+          path: spec.nodeSets
+          value:
+            - name: data
+              count: 5
+              config:
+                node.roles: ["data", "ingest"]
+            - name: masters
+              count: 3
+              config:
+                node.roles: ["master"]
+  - it: should keep an explicit name in a nodeSets map entry
+    set:
+      nodeSets:
+        first:
+          name: masters
+          count: 1
+    asserts:
+      - equal:
+          path: spec.nodeSets[0].name
+          value: masters
+  - it: should fail when a nodeSets map is empty
+    set:
+      nodeSets: {}
+    asserts:
+      - failedTemplate:
+          errorMessage: At least one nodeSet is required
