@@ -338,7 +338,7 @@ func validPlugins(es esv1.Elasticsearch) field.ErrorList {
 
 	var errs field.ErrorList
 	if proxy := es.Spec.Plugins.Proxy; proxy != "" && !validPluginsProxy(proxy) {
-		errs = append(errs, field.Invalid(pluginsPath.Child("proxy"), proxy, invalidPluginsProxyMsg))
+		errs = append(errs, field.Invalid(pluginsPath.Child("proxy"), redactedPluginsProxy(proxy), invalidPluginsProxyMsg))
 	}
 	for i, p := range es.Spec.Plugins.Items {
 		itemPath := pluginsPath.Child("items").Index(i)
@@ -347,7 +347,7 @@ func validPlugins(es esv1.Elasticsearch) field.ErrorList {
 		}
 		// Elasticsearch installs the official plugin of that name when the location equals an official plugin ID
 		if p.Location != "" && p.Location != p.ID && !validPluginLocation(p.Location) {
-			errs = append(errs, field.Invalid(itemPath.Child("location"), p.Location, invalidPluginLocationMsg))
+			errs = append(errs, field.Invalid(itemPath.Child("location"), redactedPluginLocation(p.Location), invalidPluginLocationMsg))
 		}
 	}
 	return errs
@@ -388,6 +388,28 @@ func validPluginLocation(location string) bool {
 	}
 	// RawPath preserves unescaped brackets without rejecting encoded brackets or IPv6 hosts.
 	return !strings.ContainsAny(parsed.RawPath, "[]")
+}
+
+// redactedPluginLocation returns the location to report in an admission error, without the userinfo and query
+// that may carry credentials. The value is omitted when the location cannot be parsed to strip them.
+func redactedPluginLocation(location string) any {
+	parsed, err := url.Parse(location)
+	if err != nil {
+		return field.OmitValueType{}
+	}
+	parsed.User = nil
+	parsed.RawQuery = ""
+	parsed.ForceQuery = false
+	return parsed.String()
+}
+
+// redactedPluginsProxy returns the proxy to report in an admission error. The value is omitted when it contains
+// userinfo, which may carry credentials.
+func redactedPluginsProxy(proxy string) any {
+	if strings.Contains(proxy, "@") {
+		return field.OmitValueType{}
+	}
+	return proxy
 }
 
 // validPluginsProxy mirrors the proxy validation of Elasticsearch: a non-empty host and a numeric port, separated by a single colon.

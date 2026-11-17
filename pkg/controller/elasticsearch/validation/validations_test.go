@@ -1786,6 +1786,64 @@ func Test_checkPauseOrchestrationAnnotation(t *testing.T) {
 	}
 }
 
+func Test_redactedPluginLocation(t *testing.T) {
+	tests := []struct {
+		name     string
+		location string
+		want     any
+	}{
+		{
+			name:     "no credentials",
+			location: "https://repo.corp/my plugin.zip",
+			want:     "https://repo.corp/my%20plugin.zip",
+		},
+		{
+			name:     "userinfo and query",
+			location: "https://user:pass@repo.corp/my|plugin.zip?token=secret#v1",
+			want:     "https://repo.corp/my%7Cplugin.zip#v1",
+		},
+		{
+			name:     "empty query",
+			location: "https://repo.corp/my|plugin.zip?",
+			want:     "https://repo.corp/my%7Cplugin.zip",
+		},
+		{
+			name:     "unparseable",
+			location: "https://user:pass@repo.corp/%zz.zip",
+			want:     field.OmitValueType{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, redactedPluginLocation(tt.location))
+		})
+	}
+}
+
+func Test_redactedPluginsProxy(t *testing.T) {
+	tests := []struct {
+		name  string
+		proxy string
+		want  any
+	}{
+		{
+			name:  "no credentials",
+			proxy: "proxy.corp",
+			want:  "proxy.corp",
+		},
+		{
+			name:  "userinfo",
+			proxy: "user:pass@proxy.corp:3128",
+			want:  field.OmitValueType{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, redactedPluginsProxy(tt.proxy))
+		})
+	}
+}
+
 func Test_validPlugins(t *testing.T) {
 	icu := []esv1.Plugin{{ID: "analysis-icu"}}
 	tests := []struct {
