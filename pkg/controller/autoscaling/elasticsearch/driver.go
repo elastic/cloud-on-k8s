@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 
 	"github.com/go-logr/logr"
@@ -22,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	logconf "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 )
 
@@ -125,7 +127,7 @@ func (r *baseReconcileAutoscaling) attemptOnlineReconciliation(
 	}
 
 	// Update autoscaling policies in Elasticsearch
-	if err := updatePolicies(ctx, log, autoscalingResource, esClient); err != nil {
+	if err := updatePolicies(ctx, log, autoscalingSpec, esClient); err != nil {
 		log.Error(err, "Error while updating the autoscaling policies")
 		return nil, err
 	}
@@ -194,6 +196,17 @@ func (r *baseReconcileAutoscaling) attemptOnlineReconciliation(
 		}
 		// Add the result to the list of the next resources
 		nextClusterResources = append(nextClusterResources, nodeSetsResources)
+	}
+
+	// Reuse the capacity response for cleanup after computing recommendations. Desired policies
+	// stay in place, and discovering obsolete policies does not require a second capacity calculation.
+	// Cleanup failures must not discard valid recommendations; the next reconciliation retries cleanup.
+	if err := deleteObsoletePolicies(ctx, log, autoscalingSpec, autoscalingCapacityResult, esClient); err != nil {
+		log.Error(err, "Error while deleting obsolete autoscaling policies, will retry on next reconciliation")
+		k8s.EmitEvent(
+			r.recorder, &es, corev1.EventTypeWarning, events.EventReasonUnexpected, events.EventActionAutoscalingOnline,
+			fmt.Sprintf("Failed to delete obsolete autoscaling policies: %s", err.Error()),
+		)
 	}
 
 	// Emit the K8S events
