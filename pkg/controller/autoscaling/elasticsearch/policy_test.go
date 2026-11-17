@@ -250,3 +250,70 @@ func reconcilePoliciesForTest(t *testing.T, autoscaler *autoscalingv1alpha1.Elas
 	_, err := r.attemptOnlineReconciliation(context.Background(), es, v1alpha1.NewAutoscalingStatusBuilder(), autoscaledNodeSets, autoscaler)
 	return err
 }
+
+func Test_deleteObsoletePolicies(t *testing.T) {
+	specs := v1alpha1.AutoscalingPolicySpecs{{Name: "data"}}
+	capacity := esclient.AutoscalingCapacityResult{Policies: map[string]esclient.AutoscalingPolicyResult{
+		"stale-c": {}, "data": {}, "stale-a": {}, "stale-b": {},
+	}}
+	allDeletes := []string{"stale-a", "stale-b", "stale-c"}
+	tests := []struct {
+		name       string
+		failures   map[string]int
+		canceled   bool
+		wantCalls  []string
+		wantFailed []string
+	}{
+		{
+			name:      "delete all obsolete policies in name order and preserve the desired policy",
+			wantCalls: allDeletes,
+		},
+		{
+			name:       "failed deletes do not prevent deleting other obsolete policies",
+			failures:   map[string]int{"stale-a": http.StatusServiceUnavailable, "stale-c": http.StatusServiceUnavailable},
+			wantCalls:  allDeletes,
+			wantFailed: []string{"stale-a", "stale-c"},
+		},
+		{
+			name:      "ignore policies already deleted",
+			failures:  map[string]int{"stale-b": http.StatusNotFound},
+			wantCalls: allDeletes,
+		},
+		{
+			name:     "stop when the context is canceled",
+			canceled: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			if tt.canceled {
+				cancel()
+			}
+			var calls []string
+			es := esclient.NewMockClient(version.MustParse("7.11.0"), func(req *http.Request) *http.Response {
+				require.Equal(t, http.MethodDelete, req.Method)
+				name := strings.TrimPrefix(req.URL.Path, "/_autoscaling/policy/")
+				calls = append(calls, name)
+				if statusCode, exists := tt.failures[name]; exists {
+					return esclient.NewMockResponse(statusCode, req, `{"error":{"reason":"simulated failure"}}`)
+				}
+				return esclient.NewMockResponse(http.StatusOK, req, `{"acknowledged":true}`)
+			})
+
+			err := deleteObsoletePolicies(ctx, logTest, specs, capacity, es)
+			assert.Equal(t, tt.wantCalls, calls)
+			if tt.canceled {
+				require.ErrorIs(t, err, context.Canceled)
+			} else if len(tt.wantFailed) == 0 {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+				for _, policyName := range tt.wantFailed {
+					assert.ErrorContains(t, err, fmt.Sprintf("delete obsolete autoscaling policy %q", policyName))
+				}
+			}
+		})
+	}
+}

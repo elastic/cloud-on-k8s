@@ -6,7 +6,10 @@ package elasticsearch
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/go-logr/logr"
 	"go.elastic.co/apm/v2"
@@ -28,6 +31,7 @@ func updatePolicies(
 	defer span.End()
 	// Update policies in place. Deleting them all first clears Elasticsearch's cached node information,
 	// so the capacity request that follows can race with the asynchronous refresh and return no recommendation.
+	// Unchanged PUTs do not refresh that cache; retrying failed node-information fetches needs a fix in Elasticsearch.
 	for _, rp := range autoscalingPolicySpecs {
 		if err := esclient.CreateAutoscalingPolicy(ctx, rp.Name, rp.AutoscalingPolicy); err != nil {
 			log.Error(err, "Error while updating an autoscaling policy", "policy", rp.Name)
@@ -37,10 +41,12 @@ func updatePolicies(
 	return nil
 }
 
-// deleteObsoletePolicies uses the capacity response to find policies that no longer exist in the spec.
-// ECK creates all autoscaling policies, so any policy absent from the spec is obsolete.
-// Desired policies have already been created or updated, so cleanup keeps their nodes covered
-// even during a policy rename.
+// deleteObsoletePolicies deletes the policies that exist in Elasticsearch but not in the autoscaler spec.
+// It finds them in the capacity response, which lists every policy of the cluster.
+// Policies created outside ECK are also deleted if absent from the autoscaler spec.
+// Desired policies have already been created or updated, so their nodes stay covered even during a policy rename.
+// Failed deletes are collected while cleanup continues. The next reconciliation retries the remaining policies,
+// without discarding valid recommendations.
 func deleteObsoletePolicies(
 	ctx context.Context,
 	log logr.Logger,
@@ -52,17 +58,24 @@ func deleteObsoletePolicies(
 	for _, policy := range autoscalingPolicySpecs {
 		desiredPolicies.Add(policy.Name)
 	}
-	for policyName := range capacity.Policies {
+	var errs []error
+	// Sort the names so that the deletes and the reported errors keep the same order between reconciliations.
+	for _, policyName := range slices.Sorted(maps.Keys(capacity.Policies)) {
 		if desiredPolicies.Has(policyName) {
 			continue
+		}
+		if err := ctx.Err(); err != nil {
+			errs = append(errs, err)
+			break
 		}
 		if err := esclient.DeleteAutoscalingPolicy(ctx, policyName); err != nil {
 			if client.IsNotFound(err) {
 				continue
 			}
-			return fmt.Errorf("delete obsolete autoscaling policy %q: %w", policyName, err)
+			errs = append(errs, fmt.Errorf("delete obsolete autoscaling policy %q: %w", policyName, err))
+			continue
 		}
 		log.Info("Deleted obsolete autoscaling policy", "policy", policyName)
 	}
-	return nil
+	return errors.Join(errs...)
 }
