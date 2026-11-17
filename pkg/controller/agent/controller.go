@@ -62,7 +62,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAg
 	return &ReconcileAgent{
 		Client:         client,
 		recorder:       mgr.GetEventRecorder(controllerName),
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches(controllerName),
 		Parameters:     params,
 		licenseChecker: commonlicense.NewLicenseChecker(client, params.OperatorNamespace),
 	}

@@ -53,7 +53,7 @@ func TestReconcileAdditionalCAs(t *testing.T) {
 			if !tt.configMapMissing {
 				require.NoError(t, c.Create(t.Context(), &corev1.ConfigMap{Namespace: owner.Namespace, Name: "my-trust", Data: tt.data}))
 			}
-			dw := watches.NewDynamicWatches()
+			dw := watches.NewDynamicWatches("testCtr")
 			got, err := ReconcileAdditionalCAs(t.Context(), c, dw, AdditionalCAsOptions{
 				Owner: owner, Ref: tt.ref, WatchKey: "my-watch", FieldPath: fieldPath,
 			})
@@ -81,7 +81,7 @@ func TestReconcileAdditionalCAs_ReleasesWatch(t *testing.T) {
 		Namespace: owner.Namespace, Name: "my-trust",
 		Data: map[string]string{CAFileName: string(EncodePEMCert(testCA.Cert.Raw))},
 	})
-	dw := watches.NewDynamicWatches()
+	dw := watches.NewDynamicWatches("testCtr")
 	opts := AdditionalCAsOptions{Owner: owner, Ref: commonv1.ConfigMapRef{ConfigMapName: "my-trust"}, WatchKey: "my-watch", FieldPath: "spec.some.field"}
 
 	_, err := ReconcileAdditionalCAs(t.Context(), c, dw, opts)

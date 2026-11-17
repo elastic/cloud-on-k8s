@@ -913,7 +913,7 @@ func TestReconcileStackConfigPolicy_Reconcile(t *testing.T) {
 				esClientProvider: tt.args.esClientProvider,
 				recorder:         fakeRecorder,
 				licenseChecker:   tt.args.licenseChecker,
-				dynamicWatches:   watches.NewDynamicWatches(),
+				dynamicWatches:   watches.NewDynamicWatches("testCtr"),
 			}
 			if tt.pre != nil {
 				tt.pre(reconciler)
@@ -1162,7 +1162,7 @@ func TestReconcileStackConfigPolicy_MultipleStackConfigPolicies(t *testing.T) {
 				params: operator.Parameters{
 					OperatorNamespace: "elastic-system",
 				},
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 			}
 
 			// Reconcile the specified policy
@@ -1304,7 +1304,7 @@ func TestReconcileStackConfigPolicy_NoSpuriousSecretUpdates(t *testing.T) {
 					recorder:         toolsevents.NewFakeRecorder(100),
 					licenseChecker:   &license.MockLicenseChecker{EnterpriseEnabled: true},
 					params:           operator.Parameters{OperatorNamespace: "elastic-system"},
-					dynamicWatches:   watches.NewDynamicWatches(),
+					dynamicWatches:   watches.NewDynamicWatches("testCtr"),
 				}
 			}
 

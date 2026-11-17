@@ -64,7 +64,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLo
 	return &ReconcileLogstash{
 		Client:         client,
 		recorder:       mgr.GetEventRecorder(controllerName),
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches(controllerName),
 		Parameters:     params,
 		expectations:   expectations.NewClustersExpectations(client, &appsv1.StatefulSet{}),
 	}

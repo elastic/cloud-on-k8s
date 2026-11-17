@@ -35,7 +35,7 @@ func buildBeatPodTemplate(t *testing.T, beat beatv1beta1.Beat) corev1.PodTemplat
 	params := DriverParams{
 		Context: context.Background(),
 		Client:  k8s.NewFakeClient(),
-		Watches: watches.NewDynamicWatches(),
+		Watches: watches.NewDynamicWatches("testCtr"),
 		Beat:    beat,
 	}
 	configHash := fnv.New32a()

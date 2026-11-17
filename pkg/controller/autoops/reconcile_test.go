@@ -330,7 +330,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				params: operator.Parameters{
 					Dialer: &fakeDialer{},
 				},
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 			}
 
 			ctx := context.Background()
@@ -628,7 +628,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrorsAndSkipped(
 				params: operator.Parameters{
 					Dialer: &fakeDialer{},
 				},
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 			}
 
 			ctx := t.Context()
@@ -853,7 +853,7 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 				params: operator.Parameters{
 					Dialer: &fakeDialer{},
 				},
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 			}
 
 			ctx := context.Background()
@@ -1028,7 +1028,7 @@ func TestAutoOpsAgentPolicyReconciler_accessRevokedCleanup(t *testing.T) {
 			params: operator.Parameters{
 				Dialer: &fakeDialer{},
 			},
-			dynamicWatches: watches.NewDynamicWatches(),
+			dynamicWatches: watches.NewDynamicWatches("testCtr"),
 		}
 
 		ctx := context.Background()
@@ -1245,7 +1245,7 @@ func TestInternalReconcile_PauseOrchestration(t *testing.T) {
 				accessReviewer:   &fakeAccessReviewer{allowed: true},
 				recorder:         toolsevents.NewFakeRecorder(10),
 				params:           operator.Parameters{Dialer: &fakeDialer{}},
-				dynamicWatches:   watches.NewDynamicWatches(),
+				dynamicWatches:   watches.NewDynamicWatches("testCtr"),
 			}
 
 			ctx := t.Context()
@@ -1315,7 +1315,7 @@ func TestInternalReconcile_PauseOrchestration_MatchingHash(t *testing.T) {
 			accessReviewer:   &fakeAccessReviewer{allowed: true},
 			recorder:         toolsevents.NewFakeRecorder(10),
 			params:           operator.Parameters{Dialer: &fakeDialer{}},
-			dynamicWatches:   watches.NewDynamicWatches(),
+			dynamicWatches:   watches.NewDynamicWatches("testCtr"),
 		}
 	}
 	ctx := t.Context()

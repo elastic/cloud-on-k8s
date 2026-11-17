@@ -35,7 +35,7 @@ func TestMain(m *testing.M) {
 // The test just checks that everything fits together and reconciliations are correctly triggered
 // from the EventHandler. More detailed behaviour is tested in `handler_test.go`.
 func TestDynamicEnqueueRequest(t *testing.T) {
-	eventHandler := watches.NewDynamicEnqueueRequest[*corev1.Secret]()
+	eventHandler := watches.NewDynamicEnqueueRequest[*corev1.Secret]("testCtr")
 	// create a controller that watches secrets and enqueues requests into a chan
 	requests := make(chan reconcile.Request)
 	addToManager := func(mgr manager.Manager, params operator.Parameters) error {
