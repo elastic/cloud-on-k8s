@@ -22,19 +22,10 @@ spec:
                     kubernetes.labels.scrape: es
                 config:
                   - module: elasticsearch
+                    # xpack.enabled enables the metricsets required for Stack Monitoring.
+                    # ingest_pipeline is the only optional metricset that is not enabled by default.
                     metricsets:
-                      - ccr
-                      - cluster_stats
-                      - enrich
-                      - index
-                      - index_recovery
-                      - index_summary
                       - ingest_pipeline
-                      - ml_job
-                      - node
-                      - node_stats
-                      - pending_tasks
-                      - shard
                     period: 10s
                     hosts: "https://${data.host}:${data.ports.https}"
                     username: ${MONITORED_ES_USERNAME}
@@ -48,8 +39,6 @@ spec:
                     kubernetes.labels.scrape: kb
                 config:
                   - module: kibana
-                    metricsets:
-                      - stats
                     period: 10s
                     hosts: "https://${data.host}:${data.ports.https}"
                     username: ${MONITORED_ES_USERNAME}
