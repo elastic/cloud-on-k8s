@@ -55,7 +55,7 @@ spec:
   {{- if kindIs "map" .Values.nodeSets }}
   {{- $nodeSets = list }}
   {{- range $name, $nodeSet := .Values.nodeSets }}
-  {{- if $nodeSet }}
+  {{- if not (kindIs "invalid" $nodeSet) }}
   {{- $nodeSets = append $nodeSets (mergeOverwrite (dict "name" $name) $nodeSet) }}
   {{- end }}
   {{- end }}

@@ -304,6 +304,20 @@ tests:
       - equal:
           path: spec.nodeSets[0].name
           value: masters
+  - it: should skip null entries but keep empty entries in a nodeSets map
+    set:
+      nodeSets:
+        masters:
+          count: 1
+        data: {}
+        hot: null
+    asserts:
+      - equal:
+          path: spec.nodeSets
+          value:
+            - name: data
+            - name: masters
+              count: 1
   - it: should fail when a nodeSets map is empty
     set:
       nodeSets: {}
