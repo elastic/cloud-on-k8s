@@ -1812,6 +1812,11 @@ func Test_redactedPluginLocation(t *testing.T) {
 			location: "https://user:pass@repo.corp/%zz.zip",
 			want:     field.OmitValueType{},
 		},
+		{
+			name:     "opaque",
+			location: "https:user:pass@repo.corp/my plugin.zip",
+			want:     field.OmitValueType{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

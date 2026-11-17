@@ -391,10 +391,11 @@ func validPluginLocation(location string) bool {
 }
 
 // redactedPluginLocation returns the location to report in an admission error, without the userinfo and query
-// that may carry credentials. The value is omitted when the location cannot be parsed to strip them.
+// that may carry credentials. The value is omitted when the location cannot be parsed to strip them, or when it
+// parses as an opaque URI such as https:user:pass@repo.corp, whose userinfo is not split out of the opaque part.
 func redactedPluginLocation(location string) any {
 	parsed, err := url.Parse(location)
-	if err != nil {
+	if err != nil || parsed.Opaque != "" {
 		return field.OmitValueType{}
 	}
 	parsed.User = nil
