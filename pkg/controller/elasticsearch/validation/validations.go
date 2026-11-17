@@ -345,7 +345,8 @@ func validPlugins(es esv1.Elasticsearch) field.ErrorList {
 		if strings.TrimSpace(p.ID) == "" {
 			errs = append(errs, field.Invalid(itemPath.Child("id"), p.ID, blankPluginIDMsg))
 		}
-		if p.Location != "" && !validPluginLocation(p.Location) {
+		// Elasticsearch installs the official plugin of that name when the location equals an official plugin ID
+		if p.Location != "" && p.Location != p.ID && !validPluginLocation(p.Location) {
 			errs = append(errs, field.Invalid(itemPath.Child("location"), p.Location, invalidPluginLocationMsg))
 		}
 	}
@@ -357,6 +358,11 @@ func validPlugins(es esv1.Elasticsearch) field.ErrorList {
 // characters it never accepts, malformed percent escapes in any component, more than one '#', an empty
 // scheme-specific part, and brackets in the path. This is best effort: Elasticsearch remains the final check.
 func validPluginLocation(location string) bool {
+	// Elasticsearch rejects a location without ':' as an unknown plugin name; this catches scheme-less paths
+	// such as /mnt/plugins/my-plugin.zip
+	if !strings.Contains(location, ":") {
+		return false
+	}
 	if strings.ContainsFunc(location, func(r rune) bool {
 		return unicode.IsSpace(r) || unicode.IsControl(r) || strings.ContainsRune("\"<>\\^`{|}", r)
 	}) {

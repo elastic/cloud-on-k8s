@@ -1843,6 +1843,7 @@ func Test_validPlugins(t *testing.T) {
 				Proxy: "proxy.corp:3128",
 				Items: []esv1.Plugin{
 					{ID: "analysis-icu"},
+					{ID: "analysis-kuromoji", Location: "analysis-kuromoji"},
 					{ID: "url-plugin", Location: "https://repo.corp/my-plugin-9.2.0.zip"},
 					{ID: "file-plugin", Location: "file:///mnt/plugins/my-plugin.zip"},
 					{ID: "maven-plugin", Location: "org.example:my-plugin:9.2.0"},
@@ -1919,6 +1920,9 @@ func Test_validPlugins(t *testing.T) {
 				{ID: "empty-ssp", Location: "https:"},
 				{ID: "empty-ssp-with-fragment", Location: "file:#fragment"},
 				{ID: "two-fragments", Location: "https://repo.corp/my-plugin.zip#a#b"},
+				{ID: "no-scheme-path", Location: "/mnt/plugins/my-plugin.zip"},
+				{ID: "no-scheme-host", Location: "repo.corp/my-plugin.zip"},
+				{ID: "other-plugin-id", Location: "analysis-icu"},
 			}},
 			wantFields: []string{
 				"spec.plugins.items[1].location",
@@ -1935,6 +1939,9 @@ func Test_validPlugins(t *testing.T) {
 				"spec.plugins.items[12].location",
 				"spec.plugins.items[13].location",
 				"spec.plugins.items[14].location",
+				"spec.plugins.items[15].location",
+				"spec.plugins.items[16].location",
+				"spec.plugins.items[17].location",
 			},
 		},
 	}
