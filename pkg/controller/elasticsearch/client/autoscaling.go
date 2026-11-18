@@ -7,6 +7,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	"k8s.io/apimachinery/pkg/api/resource"
 
@@ -14,9 +15,9 @@ import (
 )
 
 type AutoscalingClient interface {
-	// DeleteAutoscalingPolicies deletes all the autoscaling policies in a cluster.
-	DeleteAutoscalingPolicies(ctx context.Context) error
-	// CreateAutoscalingPolicy creates a new autoscaling policy.
+	// DeleteAutoscalingPolicy deletes the named autoscaling policy.
+	DeleteAutoscalingPolicy(ctx context.Context, policyName string) error
+	// CreateAutoscalingPolicy creates or updates an autoscaling policy.
 	CreateAutoscalingPolicy(ctx context.Context, policyName string, autoscalingPolicy v1alpha1.AutoscalingPolicy) error
 	// GetAutoscalingCapacity returns the capacity for the autoscaling policies declared in a cluster.
 	GetAutoscalingCapacity(ctx context.Context) (AutoscalingCapacityResult, error)
@@ -37,12 +38,26 @@ type MachineLearningSettingsGroup struct {
 }
 
 func (c *clientV7) CreateAutoscalingPolicy(ctx context.Context, policyName string, autoscalingPolicy v1alpha1.AutoscalingPolicy) error {
-	path := fmt.Sprintf("/_autoscaling/policy/%s", policyName)
-	return c.put(ctx, path, autoscalingPolicy, nil)
+	path := fmt.Sprintf("/_autoscaling/policy/%s", url.PathEscape(policyName))
+	// PUT preserves omitted fields on an existing policy. Send empty roles and deciders explicitly
+	// so removing them from the specification also removes them from Elasticsearch.
+	roles := autoscalingPolicy.Roles
+	if roles == nil {
+		roles = []string{}
+	}
+	deciders := autoscalingPolicy.Deciders
+	if deciders == nil {
+		deciders = map[string]v1alpha1.DeciderSettings{}
+	}
+	request := struct {
+		Roles    []string                            `json:"roles"`
+		Deciders map[string]v1alpha1.DeciderSettings `json:"deciders"`
+	}{Roles: roles, Deciders: deciders}
+	return c.put(ctx, path, request, nil)
 }
 
-func (c *clientV7) DeleteAutoscalingPolicies(ctx context.Context) error {
-	return c.delete(ctx, "/_autoscaling/policy/*")
+func (c *clientV7) DeleteAutoscalingPolicy(ctx context.Context, policyName string) error {
+	return c.delete(ctx, fmt.Sprintf("/_autoscaling/policy/%s", url.PathEscape(policyName)))
 }
 
 func (c *clientV7) UpdateMLNodesSettings(ctx context.Context, maxLazyMLNodes int32, maxMemory string) error {
