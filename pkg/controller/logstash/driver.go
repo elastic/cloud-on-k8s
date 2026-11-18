@@ -54,7 +54,7 @@ type Params struct {
 	KeystoreResources *keystore.Resources
 	APIServerConfig   configs.APIServer // resolved API server config
 	// MountHTTPCerts is true if the HTTP certificates are reconciled and must be mounted in the Logstash container.
-	// It can be true while TLS is disabled for the API server, if another Service requests a self-signed certificate.
+	// It can be true while TLS is disabled for the API server, if the self-signed certificate is not disabled for another Service.
 	MountHTTPCerts bool
 
 	// Expectations control some expectations set on resources in the cache, in order to
@@ -167,9 +167,9 @@ func internalReconcile(params Params) (*reconciler.Results, logstashv1alpha1.Log
 }
 
 // certificateTLSOptions returns the TLS options used to reconcile the certificate shared by all the Services.
-// These are the TLS options of the API Service, unless TLS is disabled for the API Service while another Service
-// requests a self-signed certificate. In that case a self-signed certificate is reconciled for the other Services
-// and the API server does not use it.
+// These are the TLS options of the API Service, unless TLS is disabled for the API Service while the self-signed
+// certificate is not disabled for another Service. In that case a self-signed certificate is reconciled for the
+// other Services and the API server does not use it.
 func certificateTLSOptions(logstash logstashv1alpha1.Logstash) commonv1.TLSOptions {
 	apiSvcTLS := logstash.APIServerTLSOptions()
 	if !apiSvcTLS.Enabled() && len(logstash.CertificateContributingServices()) > 0 {
@@ -179,7 +179,7 @@ func certificateTLSOptions(logstash logstashv1alpha1.Logstash) commonv1.TLSOptio
 }
 
 // certificateServices returns the Services whose DNS names and IP addresses are added to the shared certificate:
-// the API Service first, then the Services which request a self-signed certificate, in the order of the spec.
+// the API Service first, then the other Services for which the self-signed certificate is not disabled, in the order of the spec.
 func certificateServices(logstash logstashv1alpha1.Logstash, apiSvc corev1.Service, reconciled []corev1.Service) []corev1.Service {
 	contributing := make(map[string]struct{})
 	for _, service := range logstash.CertificateContributingServices() {

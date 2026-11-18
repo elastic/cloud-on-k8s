@@ -68,10 +68,17 @@ func Test_certificateTLSOptions(t *testing.T) {
 			name: "API Service TLS disabled, no contributing Service: TLS disabled",
 			services: []logstashv1alpha1.LogstashService{
 				{Name: "api", TLS: selfSignedTLS(true)},
-				{Name: "beats"},
 				{Name: "tcp", TLS: selfSignedTLS(true)},
 			},
 			want: selfSignedTLS(true),
+		},
+		{
+			name: "API Service TLS disabled, Service without TLS options: self-signed certificate",
+			services: []logstashv1alpha1.LogstashService{
+				{Name: "api", TLS: selfSignedTLS(true)},
+				{Name: "beats"},
+			},
+			want: selfSignedTLS(false),
 		},
 		{
 			name: "API Service TLS disabled, contributing Service: self-signed certificate",
@@ -109,24 +116,24 @@ func Test_certificateServices(t *testing.T) {
 			want:       []string{"ls-ls-api"},
 		},
 		{
-			name: "Services which do not request a self-signed certificate are not included",
+			name: "Services with a disabled self-signed certificate are not included",
 			services: []logstashv1alpha1.LogstashService{
 				{Name: "beats"},
 				{Name: "tcp", TLS: selfSignedTLS(true)},
 				{Name: "udp", TLS: commonv1.TLSOptions{Certificate: commonv1.SecretRef{SecretName: "my-cert"}}},
 			},
 			reconciled: []corev1.Service{svc("ls-ls-beats"), svc("ls-ls-tcp"), svc("ls-ls-udp"), svc("ls-ls-api")},
-			want:       []string{"ls-ls-api"},
+			want:       []string{"ls-ls-api", "ls-ls-beats", "ls-ls-udp"},
 		},
 		{
 			name: "API Service first, then contributing Services in the order of the spec",
 			services: []logstashv1alpha1.LogstashService{
 				{Name: "tcp", TLS: selfSignedTLS(false)},
-				{Name: "no-tls"},
+				{Name: "disabled", TLS: selfSignedTLS(true)},
 				{Name: "api", TLS: selfSignedTLS(false)},
 				{Name: "beats", TLS: selfSignedTLS(false)},
 			},
-			reconciled: []corev1.Service{svc("ls-ls-tcp"), svc("ls-ls-no-tls"), svc("ls-ls-api"), svc("ls-ls-beats")},
+			reconciled: []corev1.Service{svc("ls-ls-tcp"), svc("ls-ls-disabled"), svc("ls-ls-api"), svc("ls-ls-beats")},
 			want:       []string{"ls-ls-api", "ls-ls-tcp", "ls-ls-beats"},
 		},
 	}
@@ -285,12 +292,16 @@ func Test_internalReconcile_certificate(t *testing.T) {
 			wantUseTLS:   "true",
 		},
 		{
-			name:         "a Service without TLS options does not change the certificate",
-			services:     []logstashv1alpha1.LogstashService{beatsService(commonv1.TLSOptions{})},
-			wantSecret:   true,
-			wantDNSNames: defaultDNSNames,
-			wantMount:    true,
-			wantUseTLS:   "true",
+			name:       "a Service without TLS options adds its names",
+			services:   []logstashv1alpha1.LogstashService{beatsService(commonv1.TLSOptions{})},
+			wantSecret: true,
+			wantDNSNames: append(append([]string{}, defaultDNSNames...),
+				"ls-ls-beats.test.svc",
+				"ls-ls-beats.test",
+			),
+			wantIPs:    []string{"10.11.12.13"},
+			wantMount:  true,
+			wantUseTLS: "true",
 		},
 		{
 			name:         "a Service with a disabled self-signed certificate does not change the certificate",
@@ -334,7 +345,7 @@ func Test_internalReconcile_certificate(t *testing.T) {
 			name: "TLS disabled for the API Service and no contributing Service: no certificate",
 			services: []logstashv1alpha1.LogstashService{
 				{Name: "api", TLS: selfSignedTLS(true)},
-				beatsService(commonv1.TLSOptions{}),
+				beatsService(selfSignedTLS(true, beatsSANs...)),
 			},
 			wantSecret: false,
 			wantMount:  false,
@@ -428,7 +439,7 @@ func Test_internalReconcile_certificateUpdates(t *testing.T) {
 		require.NotNil(t, env.certSecret())
 		assert.True(t, hasHTTPCertsVolumeMount(env.podTemplate()))
 
-		env.reconcile([]logstashv1alpha1.LogstashService{apiDisabled, beats(commonv1.TLSOptions{})})
+		env.reconcile([]logstashv1alpha1.LogstashService{apiDisabled, beats(selfSignedTLS(true))})
 		assert.Nil(t, env.certSecret())
 		assert.False(t, hasHTTPCertsVolumeMount(env.podTemplate()))
 	})

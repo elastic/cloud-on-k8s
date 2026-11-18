@@ -127,7 +127,7 @@ type LogstashService struct {
 	Service commonv1.ServiceTemplate `json:"service,omitempty"`
 	// TLS defines options for configuring TLS.
 	// Logstash uses a single certificate, which is issued according to the TLS options of the `api` Service.
-	// For any other Service, only `selfSignedCertificate` is taken into account: when it is set and not disabled,
+	// For any other Service, only `selfSignedCertificate` is taken into account: unless it is disabled,
 	// its `subjectAltNames` and the DNS names and IP addresses of the Service are added to that certificate,
 	// so that it can also be used by the Logstash inputs exposed through the Service. The certificate and its key
 	// are available in the Logstash container in the `/mnt/elastic-internal/http-certs` directory.
@@ -459,18 +459,18 @@ func (l *Logstash) APIServerService() LogstashService {
 	return LogstashService{}
 }
 
-// CertificateContributingServices returns the user defined Services, other than the API Service, which explicitly
-// request a self-signed certificate. The DNS names and IP addresses of these Services and their subject alternative
-// names are added to the certificate shared by all the Services of this Logstash.
-// A Service without `tls.selfSignedCertificate` does not contribute, which keeps the certificate of existing
-// resources unchanged.
+// CertificateContributingServices returns the user defined Services, other than the API Service, for which the
+// self-signed certificate is not disabled. The DNS names and IP addresses of these Services and their subject
+// alternative names are added to the certificate shared by all the Services of this Logstash.
+// As for the API Service, a Service without `tls.selfSignedCertificate` contributes by default. Only
+// `selfSignedCertificate` is considered, because `certificate` is ignored for Services other than the API Service.
 func (l *Logstash) CertificateContributingServices() []LogstashService {
 	var services []LogstashService
 	for _, service := range l.Spec.Services {
 		if l.IsAPIService(service) {
 			continue
 		}
-		if selfSigned := service.TLS.SelfSignedCertificate; selfSigned != nil && !selfSigned.Disabled {
+		if selfSigned := service.TLS.SelfSignedCertificate; selfSigned == nil || !selfSigned.Disabled {
 			services = append(services, service)
 		}
 	}
@@ -483,6 +483,9 @@ func (l *Logstash) ExtraCertificateSANs() []commonv1.SubjectAlternativeName {
 	var sans []commonv1.SubjectAlternativeName
 	seen := make(map[commonv1.SubjectAlternativeName]struct{})
 	for _, service := range l.CertificateContributingServices() {
+		if service.TLS.SelfSignedCertificate == nil {
+			continue
+		}
 		for _, san := range service.TLS.SelfSignedCertificate.SubjectAlternativeNames {
 			if _, ok := seen[san]; ok {
 				continue

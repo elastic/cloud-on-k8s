@@ -219,7 +219,7 @@ func getHTTPSInternalCertsSecret(params Params) (corev1.Secret, error) {
 }
 
 // mountHTTPCerts returns true if the HTTP certificates must be mounted in the Logstash container, either because the
-// API server uses TLS or because another Service requests a self-signed certificate.
+// API server uses TLS or because the self-signed certificate is not disabled for another Service.
 func (p Params) mountHTTPCerts() bool {
 	return p.APIServerConfig.UseTLS() || p.MountHTTPCerts
 }

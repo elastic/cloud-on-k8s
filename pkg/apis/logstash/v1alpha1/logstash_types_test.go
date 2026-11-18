@@ -175,15 +175,26 @@ func TestLogstash_CertificateContributingServices(t *testing.T) {
 			name: "no service",
 		},
 		{
-			name: "service without TLS options does not contribute",
+			name: "service without TLS options contributes without SAN",
 			services: []LogstashService{
 				{Name: "beats"},
 			},
+			wantServices: []string{"beats"},
 		},
 		{
-			name: "service with a custom certificate only does not contribute",
+			name: "service with a custom certificate only contributes, the custom certificate is ignored",
 			services: []LogstashService{
 				{Name: "beats", TLS: commonv1.TLSOptions{Certificate: commonv1.SecretRef{SecretName: "my-cert"}}},
+			},
+			wantServices: []string{"beats"},
+		},
+		{
+			name: "service with a custom certificate and a disabled self-signed certificate does not contribute",
+			services: []LogstashService{
+				{Name: "beats", TLS: commonv1.TLSOptions{
+					SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: true},
+					Certificate:           commonv1.SecretRef{SecretName: "my-cert"},
+				}},
 			},
 		},
 		{
@@ -222,7 +233,7 @@ func TestLogstash_CertificateContributingServices(t *testing.T) {
 					commonv1.SubjectAlternativeName{DNS: "beats.example.com"},
 				)},
 			},
-			wantServices: []string{"tcp", "beats"},
+			wantServices: []string{"tcp", "no-tls", "beats"},
 			wantSANs: []commonv1.SubjectAlternativeName{
 				{DNS: "tcp.example.com"},
 				{IP: "1.2.3.4"},
