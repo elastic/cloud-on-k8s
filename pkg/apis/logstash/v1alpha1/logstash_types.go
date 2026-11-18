@@ -477,7 +477,7 @@ func (l *Logstash) CertificateContributingServices() []LogstashService {
 	return services
 }
 
-// ExtraCertificateSANs returns the subject alternative names requested by the Services returned by
+// ExtraCertificateSANs returns the subject alternative names set on the Services returned by
 // CertificateContributingServices, in the order of the spec and without duplicates.
 func (l *Logstash) ExtraCertificateSANs() []commonv1.SubjectAlternativeName {
 	var sans []commonv1.SubjectAlternativeName

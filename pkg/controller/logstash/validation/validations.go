@@ -176,10 +176,20 @@ func servicesTLSWarnings(l *lsv1alpha1.Logstash) []string {
 			))
 		}
 		selfSigned := service.TLS.SelfSignedCertificate
-		if apiCustomCert && selfSigned != nil && !selfSigned.Disabled && len(selfSigned.SubjectAlternativeNames) > 0 {
+		if selfSigned == nil || len(selfSigned.SubjectAlternativeNames) == 0 {
+			continue
+		}
+		sansPath := tlsPath.Child("selfSignedCertificate", "subjectAltNames")
+		switch {
+		case selfSigned.Disabled:
+			warnings = append(warnings, fmt.Sprintf(
+				"%s is ignored: the self-signed certificate is disabled for this Service",
+				sansPath,
+			))
+		case apiCustomCert:
 			warnings = append(warnings, fmt.Sprintf(
 				"%s is ignored: the `%s` Service uses a custom certificate, to which subject alternative names cannot be added",
-				tlsPath.Child("selfSignedCertificate", "subjectAltNames"), apiServiceName,
+				sansPath, apiServiceName,
 			))
 		}
 	}

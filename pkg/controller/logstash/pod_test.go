@@ -397,7 +397,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			},
 		},
 		{
-			name: "API server without TLS and a certificate requested by another Service: HTTP certificates are mounted",
+			name: "API server without TLS and a certificate for another Service: HTTP certificates are mounted",
 			logstash: logstashv1alpha1.Logstash{ObjectMeta: meta, Spec: logstashv1alpha1.LogstashSpec{
 				Version: "8.6.1",
 			}},
@@ -463,14 +463,14 @@ func Test_writeHTTPSCertsToConfigHash(t *testing.T) {
 			wantHashed:      false,
 		},
 		{
-			name:            "API server without TLS and a certificate requested by another Service: certificate is in the hash",
+			name:            "API server without TLS and a certificate for another Service: certificate is in the hash",
 			apiServerConfig: configs.APIServer{SSLEnabled: "false"},
 			mountHTTPCerts:  true,
 			objs:            []client.Object{&httpCertsSecret},
 			wantHashed:      true,
 		},
 		{
-			name:            "certificate requested by another Service but the Secret does not exist: error",
+			name:            "certificate for another Service but the Secret does not exist: error",
 			apiServerConfig: configs.APIServer{SSLEnabled: "false"},
 			mountHTTPCerts:  true,
 			wantErr:         true,

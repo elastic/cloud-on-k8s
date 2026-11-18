@@ -48,8 +48,8 @@ func TestLogstashCustomServiceTLS(t *testing.T) {
 	test.Sequence(nil, steps, b).RunSequential(t)
 }
 
-// TestLogstashCustomServiceTLSWithAPITLSDisabled verifies that the certificate requested by a custom Service is
-// issued and mounted when TLS is disabled for the API Service.
+// TestLogstashCustomServiceTLSWithAPITLSDisabled verifies that the certificate is issued and mounted for a
+// custom Service when TLS is disabled for the API Service.
 func TestLogstashCustomServiceTLSWithAPITLSDisabled(t *testing.T) {
 	b := newBeatsTLSBuilder("test-ls-svc-tls-noapi",
 		logstashv1alpha1.LogstashService{
@@ -73,7 +73,7 @@ func TestLogstashCustomServiceTLSWithAPITLSDisabled(t *testing.T) {
 }
 
 // newBeatsTLSBuilder returns a Logstash with a beats input which uses the certificate managed by the operator, and
-// a custom Service for this input which requests an additional subject alternative name.
+// a custom Service for this input which adds a subject alternative name to this certificate.
 func newBeatsTLSBuilder(name string, extraServices ...logstashv1alpha1.LogstashService) logstash.Builder {
 	certsDir := certificates.HTTPCertificatesSecretVolumeMountPath
 	beatsService := logstashv1alpha1.LogstashService{

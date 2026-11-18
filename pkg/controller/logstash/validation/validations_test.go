@@ -634,11 +634,43 @@ func Test_servicesTLSWarnings(t *testing.T) {
 			wantWarnings: []string{"spec.services[0].tls.selfSignedCertificate.subjectAltNames is ignored"},
 		},
 		{
-			name: "self-signed certificate without SAN or disabled, with a custom certificate on the API service: no warning",
+			name: "custom service without TLS options or without SAN, with a custom certificate on the API service: no warning",
 			services: []lsv1alpha1.LogstashService{
 				{Name: "api", TLS: customCert},
 				{Name: "beats", TLS: commonv1.TLSOptions{SelfSignedCertificate: &commonv1.SelfSignedCertificate{}}},
+				{Name: "tcp"},
+				{Name: "udp", TLS: commonv1.TLSOptions{SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: true}}},
+			},
+		},
+		{
+			name: "custom service without TLS options with a self-signed API service: no warning",
+			services: []lsv1alpha1.LogstashService{
+				{Name: "beats"},
+			},
+		},
+		{
+			name: "SANs on a custom service with a disabled self-signed certificate: warning",
+			services: []lsv1alpha1.LogstashService{
+				{Name: "beats", TLS: commonv1.TLSOptions{
+					SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: true, SubjectAlternativeNames: sans},
+				}},
+			},
+			wantWarnings: []string{"spec.services[0].tls.selfSignedCertificate.subjectAltNames is ignored"},
+		},
+		{
+			name: "SANs on a custom service with a disabled self-signed certificate and a custom certificate on the API service: one warning",
+			services: []lsv1alpha1.LogstashService{
+				{Name: "api", TLS: customCert},
 				{Name: "tcp", TLS: commonv1.TLSOptions{
+					SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: true, SubjectAlternativeNames: sans},
+				}},
+			},
+			wantWarnings: []string{"spec.services[1].tls.selfSignedCertificate.subjectAltNames is ignored"},
+		},
+		{
+			name: "SANs on the API service with a disabled self-signed certificate: no warning",
+			services: []lsv1alpha1.LogstashService{
+				{Name: "api", TLS: commonv1.TLSOptions{
 					SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: true, SubjectAlternativeNames: sans},
 				}},
 			},
