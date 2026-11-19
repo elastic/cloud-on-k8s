@@ -178,6 +178,14 @@ type ElasticsearchSpec struct {
 	// +kubebuilder:validation:Optional
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 
+	// Plugins declares the Elasticsearch plugins to install on every node of the cluster.
+	// The operator renders them into the elasticsearch-plugins.yml file, which Elasticsearch
+	// uses on startup to install, upgrade and remove plugins.
+	// Any plugin that is installed but not listed here is removed, including plugins baked into a custom image.
+	// Requires Elasticsearch 8.17.0 or later.
+	// +kubebuilder:validation:Optional
+	Plugins *PluginsSpec `json:"plugins,omitempty"`
+
 	// ServiceAccountName is used to check access from the current resource to a resource (for ex. a remote Elasticsearch cluster) in a different namespace.
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +optional
@@ -202,6 +210,33 @@ type ElasticsearchSpec struct {
 
 	// RevisionHistoryLimit is the number of revisions to retain to allow rollback in the underlying StatefulSets.
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
+}
+
+// PluginsSpec holds the content of the elasticsearch-plugins.yml file.
+type PluginsSpec struct {
+	// Items is the list of plugins to install.
+	// +kubebuilder:validation:MinItems=1
+	// +listType=map
+	// +listMapKey=id
+	Items []Plugin `json:"items"`
+
+	// Proxy is an optional HTTP proxy, in host:port form, used to download plugins.
+	// +kubebuilder:validation:Optional
+	Proxy string `json:"proxy,omitempty"`
+}
+
+// Plugin is a single Elasticsearch plugin.
+type Plugin struct {
+	// ID is the name of the plugin.
+	// For a custom plugin, it must match the name declared in the plugin descriptor, otherwise Elasticsearch fails to start.
+	// +kubebuilder:validation:MinLength=1
+	ID string `json:"id"`
+
+	// Location is the URL, file:// path or Maven coordinates of a custom plugin.
+	// Required for any plugin that is not an official Elastic plugin, otherwise Elasticsearch fails to start.
+	// Leave it empty for official plugins.
+	// +kubebuilder:validation:Optional
+	Location string `json:"location,omitempty"`
 }
 
 type RemoteClusterServer struct {
@@ -684,6 +719,11 @@ func (es Elasticsearch) DownwardNodeLabelsHashInput() string {
 // and zone-awareness-derived labels should inspect DownwardNodeLabels() directly.
 func (es Elasticsearch) HasDownwardNodeLabels() bool {
 	return len(es.DownwardNodeLabels()) > 0
+}
+
+// HasPlugins returns true if plugins are declared in spec.plugins.
+func (es Elasticsearch) HasPlugins() bool {
+	return es.Spec.Plugins != nil && len(es.Spec.Plugins.Items) > 0
 }
 
 // IsMarkedForDeletion returns true if the Elasticsearch is going to be deleted

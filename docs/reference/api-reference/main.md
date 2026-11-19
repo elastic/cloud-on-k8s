@@ -1359,6 +1359,7 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 | *`podDisruptionBudget`* __[PodDisruptionBudgetTemplate](#poddisruptionbudgettemplate)__ | PodDisruptionBudget provides access to the default Pod disruption budget(s) for the Elasticsearch cluster.<br>The behavior depends on the license level.<br>With a Basic license or if podDisruptionBudget.spec is not empty:<br>  The default budget doesn't allow any Pod to be removed in case the cluster is not green or if there is only one node of type `data` or `master`.<br>  In all other cases the default podDisruptionBudget sets `minAvailable` equal to the total number of nodes minus 1.<br>With an Enterprise license and if podDisruptionBudget.spec is empty:<br>  The default budget is split into multiple budgets, each targeting a specific node role type allowing additional disruptions<br>  for certain roles according to the health status of the cluster.<br>    Example:<br>      All data roles (excluding frozen): allows disruptions only when the cluster is green.<br>      All other roles: allows disruptions only when the cluster is yellow or green.<br>To disable, set `podDisruptionBudget` to the empty value (`{}` in YAML). |
 | *`auth`* __[Auth](#auth)__ | Auth contains user authentication and authorization security settings for Elasticsearch. |
 | *`secureSettings`* __[SecretSource](#secretsource) array__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch. |
+| *`plugins`* __[PluginsSpec](#pluginsspec)__ | Plugins declares the Elasticsearch plugins to install on every node of the cluster.<br>The operator renders them into the elasticsearch-plugins.yml file, which Elasticsearch<br>uses on startup to install, upgrade and remove plugins.<br>Any plugin that is installed but not listed here is removed, including plugins baked into a custom image.<br>Requires Elasticsearch 8.17.0 or later. |
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (for ex. a remote Elasticsearch cluster) in a different namespace.<br>Can only be used if ECK is enforcing RBAC on references. |
 | *`remoteClusters`* __[RemoteCluster](#remotecluster) array__ | RemoteClusters enables you to establish uni-directional connections to a remote Elasticsearch cluster. |
 | *`volumeClaimDeletePolicy`* __[VolumeClaimDeletePolicy](#volumeclaimdeletepolicy)__ | VolumeClaimDeletePolicy sets the policy for handling deletion of PersistentVolumeClaims for all NodeSets.<br>Possible values are DeleteOnScaledownOnly and DeleteOnScaledownAndClusterDeletion. Defaults to DeleteOnScaledownAndClusterDeletion. |
@@ -1519,6 +1520,36 @@ PKIRealm configures the ECK-managed PKI realm.
 | Field | Description |
 | --- | --- |
 | *`enabled`* __boolean__ | Enabled specifies whether to configure the ECK-managed PKI realm, which components with<br>elasticsearchRef.authenticationMode: PKI use to authenticate with their TLS client certificate.<br>Requires Elasticsearch 9.6.0+ and spec.http.tls.client.authentication. |
+
+
+### Plugin  [#plugin]
+
+Plugin is a single Elasticsearch plugin.
+
+:::{admonition} Appears In:
+* [PluginsSpec](#pluginsspec)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`id`* __string__ | ID is the name of the plugin.<br>For a custom plugin, it must match the name declared in the plugin descriptor, otherwise Elasticsearch fails to start. |
+| *`location`* __string__ | Location is the URL, file:// path or Maven coordinates of a custom plugin.<br>Required for any plugin that is not an official Elastic plugin, otherwise Elasticsearch fails to start.<br>Leave it empty for official plugins. |
+
+
+### PluginsSpec  [#pluginsspec]
+
+PluginsSpec holds the content of the elasticsearch-plugins.yml file.
+
+:::{admonition} Appears In:
+* [ElasticsearchSpec](#elasticsearchspec)
+
+:::
+
+| Field | Description |
+| --- | --- |
+| *`items`* __[Plugin](#plugin) array__ | Items is the list of plugins to install. |
+| *`proxy`* __string__ | Proxy is an optional HTTP proxy, in host:port form, used to download plugins. |
 
 
 ### RemoteCluster  [#remotecluster]

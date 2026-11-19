@@ -2052,7 +2052,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 func Test_deleteStatefulSetResources(t *testing.T) {
 	es := esv1.Elasticsearch{Namespace: "ns", Name: "cluster"}
 	sset := sset.TestSset{Namespace: "ns", Name: "sset", ClusterName: es.Name}.Build()
-	cfg := settings.ConfigSecret(es, sset.Name, []byte("fake config data"), metadata.Metadata{})
+	cfg := settings.ConfigSecret(es, sset.Name, []byte("fake config data"), nil, metadata.Metadata{})
 	svc := nodespec.HeadlessService(&es, sset.Name, metadata.Metadata{})
 
 	tests := []struct {
