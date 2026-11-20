@@ -244,15 +244,12 @@ func formatHeldReasons(heldReasons map[string]string) string {
 	return sb.String()
 }
 
-// classifyNonMembers returns the given nodes, which are not members of the cluster, by name. A node whose Pod exists
-// cannot join if its StatefulSet is no longer expected, as nothing repairs its Pod, or if its Pod is unschedulable, as
-// nothing reliably upgrades it. Its removal waits for the cluster to be settled, whether it ever ran or not, as it may
-// have: it may have been a member, for example recreated after the loss of its Kubernetes node, its claim may be bound
-// to a retained volume, and the ephemeral volumes of a crash looping member survive container restarts. Whatever keeps
-// it from running, a volume bound to a lost Kubernetes node for example, may never be resolved, and a settled cluster
-// does not need its storage. Any other node may join: its Pod may be starting, or be a member that restarts. A Pod that
-// is missing from the cache may join too: it may have been created since, and expectationsSatisfied, which precedes the
-// downscale, waits for its creation anyway.
+// classifyNonMembers returns the given nodes, which are not members of the cluster, by name. A node cannot join if its
+// Pod exists and nothing will repair it: its StatefulSet is no longer expected, or its Pod is unschedulable. This is
+// what the cache shows, not a guarantee, as a Pod that is unschedulable or gated may still start, and a shard allocated
+// to it after the cluster is found settled may be lost. Such a node is removed only once the cluster is settled, even
+// if its Pod never ran, as its volumes may still hold shard copies. Any other node is held, as it may join: its Pod may
+// be starting or restarting, or may have been created since if it is missing from the cache.
 func classifyNonMembers(
 	nodes sets.Set[string],
 	expected, actual es_sset.StatefulSetList,

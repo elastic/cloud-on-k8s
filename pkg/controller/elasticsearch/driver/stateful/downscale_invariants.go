@@ -141,9 +141,9 @@ const nonMemberRemovedReason = "it is not a member of the cluster and cannot joi
 
 // nonMember is a leaving node that is not a member of the cluster.
 type nonMember struct {
-	// cannotJoin is true if the next steps cannot make the node join, see classifyNonMembers: it is then removed without
-	// a shutdown once the nodes response is complete and the cluster is settled, see nonMemberRemovalsAllowed. Otherwise
-	// it is held until it joins.
+	// cannotJoin is true if nothing will repair the node, see classifyNonMembers, which is not a guarantee that it never
+	// joins: it is removed without a shutdown once the cluster is settled, see nonMemberState.nonMemberRemovalsAllowed,
+	// and may lose a shard if it joins before the StatefulSet update. Otherwise, it is held until it joins.
 	cannotJoin bool
 }
 
