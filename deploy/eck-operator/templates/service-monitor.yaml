@@ -4,7 +4,15 @@ kind: ServiceMonitor
 metadata:
   name: {{ include "eck-operator.fullname" . }}
   namespace: {{ ternary .Values.serviceMonitor.namespace .Release.Namespace (not (and (.Values.serviceMonitor) (empty .Values.serviceMonitor.namespace))) }}
-  labels: {{- include "eck-operator.labels" . | nindent 4 }}
+  labels:
+    {{- $labels := include "eck-operator.labels" . | fromYaml }}
+    {{- with .Values.serviceMonitor.labels }}
+    {{- $labels = mergeOverwrite (dict) $labels . }}
+    {{- end }}
+    {{- toYaml $labels | nindent 4 }}
+  {{- with .Values.serviceMonitor.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   namespaceSelector:
     matchNames:
@@ -17,7 +25,10 @@ spec:
   - port: https
     path: /metrics
     scheme: https
-    interval: 30s
+    interval: {{ .Values.serviceMonitor.interval | default "30s" }}
+    {{- with .Values.serviceMonitor.scrapeTimeout }}
+    scrapeTimeout: {{ . }}
+    {{- end }}
     tlsConfig:
       {{- $insecureSkipVerify := (ternary .Values.config.metrics.secureMode.tls.insecureSkipVerify .Values.serviceMonitor.insecureSkipVerify (hasKey .Values.config.metrics.secureMode.tls "insecureSkipVerify")) }}
       insecureSkipVerify: {{ $insecureSkipVerify }}
