@@ -49,7 +49,6 @@ func NewBuilder(name string) Builder {
 			"cloud-connected-mode-api-key": "test-api-key",
 			// This is being set to localhost to not attempt to send data upstream.
 			"autoops-otel-url": "http://localhost:4318",
-			"autoops-token":    "test-token",
 		},
 	}
 

@@ -810,3 +810,73 @@ func nodeSetWithShorthandAndContainer(name, role string, cpu resource.Quantity) 
 		}}}},
 	}
 }
+
+func Test_pluginsWarnings(t *testing.T) {
+	icu := &esv1.PluginsSpec{Items: []esv1.Plugin{{ID: "analysis-icu"}}}
+	withInitContainers := func(containers ...corev1.Container) esv1.NodeSet {
+		return esv1.NodeSet{
+			Name: "default",
+			PodTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{InitContainers: containers},
+			},
+		}
+	}
+	installPlugins := corev1.Container{
+		Name:    "install-plugins",
+		Command: []string{"sh", "-c", "bin/elasticsearch-plugin remove --purge analysis-icu; bin/elasticsearch-plugin install --batch analysis-icu"},
+	}
+	installPluginsArgs := corev1.Container{
+		Name:    "install-plugins-args",
+		Command: []string{"sh", "-c"},
+		Args:    []string{"bin/elasticsearch-plugin install --batch analysis-icu"},
+	}
+	sysctl := corev1.Container{
+		Name:    "sysctl",
+		Command: []string{"sh", "-c", "sysctl -w vm.max_map_count=262144"},
+	}
+	tests := []struct {
+		name       string
+		spec       esv1.ElasticsearchSpec
+		wantFields []string
+	}{
+		{
+			name: "no plugins: no warnings",
+			spec: esv1.ElasticsearchSpec{
+				NodeSets: []esv1.NodeSet{withInitContainers(installPlugins)},
+			},
+			wantFields: nil,
+		},
+		{
+			name: "plugins without conflicts",
+			spec: esv1.ElasticsearchSpec{
+				Plugins:  icu,
+				Image:    "my-registry/elasticsearch:9.2.0",
+				NodeSets: []esv1.NodeSet{withInitContainers(sysctl)},
+			},
+			wantFields: nil,
+		},
+		{
+			name: "plugins with init containers running elasticsearch-plugin",
+			spec: esv1.ElasticsearchSpec{
+				Plugins: icu,
+				NodeSets: []esv1.NodeSet{
+					withInitContainers(sysctl, installPlugins),
+					withInitContainers(installPluginsArgs),
+				},
+			},
+			wantFields: []string{
+				"spec.nodeSets[0].podTemplate.spec.initContainers[1]",
+				"spec.nodeSets[1].podTemplate.spec.initContainers[0]",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var gotFields []string
+			for _, err := range pluginsWarnings(esv1.Elasticsearch{Spec: tt.spec}) {
+				gotFields = append(gotFields, err.Field)
+			}
+			require.Equal(t, tt.wantFields, gotFields)
+		})
+	}
+}

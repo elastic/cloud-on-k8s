@@ -48,13 +48,13 @@ func TestReconcileEnterpriseSearch_Reconcile_NotFound(t *testing.T) {
 	// resource not found, should clear watches
 	r := &ReconcileEnterpriseSearch{
 		Client:         k8s.NewFakeClient(),
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches("testCtr"),
 	}
 	// simulate existing watches
 	nsn := types.NamespacedName{Name: "sample", Namespace: "ns"}
 	require.NoError(t, watches.WatchUserProvidedSecrets(nsn, r.DynamicWatches(), common.ConfigRefWatchName(nsn), []string{"watched-secret"}))
 	// simulate a custom http tls secret
-	require.NoError(t, watches.WatchUserProvidedSecrets(nsn, r.dynamicWatches, "sample-ent-http-certificate", []string{"user-tls-secret"}))
+	require.NoError(t, watches.WatchUserProvidedSecrets(nsn, r.dynamicWatches, certificates.CertificateWatchKey(entv1.Namer, nsn), []string{"user-tls-secret"}))
 	require.NotEmpty(t, r.dynamicWatches.Secrets.Registrations())
 
 	result, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: nsn})
@@ -77,7 +77,7 @@ func TestReconcileEnterpriseSearch_Reconcile_AssociationNotConfigured(t *testing
 	fakeRecorder := toolsevents.NewFakeRecorder(10)
 	r := &ReconcileEnterpriseSearch{
 		Client:         k8s.NewFakeClient(&sample),
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches("testCtr"),
 		recorder:       fakeRecorder,
 	}
 	res, err := r.Reconcile(context.Background(), reconcile.Request{Name: "sample", Namespace: "ns"})
@@ -115,7 +115,7 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 		}}
 	r := &ReconcileEnterpriseSearch{
 		Client:         k8s.NewFakeClient(&sample),
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches("testCtr"),
 		recorder:       toolsevents.NewFakeRecorder(10),
 		OperatorInfo:   about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
 	}
@@ -258,7 +258,7 @@ func TestReconcileEnterpriseSearch_doReconcile_AssociationDelaysVersionUpgrade(t
 
 	r := &ReconcileEnterpriseSearch{
 		Client:         k8s.NewFakeClient(&ent, &es, &esTLSCertsSecret, &esAuthSecret, &entSearchPod),
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches("testCtr"),
 		recorder:       toolsevents.NewFakeRecorder(10),
 		OperatorInfo:   about.OperatorInfo{BuildInfo: about.BuildInfo{Version: "1.0.0"}},
 	}

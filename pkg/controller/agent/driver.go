@@ -360,7 +360,7 @@ func reconcileFleetServerClientAuth(params Params, clientAuthRequired bool, flee
 		extraCerts = append(extraCerts, fleetCerts)
 	}
 
-	bundleData, err := certReconciler.ReconcileTrustBundle(params.Context, agentv1alpha1.Kind, extraCerts...)
+	bundleData, err := certReconciler.ReconcileTrustBundle(params.Context, extraCerts...)
 	if err != nil {
 		return results.WithError(err)
 	}

@@ -330,7 +330,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcile(t *testing.T) {
 				params: operator.Parameters{
 					Dialer: &fakeDialer{},
 				},
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 			}
 
 			ctx := context.Background()
@@ -628,7 +628,7 @@ func TestAutoOpsAgentPolicyReconciler_internalReconcileResourceErrorsAndSkipped(
 				params: operator.Parameters{
 					Dialer: &fakeDialer{},
 				},
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 			}
 
 			ctx := t.Context()
@@ -721,7 +721,6 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 		Data: map[string][]byte{
 			"cloud-connected-mode-api-key": []byte("test-key"),
 			"autoops-otel-url":             []byte("https://test-url"),
-			"autoops-token":                []byte("test-token"),
 		},
 	}
 
@@ -782,6 +781,7 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 					Namespace: ns1.Name,
 					Labels: map[string]string{
 						PolicyNameLabelKey:                      "policy-1",
+						policyNamespaceLabelKey:                 ns1.Name,
 						policySecretTypeLabelKey:                clientCertSecretType,
 						reconciler.SoftOwnerNameLabel:           es1.Name,
 						reconciler.SoftOwnerNamespaceLabel:      es1.Namespace,
@@ -853,7 +853,7 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 				params: operator.Parameters{
 					Dialer: &fakeDialer{},
 				},
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 			}
 
 			ctx := context.Background()
@@ -990,7 +990,6 @@ func TestAutoOpsAgentPolicyReconciler_accessRevokedCleanup(t *testing.T) {
 		Data: map[string][]byte{
 			"cloud-connected-mode-api-key": []byte("test-key"),
 			"autoops-otel-url":             []byte("https://test-url"),
-			"autoops-token":                []byte("test-token"),
 		},
 	}
 
@@ -1029,7 +1028,7 @@ func TestAutoOpsAgentPolicyReconciler_accessRevokedCleanup(t *testing.T) {
 			params: operator.Parameters{
 				Dialer: &fakeDialer{},
 			},
-			dynamicWatches: watches.NewDynamicWatches(),
+			dynamicWatches: watches.NewDynamicWatches("testCtr"),
 		}
 
 		ctx := context.Background()
@@ -1246,7 +1245,7 @@ func TestInternalReconcile_PauseOrchestration(t *testing.T) {
 				accessReviewer:   &fakeAccessReviewer{allowed: true},
 				recorder:         toolsevents.NewFakeRecorder(10),
 				params:           operator.Parameters{Dialer: &fakeDialer{}},
-				dynamicWatches:   watches.NewDynamicWatches(),
+				dynamicWatches:   watches.NewDynamicWatches("testCtr"),
 			}
 
 			ctx := t.Context()
@@ -1316,7 +1315,7 @@ func TestInternalReconcile_PauseOrchestration_MatchingHash(t *testing.T) {
 			accessReviewer:   &fakeAccessReviewer{allowed: true},
 			recorder:         toolsevents.NewFakeRecorder(10),
 			params:           operator.Parameters{Dialer: &fakeDialer{}},
-			dynamicWatches:   watches.NewDynamicWatches(),
+			dynamicWatches:   watches.NewDynamicWatches("testCtr"),
 		}
 	}
 	ctx := t.Context()

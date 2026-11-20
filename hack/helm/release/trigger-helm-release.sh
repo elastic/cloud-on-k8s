@@ -7,7 +7,7 @@
 # Script to call the Buildkite API to trigger the release of the ECK Helm charts.
 #
 # Usage:  BK_TOKEN=$(jq .graphql_token ~/.buildkite/config.json -r) \
-#         BRANCH=2.8 DRY_RUN=true [FORCE=true] [SKIP_CHART_REPO=true] [SKIP_OCI_REGISTRY=true] \
+#         BRANCH=2.8 DRY_RUN=true [FORCE=true] [SKIP_CHART_REPO=true] [SKIP_OCI_REGISTRY=true] [SKIP_OCI_EXISTING=true] \
 #         ./trigger-helm-release.sh SCOPE
 #
 # Required environment variables:
@@ -19,6 +19,7 @@
 #    FORCE (default: false)
 #    SKIP_CHART_REPO    skip the GCS upload and Helm index update (default: false)
 #    SKIP_OCI_REGISTRY  skip the OCI registry push (default: false)
+#    SKIP_OCI_EXISTING  do not push the charts that already exist in the OCI registry, but record their digests to sign them (default: false)
 #
 # Argument:
 #    SCOPE  to select which charts to release ("all", "eck-operator" or "eck-stack")
@@ -32,6 +33,7 @@ set -eu
 FORCE=${FORCE:-false}
 SKIP_CHART_REPO=${SKIP_CHART_REPO:-false}
 SKIP_OCI_REGISTRY=${SKIP_OCI_REGISTRY:-false}
+SKIP_OCI_EXISTING=${SKIP_OCI_EXISTING:-false}
 
 # properties required to test PRs:
         # "pull_request_base_branch": "main",
@@ -51,7 +53,8 @@ main() {
             "HELM_DRY_RUN": "'"$DRY_RUN"'",
             "HELM_FORCE": "'"$FORCE"'",
             "HELM_SKIP_CHART_REPO": "'"$SKIP_CHART_REPO"'",
-            "HELM_SKIP_OCI_REGISTRY": "'"$SKIP_OCI_REGISTRY"'"
+            "HELM_SKIP_OCI_REGISTRY": "'"$SKIP_OCI_REGISTRY"'",
+            "HELM_SKIP_OCI_EXISTING": "'"$SKIP_OCI_EXISTING"'"
         }
     }'
 }

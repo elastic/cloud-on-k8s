@@ -10,6 +10,7 @@ Examples:
   release --env=prod --charts-dir=./deploy --dry-run=false
   release --env=prod --charts-dir=./deploy --dry-run=false --skip-chart-repo
   release --env=prod --charts-dir=./deploy --dry-run=false --skip-oci-registry
+  release --env=prod --charts-dir=./deploy --dry-run=false --skip-chart-repo --skip-oci-existing
 
 Flags:
       --charts-dir string                Directory which contains Helm charts to release (env: HELM_CHARTS_DIR) (default "./deploy")
@@ -20,8 +21,9 @@ Flags:
   -f, --force                            Upload artifacts even if they already exist (env: HELM_FORCE)
   -h, --help                             help for release
   -k, --keep-tmp-dir                     Keep temporary directory which contains the Helm charts ready to be published (env: HELM_KEEP_TMP_DIR)
-      --oci-charts-digests-file string   Path to a file where pushed OCI chart digest refs are written, one per line (e.g. registry/chart:version@sha256:...). Empty to skip (env: HELM_OCI_CHARTS_DIGESTS_FILE)
+      --oci-charts-digests-file string   Path of the file to write pushed OCI chart digest refs to, one per line (registry/chart:version@sha256:...). Includes digest refs of already-existing charts with --skip-oci-existing. Empty to skip (env: HELM_OCI_CHARTS_DIGESTS_FILE)
       --skip-chart-repo                  Skip uploading to the GCS bucket and updating the Helm index. Useful when only OCI publishing is needed (env: HELM_SKIP_CHART_REPO)
+      --skip-oci-existing                Skip pushing charts that already exist in the OCI registry, and still write their digest refs to the OCI charts digests file. Useful to retry a release without overwriting published charts (env: HELM_SKIP_OCI_EXISTING)
       --skip-oci-registry                Skip pushing charts to the OCI registry. Useful when only GCS publishing is needed (env: HELM_SKIP_OCI_REGISTRY)
 ```
 
@@ -35,6 +37,8 @@ Each environment has a fixed set of release targets:
 With `--enable-vault` (the default), the OCI registry credentials are read from Vault (`docker-registry-elastic`) and kept in memory. With `--enable-vault=false`, the local Helm registry or Docker login is used (e.g. via `docker login docker.elastic.co`).
 
 Charts are pushed to dedicated OCI namespaces, separate from the `eck` and `eck-snapshots` namespaces that hold the operator container images. Each repository name equals the chart name (e.g. `docker.elastic.co/eck-charts/eck-operator:1.0.0`), which Helm requires when a chart is consumed as a dependency of another chart.
+
+With `--skip-oci-existing`, the releaser skips charts already in the registry and records their published digests when `--oci-charts-digests-file` is set; it does not compare them with the local charts or sign them itself. The Helm release pipeline uses those digest refs in its downstream signing step. Retry a failed release from the same commit as the failed build, otherwise the signing step signs the old content.
 
 ### Structure
 

@@ -211,7 +211,7 @@ func buildConfigHash(
 	// 1. The optional keys are included here.
 	//   1a. cloud-connected-mode-api-url is optional, and is only required if connecting to an environment such as non-production or air-gapped.
 	// 2. The required keys are already validated in the controller, so they should always be present.
-	keys := []string{autoOpsToken, autoOpsOTelURL, ccmAPIKey, ccmAPIURL}
+	keys := []string{autoOpsOTelURL, ccmAPIKey, ccmAPIURL}
 	for _, key := range keys {
 		if data, ok := autoopsSecret.Data[key]; ok {
 			_, _ = configHash.Write(data)
@@ -243,15 +243,6 @@ func buildConfigHash(
 func autoopsEnvVars(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch) []corev1.EnvVar {
 	esService := services.InternalServiceURL(es)
 	return []corev1.EnvVar{
-		{
-			Name: "AUTOOPS_TOKEN",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					Name: policy.Spec.AutoOpsRef.SecretName,
-					Key:  "autoops-token",
-				},
-			},
-		},
 		{
 			Name:  "AUTOOPS_ES_URL",
 			Value: esService,

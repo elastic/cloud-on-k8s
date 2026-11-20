@@ -61,8 +61,12 @@ type ReleaseConfig struct {
 	SkipChartRepo bool
 	// SkipOCIRegistry skips pushing charts to the OCI registry. Useful when only GCS publishing is needed.
 	SkipOCIRegistry bool
-	// OCIChartsDigestsFilePath is an optional path to a file where pushed OCI chart digest refs are written,
-	// one per line in the format "registry/chart:version@sha256:...". The file is truncated if it exists. Empty to skip.
+	// SkipOCIExisting skips pushing charts that already exist in the OCI registry, and still writes their digest refs
+	// to OCIChartsDigestsFilePath. Useful to retry a release without overwriting the charts that are already published.
+	SkipOCIExisting bool
+	// OCIChartsDigestsFilePath is an optional path to a file where the OCI chart digest refs are written, one per line
+	// in the format "registry/chart:version@sha256:...". It lists the pushed charts and, with SkipOCIExisting, the
+	// charts that already exist. The file is truncated if it exists. Empty to skip.
 	OCIChartsDigestsFilePath string
 }
 
@@ -382,8 +386,8 @@ func updateIndex(ctx context.Context, conf ReleaseConfig, tempDir string) error 
 
 // pushChartsToOCI pushes the packaged chart archives to the OCI registry.
 // Charts cannot be overwritten in the prod registry unless forced, otherwise an error is returned.
-// If conf.OCIChartsDigestsFilePath is set, the digest ref of each pushed chart is written to it in the format
-// "registry/chart:version@sha256:...", one line per pushed chart.
+// If conf.OCIChartsDigestsFilePath is set, the digest ref of each pushed chart, and of each existing chart skipped
+// with conf.SkipOCIExisting, is written to it in the format "registry/chart:version@sha256:...", one line per chart.
 func pushChartsToOCI(client ociPusher, conf ReleaseConfig, charts []packagedChart) error {
 	digestsFileWriter := io.Discard
 	if outputDigestsFilePath := conf.OCIChartsDigestsFilePath; outputDigestsFilePath != "" {
@@ -421,10 +425,13 @@ func newOCIClient(conf ReleaseConfig) (*registry.Client, error) {
 func pushChartToOCI(client ociPusher, conf ReleaseConfig, outputDigestsFileWriter io.Writer, chart packagedChart) error {
 	chartRef := fmt.Sprintf("%s/%s:%s", conf.OCIRegistry, chart.Name, chart.Version)
 
-	// check that the chart does not already exist when publishing to prod OCI registry
-	if conf.shouldNotOverwrite() {
-		_, err := client.Resolve(chartRef)
+	// check that the chart does not already exist when publishing to prod OCI registry, or when existing charts must be skipped
+	var existingDigest string
+	if conf.shouldNotOverwrite() || conf.SkipOCIExisting {
+		desc, err := client.Resolve(chartRef)
 		switch {
+		case err == nil && conf.SkipOCIExisting:
+			existingDigest = desc.Digest.String()
 		case err == nil:
 			return fmt.Errorf("chart (%s) already exists in OCI registry (%s); remove it or use --force to overwrite", chartRef, conf.OCIRegistry)
 		case errors.Is(err, errdef.ErrNotFound):
@@ -436,6 +443,15 @@ func pushChartToOCI(client ociPusher, conf ReleaseConfig, outputDigestsFileWrite
 
 	if conf.DryRun {
 		log.Printf("Not pushing chart (%s) to OCI registry as dry-run is set", chartRef)
+		return nil
+	}
+
+	if existingDigest != "" {
+		// record the digest of the published chart so that it can be signed, as if it was pushed
+		log.Printf("Not pushing chart (%s) as it already exists in OCI registry: digest=%s", chartRef, existingDigest)
+		if _, err := fmt.Fprintf(outputDigestsFileWriter, "%s@%s\n", chartRef, existingDigest); err != nil {
+			return fmt.Errorf("while writing OCI digest ref for chart (%s): %w", chart.Name, err)
+		}
 		return nil
 	}
 

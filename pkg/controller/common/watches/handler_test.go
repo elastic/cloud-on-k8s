@@ -6,8 +6,10 @@ package watches
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -24,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/metrics"
 )
 
 type fakeHandler[T client.Object] struct {
@@ -57,11 +60,104 @@ func TestDynamicEnqueueRequest_AddHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := NewDynamicEnqueueRequest[*corev1.Secret]()
+			d := NewDynamicEnqueueRequest[*corev1.Secret]("testCtr")
 			if err := d.AddHandler(tt.args); (err != nil) != tt.wantErr {
 				t.Errorf("DynamicEnqueueRequest.AddHandler() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			assert.Equal(t, len(d.registrations), tt.registeredHandlers)
+		})
+	}
+}
+
+// dynamicWatchesValue returns the elastic_dynamic_watches_registered gauge for kind.
+func dynamicWatchesValue(ctrName, kind string) float64 {
+	return testutil.ToFloat64(metrics.DynamicWatchesRegistered.WithLabelValues(ctrName, kind))
+}
+
+func TestHandlerKindFor(t *testing.T) {
+	assert.Equal(t, configMapsHandlerKind, handlerKindFor[*corev1.ConfigMap]())
+	assert.Equal(t, secretsHandlerKind, handlerKindFor[*corev1.Secret]())
+	assert.Equal(t, servicesHandlerKind, handlerKindFor[*corev1.Service]())
+	assert.Equal(t, podsHandlerKind, handlerKindFor[*corev1.Pod]())
+	assert.Equal(t, referencedResourcesHandlerKind, handlerKindFor[client.Object]())
+	assert.Equal(t, unknownHandlerKind, handlerKindFor[*corev1.Namespace]())
+}
+
+func TestNewDynamicWatches_HandlerKinds(t *testing.T) {
+	dw := reflect.ValueOf(NewDynamicWatches("test-ctr"))
+	seen := map[string]string{}
+	for i := range dw.NumField() {
+		field := dw.Type().Field(i).Name
+		kind := dw.Field(i).Elem().FieldByName("handlerKind").String()
+		assert.NotEqual(t, unknownHandlerKind, kind, "field %s has no handler kind mapping", field)
+		if prev, ok := seen[kind]; ok {
+			t.Errorf("fields %s and %s share handler kind %q", prev, field, kind)
+		}
+		seen[kind] = field
+	}
+}
+
+func TestDynamicEnqueueRequest_DynamicWatchesMetric(t *testing.T) {
+	const kind = secretsHandlerKind
+	// Use a dedicated controller name so the (controller, handler) series starts at 0
+	// and does not interfere with other tests.
+	const testCtrName = "dynamic-watches-metric-test"
+
+	d := NewDynamicEnqueueRequest[*corev1.Secret](testCtrName)
+
+	steps := []struct {
+		name             string
+		addHandler       func(*DynamicEnqueueRequest[*corev1.Secret]) error
+		removeHandlerKey string
+		expectedValue    float64
+	}{
+		{
+			name: "add watch-1",
+			addHandler: func(d *DynamicEnqueueRequest[*corev1.Secret]) error {
+				return d.AddHandler(&fakeHandler[*corev1.Secret]{name: "watch-1"})
+			},
+			expectedValue: 1,
+		},
+		{
+			name: "re-add watch-1 (duplicate, should not increase count)",
+			addHandler: func(d *DynamicEnqueueRequest[*corev1.Secret]) error {
+				return d.AddHandler(&fakeHandler[*corev1.Secret]{name: "watch-1"})
+			},
+			expectedValue: 1,
+		},
+		{
+			name: "add watch-2",
+			addHandler: func(d *DynamicEnqueueRequest[*corev1.Secret]) error {
+				return d.AddHandler(&fakeHandler[*corev1.Secret]{name: "watch-2"})
+			},
+			expectedValue: 2,
+		},
+		{
+			name:             "remove watch-1",
+			removeHandlerKey: "watch-1",
+			expectedValue:    1,
+		},
+		{
+			name:             "remove unknown key (should not decrease count)",
+			removeHandlerKey: "unknown",
+			expectedValue:    1,
+		},
+		{
+			name:             "remove watch-2",
+			removeHandlerKey: "watch-2",
+			expectedValue:    0,
+		},
+	}
+
+	for _, tt := range steps {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.addHandler != nil {
+				require.NoError(t, tt.addHandler(d))
+			}
+			if tt.removeHandlerKey != "" {
+				d.RemoveHandlerForKey(tt.removeHandlerKey)
+			}
+			assert.Equal(t, tt.expectedValue, dynamicWatchesValue(testCtrName, kind))
 		})
 	}
 }
@@ -102,7 +198,7 @@ func TestDynamicEnqueueRequest_RemoveHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := NewDynamicEnqueueRequest[*corev1.Secret]()
+			d := NewDynamicEnqueueRequest[*corev1.Secret]("testCtr")
 			if tt.setup != nil {
 				tt.setup(d)
 			}
@@ -139,7 +235,7 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 		Name:      "watcher",
 	}
 
-	d := NewDynamicEnqueueRequest[*corev1.Secret]()
+	d := NewDynamicEnqueueRequest[*corev1.Secret]("testCtr")
 	q := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[reconcile.Request]())
 
 	assertEmptyQueue := func() {
@@ -339,7 +435,7 @@ func TestDynamicEnqueueRequest_OwnerWatch(t *testing.T) {
 	updated2 := testObject2
 	updated2.Labels = map[string]string{"updated": "2"}
 
-	d := NewDynamicEnqueueRequest[*corev1.Secret]()
+	d := NewDynamicEnqueueRequest[*corev1.Secret]("testCtr")
 	q := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[reconcile.Request]())
 
 	assertEmptyQueue := func() {

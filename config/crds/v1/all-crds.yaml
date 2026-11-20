@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
+    controller-gen.kubebuilder.io/version: v0.23.0
   name: agents.agent.k8s.elastic.co
 spec:
   group: agent.k8s.elastic.co
@@ -703,6 +703,19 @@ spec:
                             description: SecretName is the name of the secret.
                             type: string
                         type: object
+                      certificateAuthorities:
+                        description: |-
+                          CertificateAuthorities is a reference to a config map with a `ca.crt` file that contains one or more
+                          x509 certificates for trusted authorities in PEM format. The operator appends them to the CA bundle it
+                          hands out to clients of this resource, such as associated resources and Stack Monitoring Beats.
+                          Use it if the CA that issued the certificate in `certificate` is not part of `ca.crt` in that secret.
+                          Clients trust only the resulting bundle. Changes to it restart associated resources that trust it.
+                          Only certificates are used, other PEM blocks are ignored.
+                        properties:
+                          configMapName:
+                            description: ConfigMapName is the name of the config map.
+                            type: string
+                        type: object
                       client:
                         description: Client holds client configuration options.
                         properties:
@@ -1268,7 +1281,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
+    controller-gen.kubebuilder.io/version: v0.23.0
   name: apmservers.apm.k8s.elastic.co
 spec:
   group: apm.k8s.elastic.co
@@ -1771,6 +1784,19 @@ spec:
                         properties:
                           secretName:
                             description: SecretName is the name of the secret.
+                            type: string
+                        type: object
+                      certificateAuthorities:
+                        description: |-
+                          CertificateAuthorities is a reference to a config map with a `ca.crt` file that contains one or more
+                          x509 certificates for trusted authorities in PEM format. The operator appends them to the CA bundle it
+                          hands out to clients of this resource, such as associated resources and Stack Monitoring Beats.
+                          Use it if the CA that issued the certificate in `certificate` is not part of `ca.crt` in that secret.
+                          Clients trust only the resulting bundle. Changes to it restart associated resources that trust it.
+                          Only certificates are used, other PEM blocks are ignored.
+                        properties:
+                          configMapName:
+                            description: ConfigMapName is the name of the config map.
                             type: string
                         type: object
                       selfSignedCertificate:
@@ -2607,7 +2633,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
+    controller-gen.kubebuilder.io/version: v0.23.0
   name: autoopsagentpolicies.autoops.k8s.elastic.co
 spec:
   group: autoops.k8s.elastic.co
@@ -2668,7 +2694,6 @@ spec:
                       Required when connecting via Cloud Connect. The secret must contain:
                       - `cloud-connected-mode-api-key`: Cloud Connected Mode API key
                       - `autoops-otel-url`: AutoOps OpenTelemetry endpoint URL
-                      - `autoops-token`: AutoOps authentication token
                       - `cloud-connected-mode-api-url`: (optional) Cloud Connected Mode API URL
                       This field cannot be used in combination with `name`.
                     type: string
@@ -2985,7 +3010,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
+    controller-gen.kubebuilder.io/version: v0.23.0
   name: beats.beat.k8s.elastic.co
 spec:
   group: beat.k8s.elastic.co
@@ -3576,7 +3601,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
+    controller-gen.kubebuilder.io/version: v0.23.0
   name: elasticmapsservers.maps.k8s.elastic.co
 spec:
   group: maps.k8s.elastic.co
@@ -4093,6 +4118,19 @@ spec:
                             description: SecretName is the name of the secret.
                             type: string
                         type: object
+                      certificateAuthorities:
+                        description: |-
+                          CertificateAuthorities is a reference to a config map with a `ca.crt` file that contains one or more
+                          x509 certificates for trusted authorities in PEM format. The operator appends them to the CA bundle it
+                          hands out to clients of this resource, such as associated resources and Stack Monitoring Beats.
+                          Use it if the CA that issued the certificate in `certificate` is not part of `ca.crt` in that secret.
+                          Clients trust only the resulting bundle. Changes to it restart associated resources that trust it.
+                          Only certificates are used, other PEM blocks are ignored.
+                        properties:
+                          configMapName:
+                            description: ConfigMapName is the name of the config map.
+                            type: string
+                        type: object
                       selfSignedCertificate:
                         description: SelfSignedCertificate allows configuring the
                           self-signed certificate generated by the operator.
@@ -4285,7 +4323,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
+    controller-gen.kubebuilder.io/version: v0.23.0
   name: elasticsearchautoscalers.autoscaling.k8s.elastic.co
 spec:
   group: autoscaling.k8s.elastic.co
@@ -4633,7 +4671,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
+    controller-gen.kubebuilder.io/version: v0.23.0
   name: elasticsearches.elasticsearch.k8s.elastic.co
 spec:
   group: elasticsearch.k8s.elastic.co
@@ -5121,6 +5159,19 @@ spec:
                         properties:
                           secretName:
                             description: SecretName is the name of the secret.
+                            type: string
+                        type: object
+                      certificateAuthorities:
+                        description: |-
+                          CertificateAuthorities is a reference to a config map with a `ca.crt` file that contains one or more
+                          x509 certificates for trusted authorities in PEM format. The operator appends them to the CA bundle it
+                          hands out to clients of this resource, such as associated resources and Stack Monitoring Beats.
+                          Use it if the CA that issued the certificate in `certificate` is not part of `ca.crt` in that secret.
+                          Clients trust only the resulting bundle. Changes to it restart associated resources that trust it.
+                          Only certificates are used, other PEM blocks are ignored.
+                        properties:
+                          configMapName:
+                            description: ConfigMapName is the name of the config map.
                             type: string
                         type: object
                       client:
@@ -5647,6 +5698,46 @@ spec:
                 x-kubernetes-list-map-keys:
                 - name
                 x-kubernetes-list-type: map
+              plugins:
+                description: |-
+                  Plugins declares the Elasticsearch plugins to install on every node of the cluster.
+                  The operator renders them into the elasticsearch-plugins.yml file, which Elasticsearch
+                  uses on startup to install, upgrade and remove plugins.
+                  Any plugin that is installed but not listed here is removed, including plugins baked into a custom image.
+                  Requires Elasticsearch 8.17.0 or later.
+                properties:
+                  items:
+                    description: Items is the list of plugins to install.
+                    items:
+                      description: Plugin is a single Elasticsearch plugin.
+                      properties:
+                        id:
+                          description: |-
+                            ID is the name of the plugin.
+                            For a custom plugin, it must match the name declared in the plugin descriptor, otherwise Elasticsearch fails to start.
+                          minLength: 1
+                          type: string
+                        location:
+                          description: |-
+                            Location is the URL, file:// path or Maven coordinates of a custom plugin.
+                            Required for any plugin that is not an official Elastic plugin, otherwise Elasticsearch fails to start.
+                            Leave it empty for official plugins.
+                          type: string
+                      required:
+                      - id
+                      type: object
+                    minItems: 1
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - id
+                    x-kubernetes-list-type: map
+                  proxy:
+                    description: Proxy is an optional HTTP proxy, in host:port form,
+                      used to download plugins.
+                    type: string
+                required:
+                - items
+                type: object
               podDisruptionBudget:
                 description: |-
                   PodDisruptionBudget provides access to the default Pod disruption budget(s) for the Elasticsearch cluster.
@@ -7925,7 +8016,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
+    controller-gen.kubebuilder.io/version: v0.23.0
   name: enterprisesearches.enterprisesearch.k8s.elastic.co
 spec:
   group: enterprisesearch.k8s.elastic.co
@@ -8439,6 +8530,19 @@ spec:
                         properties:
                           secretName:
                             description: SecretName is the name of the secret.
+                            type: string
+                        type: object
+                      certificateAuthorities:
+                        description: |-
+                          CertificateAuthorities is a reference to a config map with a `ca.crt` file that contains one or more
+                          x509 certificates for trusted authorities in PEM format. The operator appends them to the CA bundle it
+                          hands out to clients of this resource, such as associated resources and Stack Monitoring Beats.
+                          Use it if the CA that issued the certificate in `certificate` is not part of `ca.crt` in that secret.
+                          Clients trust only the resulting bundle. Changes to it restart associated resources that trust it.
+                          Only certificates are used, other PEM blocks are ignored.
+                        properties:
+                          configMapName:
+                            description: ConfigMapName is the name of the config map.
                             type: string
                         type: object
                       selfSignedCertificate:
@@ -9111,6 +9215,19 @@ spec:
                             description: SecretName is the name of the secret.
                             type: string
                         type: object
+                      certificateAuthorities:
+                        description: |-
+                          CertificateAuthorities is a reference to a config map with a `ca.crt` file that contains one or more
+                          x509 certificates for trusted authorities in PEM format. The operator appends them to the CA bundle it
+                          hands out to clients of this resource, such as associated resources and Stack Monitoring Beats.
+                          Use it if the CA that issued the certificate in `certificate` is not part of `ca.crt` in that secret.
+                          Clients trust only the resulting bundle. Changes to it restart associated resources that trust it.
+                          Only certificates are used, other PEM blocks are ignored.
+                        properties:
+                          configMapName:
+                            description: ConfigMapName is the name of the config map.
+                            type: string
+                        type: object
                       selfSignedCertificate:
                         description: SelfSignedCertificate allows configuring the
                           self-signed certificate generated by the operator.
@@ -9218,7 +9335,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
+    controller-gen.kubebuilder.io/version: v0.23.0
   name: kibanas.kibana.k8s.elastic.co
 spec:
   group: kibana.k8s.elastic.co
@@ -9851,6 +9968,19 @@ spec:
                         properties:
                           secretName:
                             description: SecretName is the name of the secret.
+                            type: string
+                        type: object
+                      certificateAuthorities:
+                        description: |-
+                          CertificateAuthorities is a reference to a config map with a `ca.crt` file that contains one or more
+                          x509 certificates for trusted authorities in PEM format. The operator appends them to the CA bundle it
+                          hands out to clients of this resource, such as associated resources and Stack Monitoring Beats.
+                          Use it if the CA that issued the certificate in `certificate` is not part of `ca.crt` in that secret.
+                          Clients trust only the resulting bundle. Changes to it restart associated resources that trust it.
+                          Only certificates are used, other PEM blocks are ignored.
+                        properties:
+                          configMapName:
+                            description: ConfigMapName is the name of the config map.
                             type: string
                         type: object
                       selfSignedCertificate:
@@ -10869,7 +10999,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
+    controller-gen.kubebuilder.io/version: v0.23.0
   name: logstashes.logstash.k8s.elastic.co
 spec:
   group: logstash.k8s.elastic.co
@@ -11644,6 +11774,20 @@ spec:
                               description: SecretName is the name of the secret.
                               type: string
                           type: object
+                        certificateAuthorities:
+                          description: |-
+                            CertificateAuthorities is a reference to a config map with a `ca.crt` file that contains one or more
+                            x509 certificates for trusted authorities in PEM format. The operator appends them to the CA bundle it
+                            hands out to clients of this resource, such as associated resources and Stack Monitoring Beats.
+                            Use it if the CA that issued the certificate in `certificate` is not part of `ca.crt` in that secret.
+                            Clients trust only the resulting bundle. Changes to it restart associated resources that trust it.
+                            Only certificates are used, other PEM blocks are ignored.
+                          properties:
+                            configMapName:
+                              description: ConfigMapName is the name of the config
+                                map.
+                              type: string
+                          type: object
                         selfSignedCertificate:
                           description: SelfSignedCertificate allows configuring the
                             self-signed certificate generated by the operator.
@@ -12124,6 +12268,7 @@ spec:
                                       reason is a brief CamelCase machine-parseable reason.
                                       Together with status it forms the unique identity of a condition entry.
                                       Maximum permitted length of a reason is 256 bytes.
+                                    minLength: 1
                                     type: string
                                   status:
                                     description: |-
@@ -12136,11 +12281,13 @@ spec:
                                     - DataLoss
                                     - Degraded
                                     - Inaccessible
+                                    minLength: 1
                                     type: string
                                 required:
                                 - reason
                                 - status
                                 type: object
+                              maxItems: 16
                               type: array
                               x-kubernetes-list-map-keys:
                               - status
@@ -12265,7 +12412,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
+    controller-gen.kubebuilder.io/version: v0.23.0
   name: packageregistries.packageregistry.k8s.elastic.co
 spec:
   group: packageregistry.k8s.elastic.co
@@ -12730,6 +12877,19 @@ spec:
                             description: SecretName is the name of the secret.
                             type: string
                         type: object
+                      certificateAuthorities:
+                        description: |-
+                          CertificateAuthorities is a reference to a config map with a `ca.crt` file that contains one or more
+                          x509 certificates for trusted authorities in PEM format. The operator appends them to the CA bundle it
+                          hands out to clients of this resource, such as associated resources and Stack Monitoring Beats.
+                          Use it if the CA that issued the certificate in `certificate` is not part of `ca.crt` in that secret.
+                          Clients trust only the resulting bundle. Changes to it restart associated resources that trust it.
+                          Only certificates are used, other PEM blocks are ignored.
+                        properties:
+                          configMapName:
+                            description: ConfigMapName is the name of the config map.
+                            type: string
+                        type: object
                       selfSignedCertificate:
                         description: SelfSignedCertificate allows configuring the
                           self-signed certificate generated by the operator.
@@ -12916,7 +13076,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
+    controller-gen.kubebuilder.io/version: v0.23.0
   name: stackconfigpolicies.stackconfigpolicy.k8s.elastic.co
 spec:
   group: stackconfigpolicy.k8s.elastic.co

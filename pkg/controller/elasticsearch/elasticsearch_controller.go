@@ -80,7 +80,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 		licenseChecker: license.NewLicenseChecker(client, params.OperatorNamespace),
 		esObservers:    observer.NewManager(params.ElasticsearchObservationInterval, params.Tracer),
 
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches(name),
 		expectations:   expectations.NewClustersExpectations(client, &appsv1.StatefulSet{}),
 
 		Parameters: params,
@@ -382,11 +382,11 @@ func (r *ReconcileElasticsearch) annotateResource(
 func (r *ReconcileElasticsearch) OnNamespaceOutOfScope(es types.NamespacedName) {
 	r.esObservers.StopObserving(es)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(es))
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(esv1.ESNamer, es.Name))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(transport.CustomTransportCertsWatchKey(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedRolesWatchName(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedFileRealmWatchName(es))
 	r.dynamicWatches.ConfigMaps.RemoveHandlerForKey(transport.AdditionalCAWatchKey(es))
+	certificates.RemoveHTTPCertWatches(r.dynamicWatches, esv1.ESNamer, es)
 }
 
 // onDelete garbage collect resources when an Elasticsearch cluster is deleted

@@ -221,7 +221,7 @@ func Test_maybeUpdateAPIKey_AddsRestrictWatchedResourcesLabel(t *testing.T) {
 		params: operator.Parameters{
 			Dialer: &fakeDialer{},
 		},
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches("testCtr"),
 	}
 
 	got, err := r.maybeUpdateAPIKey(

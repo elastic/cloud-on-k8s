@@ -15,18 +15,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
-// Config holds the parsed configuration from the AutoOpsAgentPolicy configuration secret.
-type Config struct {
-	CCMApiKey      string
-	AutoOpsOTelURL string
-	AutoOpsToken   string
-}
-
 const (
 	// Secret key names for the configuration fields
 	ccmAPIKey      = "cloud-connected-mode-api-key"
 	autoOpsOTelURL = "autoops-otel-url"
-	autoOpsToken   = "autoops-token"
 	ccmAPIURL      = "cloud-connected-mode-api-url"
 )
 
@@ -54,10 +46,6 @@ func internalValidate(secret corev1.Secret) error {
 
 	if data, exists := secret.Data[autoOpsOTelURL]; !exists || len(data) == 0 {
 		return fmt.Errorf("missing required key %s in configuration secret %s/%s", autoOpsOTelURL, secret.Namespace, secret.Name)
-	}
-
-	if data, exists := secret.Data[autoOpsToken]; !exists || len(data) == 0 {
-		return fmt.Errorf("missing required key %s in configuration secret %s/%s", autoOpsToken, secret.Namespace, secret.Name)
 	}
 
 	return nil

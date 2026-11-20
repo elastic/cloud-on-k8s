@@ -424,7 +424,7 @@ func Test_internalReconcile_clientAuthESVersionGate(t *testing.T) {
 			_, status := internalReconcile(Params{
 				Context:        t.Context(),
 				Client:         fakeClient,
-				Watches:        watches.NewDynamicWatches(),
+				Watches:        watches.NewDynamicWatches("testCtr"),
 				EventRecorder:  recorder,
 				Agent:          *agentObj,
 				AgentVersion:   agentVersion,
