@@ -597,3 +597,30 @@ func TestParseTimeValue(t *testing.T) {
 		})
 	}
 }
+
+func TestNodes_NameToID(t *testing.T) {
+	tests := []struct {
+		name  string
+		nodes Nodes
+		want  map[string]string
+	}{
+		{
+			name:  "no nodes",
+			nodes: Nodes{},
+			want:  map[string]string{},
+		},
+		{
+			name: "nodes by name",
+			nodes: Nodes{Nodes: map[string]Node{
+				"id-a": {Name: "a"},
+				"id-b": {Name: "b"},
+			}},
+			want: map[string]string{"a": "id-a", "b": "id-b"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.nodes.NameToID())
+		})
+	}
+}

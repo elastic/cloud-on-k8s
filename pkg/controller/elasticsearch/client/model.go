@@ -103,6 +103,15 @@ func (n Nodes) Names() []string {
 	return names
 }
 
+// NameToID returns the IDs of the nodes, by node name.
+func (n Nodes) NameToID() map[string]string {
+	nameToID := make(map[string]string, len(n.Nodes))
+	for id, node := range n.Nodes {
+		nameToID[node.Name] = id
+	}
+	return nameToID
+}
+
 // Node partially models an Elasticsearch node retrieved from /_nodes
 type Node struct {
 	Name       string            `json:"name"`
