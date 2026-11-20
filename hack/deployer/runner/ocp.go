@@ -224,7 +224,7 @@ func (d *OCPDriver) create() error {
 		"NodeCount":              d.plan.Ocp.NodeCount,
 		"BaseDomain":             d.baseDomain(),
 		"OCPStateBucket":         OCPStateBucket,
-		"PullSecret":             d.plan.Ocp.PullSecret,
+		"PullSecret":             strings.TrimSuffix(d.plan.Ocp.PullSecret, "\n"),
 		"UserLabels":             elasticTags,
 	}
 	var tpl bytes.Buffer
@@ -777,5 +777,5 @@ func (d *OCPDriver) writeMetadataJSON() error {
 	}
 	metadataPath := filepath.Join(d.runtimeState.ClusterStateDir, "metadata.json")
 	log.Printf("Writing synthetic metadata.json for infra ID %s to %s", d.plan.Ocp.InfraID, metadataPath)
-	return os.WriteFile(metadataPath, data, 0600)
+	return os.WriteFile(metadataPath, data, 0o600)
 }
