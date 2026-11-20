@@ -7,12 +7,12 @@ package stateful
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 
-	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
@@ -118,6 +118,13 @@ type downscaleState struct {
 	// readyPods are the ready Pods, which the budget counts as available. A Pod that is not a member of the cluster is
 	// usually not ready, but may be, for example with a readiness probe that does not check membership.
 	readyPods sets.Set[string]
+	// nonMemberState holds what the downscale knows about the leaving Pods that are not members of the cluster.
+	nonMemberState
+}
+
+// nonMemberState is the state of the leaving Pods that are not members of the cluster. Its zero value means that every
+// leaving Pod is a member.
+type nonMemberState struct {
 	// nonMembers are the leaving Pods that are not members of the cluster, by name, see classifyNonMembers.
 	nonMembers map[string]nonMember
 	// nonMemberRemovalsAllowed returns true if the Pods that cannot join the cluster can be removed, nil meaning they cannot.
@@ -156,20 +163,20 @@ func (n nonMember) removedReason() string {
 }
 
 // isNotMember returns true if the given Pod is not a member of the cluster.
-func (s *downscaleState) isNotMember(podName string) bool {
+func (s nonMemberState) isNotMember(podName string) bool {
 	_, ok := s.nonMembers[podName]
 	return ok
 }
 
 // isRemovableNonMember returns true if the given Pod is not a member of the cluster and its removal is allowed without
 // a shutdown.
-func (s *downscaleState) isRemovableNonMember(podName string) bool {
+func (s nonMemberState) isRemovableNonMember(podName string) bool {
 	nonMember, ok := s.nonMembers[podName]
 	return ok && nonMember.cannotJoin && s.nonMemberRemovalsAllowed != nil && s.nonMemberRemovalsAllowed()
 }
 
 // removableNonMembersAmong returns the given Pods that are removable non-members, by name, or nil if there are none.
-func (s *downscaleState) removableNonMembersAmong(podNames []string) map[string]nonMember {
+func (s nonMemberState) removableNonMembersAmong(podNames []string) map[string]nonMember {
 	var removable map[string]nonMember
 	for _, podName := range podNames {
 		if !s.isRemovableNonMember(podName) {
@@ -184,21 +191,33 @@ func (s *downscaleState) removableNonMembersAmong(podNames []string) map[string]
 }
 
 // nonMemberHeldReason returns why the removal of the given Pod, which is not a member of the cluster, is held.
-func (s *downscaleState) nonMemberHeldReason(podName string) string {
+func (s nonMemberState) nonMemberHeldReason(podName string) string {
 	if s.partialNodes {
 		return fmt.Sprintf("%s: %s", NodeNotInClusterPartialInvariant, podName)
 	}
 	return s.nonMembers[podName].heldReason(podName)
 }
 
-// newDownscaleState creates a new downscaleState. nodesWithShutdown are the desired leaving nodes that have a remove-type
-// shutdown registered.
-func newDownscaleState(
-	actualPods []corev1.Pod,
-	actualStatefulSets es_sset.StatefulSetList,
-	es esv1.Elasticsearch,
-	nodesWithShutdown sets.Set[string],
-) *downscaleState {
+// downscaleStateParams are the observed resources a downscaleState is computed from.
+type downscaleStateParams struct {
+	actualPods           []corev1.Pod
+	expectedStatefulSets es_sset.StatefulSetList
+	actualStatefulSets   es_sset.StatefulSetList
+	// nodesWithShutdown are the desired leaving nodes that have a remove-type shutdown registered.
+	nodesWithShutdown sets.Set[string]
+	// notMembers are the desired leaving nodes that are not members of the cluster.
+	notMembers sets.Set[string]
+}
+
+// newDownscaleState creates a new downscaleState, retrieving the state of the nodes that are not members of the cluster
+// through the downscale context and the leaving nodes.
+func newDownscaleState(downscaleCtx downscaleContext, leaving *leavingNodes, params downscaleStateParams) (*downscaleState, error) {
+	es := downscaleCtx.es
+	actualPods, actualStatefulSets, nodesWithShutdown := params.actualPods, params.actualStatefulSets, params.nodesWithShutdown
+	nonMembers, err := newNonMemberState(downscaleCtx, leaving, params)
+	if err != nil {
+		return nil, err
+	}
 	// retrieve the masters that are not running: a ready but terminating master may be stopping
 	masters := label.FilterMasterNodePods(actualPods)
 	unavailableMasters := unavailablePods(masters)
@@ -222,7 +241,33 @@ func newDownscaleState(
 		drainingRemovalsAllowed: calculateDrainingRemovalsAllowed(maxUnavailable),
 		drainingMasters:         drainingMasterNodes(actualStatefulSets, nodesWithShutdown),
 		readyPods:               sets.New(k8s.PodNames(nodesReady)...),
+		nonMemberState:          nonMembers,
+	}, nil
+}
+
+// newNonMemberState returns the state of the given leaving nodes that are not members of the cluster, which is the zero
+// value if there are none.
+func newNonMemberState(downscaleCtx downscaleContext, leaving *leavingNodes, params downscaleStateParams) (nonMemberState, error) {
+	if params.notMembers.Len() == 0 {
+		return nonMemberState{}, nil
 	}
+	// a node that is not a member may be a member that did not answer, the reason why it is held says so
+	partial, err := leaving.esState.NodesResponsePartial()
+	if err != nil {
+		return nonMemberState{}, err
+	}
+	state := nonMemberState{
+		nonMembers:   classifyNonMembers(params.notMembers, params.expectedStatefulSets, params.actualStatefulSets, params.actualPods),
+		partialNodes: partial,
+	}
+	// a node that cannot join is only removed from a settled cluster, which is checked at most once, and only when
+	// such a node is the next to be removed
+	if !partial {
+		state.nonMemberRemovalsAllowed = sync.OnceValue(func() bool {
+			return clusterIsSettled(downscaleCtx.parentCtx, downscaleCtx.esClient, leaving.esState)
+		})
+	}
+	return state, nil
 }
 
 // drainingMasterNodes returns the names of the Pods with the highest ordinal of the given master StatefulSets that are

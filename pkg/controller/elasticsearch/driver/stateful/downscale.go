@@ -12,7 +12,6 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"sync"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -110,20 +109,18 @@ func HandleDownscale(
 	}
 
 	// Compute the desired downscale, applying a budget filter to make sure we only downscale nodes we're allowed to.
-	downscaleState := newDownscaleState(actualPods, actualStatefulSets, downscaleCtx.es, draining)
-	if notMembers.Len() > 0 {
-		// a node that is not a member may be a member that did not answer, the reason why it is held says so
-		if downscaleState.partialNodes, err = leaving.esState.NodesResponsePartial(); err != nil {
-			return results.WithError(err)
-		}
-		downscaleState.nonMembers = classifyNonMembers(notMembers, expectedStatefulSets, actualStatefulSets, actualPods)
-		// a node that cannot join is only removed from a settled cluster, which is checked at most once, and only when
-		// such a node is the next to be removed
-		if !downscaleState.partialNodes {
-			downscaleState.nonMemberRemovalsAllowed = sync.OnceValue(func() bool {
-				return clusterIsSettled(downscaleCtx.parentCtx, downscaleCtx.esClient, leaving.esState)
-			})
-		}
+	downscaleState, err := newDownscaleState(
+		downscaleCtx, leaving,
+		downscaleStateParams{
+			actualPods:           actualPods,
+			expectedStatefulSets: expectedStatefulSets,
+			actualStatefulSets:   actualStatefulSets,
+			nodesWithShutdown:    draining,
+			notMembers:           notMembers,
+		},
+	)
+	if err != nil {
+		return results.WithError(err)
 	}
 
 	// compute the list of StatefulSet downscales and deletions to perform
