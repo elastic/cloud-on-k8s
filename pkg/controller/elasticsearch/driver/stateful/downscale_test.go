@@ -2179,7 +2179,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					initialReplicas:     3,
 					targetReplicas:      2,
 					finalReplicas:       2,
-					removableNonMembers: map[string]nonMember{"default-2": {cannotJoin: true}},
+					removableNonMembers: sets.New("default-2"),
 				},
 			},
 			want: ssetDownscale{
@@ -2187,7 +2187,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 				initialReplicas:     3,
 				targetReplicas:      2,
 				finalReplicas:       2,
-				removableNonMembers: map[string]nonMember{"default-2": {cannotJoin: true}},
+				removableNonMembers: sets.New("default-2"),
 			},
 		},
 		{

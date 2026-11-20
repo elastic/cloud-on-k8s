@@ -489,8 +489,8 @@ func attemptDownscale(
 	}
 	// the removals without a shutdown are only reported once they are done, not on every attempt that fails
 	for _, node := range performable.leavingNodeNames() {
-		if nonMember, removable := downscale.removableNonMembers[node]; removable {
-			reportNonMemberRemoval(ctx, downscale, node, nonMember)
+		if downscale.removableNonMembers.Has(node) {
+			reportNonMemberRemoval(ctx, downscale, node)
 		}
 	}
 	return shouldRequeue, nil
@@ -525,8 +525,8 @@ func deleteStatefulSetResources(ctx context.Context, k8sClient k8s.Client, es es
 // reportNonMemberRemoval logs and records an event for the removal of the given non-member node without a shutdown. The
 // event is a warning for a master: if it used to be a member, its vote may remain, as an exclusion by name is never
 // resolved to the ID of an absent node, until Elasticsearch has at least 3 live masters to prefer over it.
-func reportNonMemberRemoval(ctx downscaleContext, downscale ssetDownscale, node string, nonMember nonMember) {
-	reason := nonMember.removedReason()
+func reportNonMemberRemoval(ctx downscaleContext, downscale ssetDownscale, node string) {
+	reason := nonMemberRemovedReason
 	eventType := corev1.EventTypeNormal
 	if label.IsMasterNodeSet(downscale.statefulSet) {
 		reason += ". If it was a master that left the cluster, it may still be in the voting configuration until at " +
@@ -558,7 +558,7 @@ func calculatePerformableDownscale(
 	}
 	// iterate on all leaving nodes (ordered by highest ordinal first)
 	for _, node := range downscale.leavingNodeNames() {
-		if _, removable := downscale.removableNonMembers[node]; removable {
+		if downscale.removableNonMembers.Has(node) {
 			// a node that is not a member of the cluster has no shutdown to wait for, its removal is reported once done
 			performableDownscale.targetReplicas--
 			continue

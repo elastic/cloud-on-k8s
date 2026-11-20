@@ -8,6 +8,7 @@ import (
 	"context"
 
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/expectations"
@@ -64,8 +65,8 @@ type ssetDownscale struct {
 	initialReplicas int32
 	targetReplicas  int32
 	finalReplicas   int32
-	// removableNonMembers are the leaving non-members that are removed without a shutdown, by name.
-	removableNonMembers map[string]nonMember
+	// removableNonMembers are the leaving non-members that are removed without a shutdown.
+	removableNonMembers sets.Set[string]
 }
 
 // leavingNodeNames returns names of the nodes that are supposed to leave the Elasticsearch cluster

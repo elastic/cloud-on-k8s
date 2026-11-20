@@ -157,11 +157,6 @@ func (n nonMember) heldReason(podName string) string {
 	return fmt.Sprintf("%s: %s", reason, podName)
 }
 
-// removedReason returns why this node, which cannot join the cluster, is removed without a shutdown.
-func (n nonMember) removedReason() string {
-	return nonMemberRemovedReason
-}
-
 // isNotMember returns true if the given Pod is not a member of the cluster.
 func (s nonMemberState) isNotMember(podName string) bool {
 	_, ok := s.nonMembers[podName]
@@ -175,17 +170,17 @@ func (s nonMemberState) isRemovableNonMember(podName string) bool {
 	return ok && nonMember.cannotJoin && s.nonMemberRemovalsAllowed != nil && s.nonMemberRemovalsAllowed()
 }
 
-// removableNonMembersAmong returns the given Pods that are removable non-members, by name, or nil if there are none.
-func (s nonMemberState) removableNonMembersAmong(podNames []string) map[string]nonMember {
-	var removable map[string]nonMember
+// removableNonMembersAmong returns the given Pods that are removable non-members, or nil if there are none.
+func (s nonMemberState) removableNonMembersAmong(podNames []string) sets.Set[string] {
+	var removable sets.Set[string]
 	for _, podName := range podNames {
 		if !s.isRemovableNonMember(podName) {
 			continue
 		}
 		if removable == nil {
-			removable = make(map[string]nonMember)
+			removable = sets.New[string]()
 		}
-		removable[podName] = s.nonMembers[podName]
+		removable.Insert(podName)
 	}
 	return removable
 }
