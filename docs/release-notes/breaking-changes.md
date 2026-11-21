@@ -14,6 +14,65 @@ Breaking changes can impact your Elastic applications, potentially disrupting no
 % **Action**<br> Steps for mitigating deprecation impact.
 % ::::
 
+## 3.6.0 [elastic-cloud-kubernetes-360-breaking-changes]
+
+::::{dropdown} Rolling restart of {{product.kibana}} pods, and of {{es}} pods when upgrading from 3.5.0
+ECK 3.6.0 adds the `kibana.k8s.elastic.co/role` label to the pod template of every {{product.kibana}} resource to support background task isolation. This changes the pod spec, so {{product.kibana}} pods restart during the operator upgrade.
+
+ECK 3.6.0 also removes the `eck.k8s.elastic.co/watched` label that ECK 3.5.0 leaked into the {{es}} and {{product.kibana}} pod templates. If you upgrade from 3.5.0, this changes the {{es}} pod spec and {{es}} pods restart as well. If you upgrade from 3.4.x or earlier, {{es}} pods do not restart.
+
+**Impact**<br> All {{product.kibana}} pods will be restarted as part of the operator upgrade. All {{es}} pods will be restarted if the previous operator version is 3.5.0.
+
+**Action**<br> No action required. Be aware that these pods will restart during the upgrade.
+
+For more information, check [PR #9745](https://github.com/elastic/cloud-on-k8s/pull/9745) and [PR #9787](https://github.com/elastic/cloud-on-k8s/pull/9787).
+::::
+
+::::{dropdown} Rolling restart of Elastic Agent pods, including Fleet Server, during operator upgrade
+ECK 3.6.0 includes fixes that modify the pod spec of all Elastic Agent resources. The configuration Secret is now mounted with the file mode `0444` instead of `0440`, so that Elastic Agent can read its configuration when it runs as a non-root user. This applies to standalone Elastic Agents and to Elastic Agents that run in Fleet mode.
+
+For Elastic Agent resources that run in Fleet mode, the pod spec changes in two more ways. Duplicate volume mounts for the {{es}} CA and client certificate are removed. Fleet-managed agents that reference a Fleet Server in another namespace mount their copy of the {{es}} CA that the Fleet Server uses from a Secret with a new name, and the copy now contains only the `ca.crt` key.
+
+**Impact**<br> All Elastic Agent pods will be restarted as part of the operator upgrade. This includes Fleet Server pods, fleet-managed Elastic Agent pods, and standalone Elastic Agent pods.
+
+**Action**<br> No action required. Be aware that these pods will restart during the upgrade.
+
+For more information, check [PR #9685](https://github.com/elastic/cloud-on-k8s/pull/9685), [PR #9686](https://github.com/elastic/cloud-on-k8s/pull/9686), [PR #9703](https://github.com/elastic/cloud-on-k8s/pull/9703), and [PR #9743](https://github.com/elastic/cloud-on-k8s/pull/9743).
+::::
+
+::::{dropdown} RBAC enforcement for fleet-managed Elastic Agents that reach {{es}} through a Fleet Server in another namespace
+ECK 3.6.0 fixes the RBAC check for the transitive path from a fleet-managed Elastic Agent to the {{es}} cluster that its Fleet Server references. Earlier versions copied the {{es}} CA and client certificates into the namespace of the Elastic Agent without this check. When the `--enforce-rbac-on-refs` operator flag is enabled, ECK now checks that the `ServiceAccount` of the Elastic Agent (`spec.serviceAccountName`, or `default` if not set) can access the {{es}} resource before it copies any Secret.
+
+**Impact**<br> This affects only installations that enable `--enforce-rbac-on-refs`. After the operator upgrade, ECK removes the association of a fleet-managed Elastic Agent with its Fleet Server if the {{es}} cluster is in a different namespace than the Elastic Agent and the `ServiceAccount` of the Elastic Agent does not have `get` permission for that {{es}} resource. ECK also deletes the Secrets that it copied for this association.
+
+**Action**<br> Before you upgrade, create the RBAC rules that allow the `ServiceAccount` of each fleet-managed Elastic Agent to access the {{es}} resource that its Fleet Server references. For more details, refer to the [cross-namespace associations documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/restrict-cross-namespace-resource-associations.md).
+
+For more information, check [PR #9725](https://github.com/elastic/cloud-on-k8s/pull/9725).
+::::
+
+::::{dropdown} Rolling restart of Logstash pods that run version 9.5.0 or later, or that use API basic authentication
+ECK 3.6.0 changes Logstash pods in two cases:
+
+* For Logstash 9.5.0 and later, ECK adds `ssl.reload.automatic: true` to the generated `logstash.yml`. This changes the configuration hash of the pods. ECK does not add the setting if you configure `ssl.reload.automatic`, `config.reload.automatic`, or `xpack.management.enabled` yourself.
+* When `api.auth.type: basic` is configured, ECK replaces the HTTP readiness probe, which embedded the API credentials in the StatefulSet spec, with a TCP socket probe. This changes the pod spec.
+
+**Impact**<br> Logstash pods that run version 9.5.0 or later and receive the new `ssl.reload.automatic` default will be restarted as part of the operator upgrade. Logstash pods with `api.auth.type: basic` will also be restarted, for all Logstash versions. Other Logstash pods are not affected.
+
+**Action**<br> No action required. Be aware that these pods will restart during the upgrade.
+
+For more information, check [PR #9639](https://github.com/elastic/cloud-on-k8s/pull/9639) and [PR #9664](https://github.com/elastic/cloud-on-k8s/pull/9664).
+::::
+
+::::{dropdown} Restart of AutoOps agent pods and change of the default AutoOps agent image
+ECK 3.6.0 changes the AutoOps agent in two ways. The agent now authenticates with the Cloud Connected Mode API key, so ECK no longer injects the `AUTOOPS_TOKEN` environment variable and no longer requires the `autoops-token` key in the configuration Secret. The default image also changes from `elastic-agent/elastic-otel-collector-wolfi` to `elastic-agent/elastic-otel-collector`, so that the `--container-suffix=-wolfi` operator flag selects the Wolfi variant like for all other stack images. The `-wolfi` suffix is also no longer applied to the Elastic Package Registry and Enterprise Search images, which are Wolfi-based by default.
+
+**Impact**<br> All AutoOps agent pods will be restarted as part of the operator upgrade and will run the non-Wolfi image unless the `--container-suffix=-wolfi` operator flag (`config.containerSuffix=-wolfi` in the `eck-operator` Helm chart) is set. Configuration overrides that reference `${env:AUTOOPS_TOKEN}` no longer resolve.
+
+**Action**<br> To keep the Wolfi image for the AutoOps agent, start the operator with `--container-suffix=-wolfi` (`config.containerSuffix=-wolfi` in the `eck-operator` Helm chart) or set `spec.image` on the `AutoOpsAgentPolicy` resource. Remove any reference to `${env:AUTOOPS_TOKEN}` from configuration overrides. Secrets that still contain the `autoops-token` key remain valid and the key is ignored, so you can remove it from the Secret referenced by `spec.autoOpsRef.secretName`.
+
+For more information, check [PR #9849](https://github.com/elastic/cloud-on-k8s/pull/9849) and [PR #9663](https://github.com/elastic/cloud-on-k8s/pull/9663).
+::::
+
 ## 3.5.0 [elastic-cloud-kubernetes-350-breaking-changes]
 
 ::::{dropdown} Rolling restart of Fleet-server pods during operator upgrade

@@ -20,6 +20,10 @@ For example, [{{es}}](elasticsearch://release-notes/known-issues.md), [{{product
 
 :::
 
+## 3.6.0 [elastic-cloud-kubernetes-360-known-issues]
+
+There are no known issues for ECK 3.6.0.
+
 ## 3.5.0 [elastic-cloud-kubernetes-350-known-issues]
 
 :::{include} ./_snippets/v35_watched_label_known_issue.md
