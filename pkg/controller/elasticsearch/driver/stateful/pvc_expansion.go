@@ -15,6 +15,9 @@ import (
 )
 
 func recreateStatefulSets(ctx context.Context, k8sclient k8s.Client, es esv1.Elasticsearch) (int, error) {
+	if err := setPVCOwnerRefsForRecreation(ctx, k8sclient, es); err != nil {
+		return 0, err
+	}
 	return volume.RecreateStatefulSets(ctx, k8sclient, &es)
 }
 

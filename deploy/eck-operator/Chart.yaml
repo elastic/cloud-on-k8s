@@ -14,7 +14,7 @@ version: 3.6.0-SNAPSHOT
 
 appVersion: 3.6.0-SNAPSHOT
 
-kubeVersion: ">=1.21.0-0"
+kubeVersion: ">=1.32.0-0"
 
 keywords:
   - Logstash
