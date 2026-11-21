@@ -719,6 +719,21 @@ spec:
                       client:
                         description: Client holds client configuration options.
                         properties:
+                          additionalTrustedCAs:
+                            description: |-
+                              AdditionalTrustedCAs is a list of references to secrets, each with a `ca.crt` file that contains one or more
+                              CA certificates in PEM format. Each certificate must be a CA certificate: a secret with any other certificate,
+                              such as a self-signed client certificate, is not trusted. Client certificates issued by these CAs are trusted
+                              when client authentication is required (enterprise-only feature).
+                            items:
+                              description: SecretRef is a reference to a secret that
+                                exists in the same namespace.
+                              properties:
+                                secretName:
+                                  description: SecretName is the name of the secret.
+                                  type: string
+                              type: object
+                            type: array
                           authentication:
                             description: Authentication enables client authentication
                               (enterprise-only feature).
@@ -5177,6 +5192,21 @@ spec:
                       client:
                         description: Client holds client configuration options.
                         properties:
+                          additionalTrustedCAs:
+                            description: |-
+                              AdditionalTrustedCAs is a list of references to secrets, each with a `ca.crt` file that contains one or more
+                              CA certificates in PEM format. Each certificate must be a CA certificate: a secret with any other certificate,
+                              such as a self-signed client certificate, is not trusted. Client certificates issued by these CAs are trusted
+                              when client authentication is required (enterprise-only feature).
+                            items:
+                              description: SecretRef is a reference to a secret that
+                                exists in the same namespace.
+                              properties:
+                                secretName:
+                                  description: SecretName is the name of the secret.
+                                  type: string
+                              type: object
+                            type: array
                           authentication:
                             description: Authentication enables client authentication
                               (enterprise-only feature).

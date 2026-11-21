@@ -498,6 +498,7 @@ ClientOptions configures client certificate authentication for incoming connecti
 | Field | Description |
 | --- | --- |
 | *`authentication`* __boolean__ | Authentication enables client authentication (enterprise-only feature). |
+| *`additionalTrustedCAs`* __[SecretRef](#secretref) array__ | AdditionalTrustedCAs is a list of references to secrets, each with a `ca.crt` file that contains one or more<br>CA certificates in PEM format. Each certificate must be a CA certificate: a secret with any other certificate,<br>such as a self-signed client certificate, is not trusted. Client certificates issued by these CAs are trusted<br>when client authentication is required (enterprise-only feature). |
 
 
 ### Condition  [#condition]
@@ -891,6 +892,7 @@ PodTemplate are preserved as-is.
 SecretRef is a reference to a secret that exists in the same namespace.
 
 :::{admonition} Appears In:
+* [ClientOptions](#clientoptions)
 * [ConfigMapOrSecretSource](#configmaporsecretsource)
 * [ConfigSource](#configsource)
 * [FileRealmSource](#filerealmsource)

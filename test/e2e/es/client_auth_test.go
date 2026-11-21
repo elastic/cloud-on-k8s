@@ -8,6 +8,7 @@ package es
 
 import (
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"slices"
@@ -17,16 +18,23 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
+	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
+	esuser "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
+	clientauth "github.com/elastic/cloud-on-k8s/v3/test/e2e/test/client-auth"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/helper"
 )
 
 // TestClientAuthRequiredTransition tests transitioning from no client authentication to required and back to disabled.
 // Verifies the cluster remains healthy, client cert secrets are created (and are valid self-signed certs),
-// and cleaned up across transitions.
+// a client certificate issued by an additional trusted CA is accepted while client authentication is required,
+// and client cert secrets are cleaned up across transitions.
 func TestClientAuthRequiredTransition(t *testing.T) {
 	if test.Ctx().TestLicense == "" {
 		t.Skip("Skipping client authentication test: no enterprise test license configured")
@@ -42,9 +50,19 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 
 	initialWithLicense := test.LicenseTestBuilder(initialBuilder)
 
-	// Phase 1: transition to client_authentication: required
+	// Use the builder's actual ES name (includes random suffix from NewBuilder).
+	actualESName := initialBuilder.Elasticsearch.Name
+
+	// An additional trusted CA, and a client certificate issued by it.
+	caSecretName := actualESName + "-additional-client-ca"
+	caPEM, ca, caKey := helper.GenerateCA(t, esName+"-additional-client-ca")
+	clientCertPEM, clientKeyPEM := helper.GenerateClientCertSignedBy(t, esName+"-additional-client", ca, caKey)
+	createCASecret, deleteCASecret := clientauth.AdditionalTrustedCASecretLifecycleSteps(esNamespace, caSecretName, caPEM)
+
+	// Phase 1: transition to client_authentication: required, trusting the additional CA
 	enabledBuilder := initialBuilder.DeepCopy()
 	enabledBuilder.Elasticsearch.Spec.HTTP.TLS.Client.Authentication = true
+	enabledBuilder.Elasticsearch.Spec.HTTP.TLS.Client.AdditionalTrustedCAs = []commonv1.SecretRef{{SecretName: caSecretName}}
 	enabledBuilder.MutatedFrom = &initialBuilder
 
 	// Phase 2: transition back to disabled
@@ -54,12 +72,10 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 
 	k := test.NewK8sClientOrFatal()
 
-	// Use the builder's actual ES name (includes random suffix from NewBuilder).
-	actualESName := initialBuilder.Elasticsearch.Name
-
 	test.StepList{}.
 		// Create with client auth disabled (with license)
 		WithSteps(initialWithLicense.InitTestSteps(k)).
+		WithSteps(createCASecret(k)).
 		WithSteps(initialWithLicense.CreationTestSteps(k)).
 		WithSteps(test.CheckTestSteps(initialWithLicense, k)).
 		WithSteps(verifyClientCertResourcesRemoved(k, esNamespace, actualESName)).
@@ -69,6 +85,7 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 		WithSteps(enabledBuilder.UpgradeTestSteps(k)).
 		WithSteps(test.CheckTestSteps(*enabledBuilder, k)).
 		WithSteps(verifyClientCertResourcesExist(t, k, esNamespace, actualESName)).
+		WithStep(verifyClientCertAccepted(t.Context(), k, esNamespace, actualESName, clientCertPEM, clientKeyPEM)).
 		// Phase 2: disable client authentication
 		// Annotate pods before mutation so CheckExpectedPodsEventuallyReady can verify all pods are rolled.
 		WithSteps(elasticsearch.AnnotatePodsWithBuilderHash(*enabledBuilder, k)).
@@ -76,7 +93,38 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 		WithSteps(test.CheckTestSteps(*disabledBuilder, k)).
 		WithSteps(verifyClientCertResourcesRemoved(k, esNamespace, actualESName)).
 		WithSteps(initialWithLicense.DeletionTestSteps(k)).
+		WithSteps(deleteCASecret(k)).
 		RunSequential(t)
+}
+
+// verifyClientCertAccepted returns a step that verifies Elasticsearch accepts requests from a client presenting the
+// given client certificate.
+func verifyClientCertAccepted(ctx context.Context, k *test.K8sClient, namespace, esName string, certPEM, keyPEM []byte) test.Step {
+	return test.Step{
+		Name: "Verify a client certificate issued by an additional trusted CA is accepted",
+		Test: test.Eventually(func() error {
+			clientCert, err := tls.X509KeyPair(certPEM, keyPEM)
+			if err != nil {
+				return err
+			}
+			var es esv1.Elasticsearch
+			if err := k.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: esName}, &es); err != nil {
+				return err
+			}
+			password, err := k.GetElasticPassword(k8s.ExtractNamespacedName(&es))
+			if err != nil {
+				return err
+			}
+			user := esclient.BasicAuth{Name: esuser.ElasticUserName, Password: password}
+			esClient, err := elasticsearch.NewElasticsearchClientWithClientCert(es, k, user, &clientCert)
+			if err != nil {
+				return err
+			}
+			defer esClient.Close()
+			_, err = esClient.GetClusterInfo(ctx)
+			return err
+		}),
+	}
 }
 
 // verifyClientCertResourcesExist returns steps that verify the client authentication annotation is set,

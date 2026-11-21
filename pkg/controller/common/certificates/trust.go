@@ -58,16 +58,26 @@ func ReconcileAdditionalCAs(
 	if !exists {
 		return nil, fmt.Errorf("config map %s specified in %s must contain %s file", nsn, fieldPath, CAFileName)
 	}
-	certs, err := ParsePEMCerts([]byte(pem))
+	return parseCAFile(fmt.Sprintf("config map %s", nsn), fieldPath, []byte(pem), false)
+}
+
+// parseCAFile parses the certificates of a ca.crt file and returns them PEM-encoded, dropping anything else.
+// If caOnly is set, certificates which are not CAs are rejected.
+func parseCAFile(source, fieldPath string, pem []byte, caOnly bool) ([]byte, error) {
+	certs, err := ParsePEMCerts(pem)
 	if err != nil {
-		return nil, fmt.Errorf("config map %s specified in %s contains invalid certificates: %w", nsn, fieldPath, err)
+		return nil, fmt.Errorf("%s specified in %s contains invalid certificates: %w", source, fieldPath, err)
 	}
 	if len(certs) == 0 {
-		return nil, fmt.Errorf("config map %s specified in %s contains invalid certificates: no certificate found in %s", nsn, fieldPath, CAFileName)
+		return nil, fmt.Errorf("%s specified in %s contains invalid certificates: no certificate found in %s", source, fieldPath, CAFileName)
 	}
-	// Only hand out certificates: anything else in the ConfigMap, for example a private key, is dropped.
+	// Only hand out certificates: anything else, for example a private key, is dropped.
 	raws := make([][]byte, len(certs))
 	for i, cert := range certs {
+		if caOnly && !cert.IsCA {
+			return nil, fmt.Errorf("%s specified in %s contains invalid certificates: %q in %s is not a CA certificate",
+				source, fieldPath, cert.Subject.String(), CAFileName)
+		}
 		raws[i] = cert.Raw
 	}
 	return EncodePEMCert(raws...), nil
