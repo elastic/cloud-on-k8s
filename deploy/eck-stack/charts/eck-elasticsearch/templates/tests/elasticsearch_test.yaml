@@ -275,3 +275,58 @@ tests:
       - equal:
           path: spec.revisionHistoryLimit
           value: 2
+  - it: should render and merge nodeSets given as a map
+    values:
+      - ../../examples/nodesets-map.yaml
+    set:
+      nodeSets:
+        data:
+          count: 5
+    asserts:
+      - equal:
+          path: spec.nodeSets
+          value:
+            - name: data
+              count: 5
+              config:
+                node.roles: ["data", "ingest"]
+            - name: masters
+              count: 3
+              config:
+                node.roles: ["master"]
+  - it: should keep an explicit name in a nodeSets map entry
+    set:
+      nodeSets:
+        first:
+          name: masters
+          count: 1
+    asserts:
+      - equal:
+          path: spec.nodeSets[0].name
+          value: masters
+  - it: should skip null entries but keep empty entries in a nodeSets map
+    set:
+      nodeSets:
+        masters:
+          count: 1
+        data: {}
+        hot: null
+    asserts:
+      - equal:
+          path: spec.nodeSets
+          value:
+            - name: data
+            - name: masters
+              count: 1
+  - it: should fail when a nodeSets map is empty
+    set:
+      nodeSets: {}
+    asserts:
+      - failedTemplate:
+          errorMessage: At least one nodeSet is required
+  - it: should fail when nodeSets is neither a list nor a map
+    set:
+      nodeSets: invalid
+    asserts:
+      - failedTemplate:
+          errorMessage: "nodeSets must be a list or map, got: string"

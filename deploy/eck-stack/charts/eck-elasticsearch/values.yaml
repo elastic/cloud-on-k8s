@@ -167,6 +167,10 @@ volumeClaimDeletePolicy: ""
 # - "ingest"
 # ref: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-node-configuration.html
 #
+# nodeSets can also be a map keyed by nodeSet name, so a later values file can override one field
+# (Helm merges maps but replaces lists). Helm then warns "skipped value for nodeSets: Not a table";
+# this is harmless. See examples/nodesets-map.yaml.
+#
 nodeSets:
 - name: default
   # Omit count when an ElasticsearchAutoscaler policy targets this nodeSet's roles: the autoscaler

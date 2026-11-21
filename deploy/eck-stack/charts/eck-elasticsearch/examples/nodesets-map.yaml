@@ -1,0 +1,19 @@
+---
+# nodeSets given as a map keyed by nodeSet name. Unlike a list, a map is merged by Helm across
+# values files, so a later file can override a single field. The key is used as the nodeSet name
+# unless the entry sets name itself, entries are rendered in key order, and a null entry is skipped.
+# For example, a later values file can scale only the data nodeSet:
+#
+#   nodeSets:
+#     data:
+#       count: 5
+#
+nodeSets:
+  masters:
+    count: 3
+    config:
+      node.roles: ["master"]
+  data:
+    count: 2
+    config:
+      node.roles: ["data", "ingest"]
