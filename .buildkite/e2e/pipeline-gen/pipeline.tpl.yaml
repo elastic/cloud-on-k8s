@@ -61,11 +61,14 @@ steps:
           manual:
             permit_on_passed: true
 
-        {{- if $test.RemoteKubeconfig }}
         depends_on:
+          {{- if $test.RemoteKubeconfig }}
           - "e2e-cluster-{{ $test.SlugName }}"
-          # let's be optimistic and run the tests without dependency on the images build
-        {{- end }}
+          {{- end }}
+          # wait for the operator and e2e-tests images to be built and published
+          # (keys of the build groups in .buildkite/pipeline.yml)
+          - "operator-image-build"
+          - "e2e-tests-image-build"
 
         env:
           {{- range $key, $val := $test.Env }}
