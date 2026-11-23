@@ -16,6 +16,7 @@ import (
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/rolemapping"
@@ -28,6 +29,8 @@ const (
 	ApmAssociationLabelNamespace    = "apmassociation.k8s.elastic.co/namespace"
 	KibanaAssociationLabelName      = "kibanaassociation.k8s.elastic.co/name"
 	KibanaAssociationLabelNamespace = "kibanaassociation.k8s.elastic.co/namespace"
+	EsAssociationLabelName          = "esassociation.k8s.elastic.co/name"
+	EsAssociationLabelNamespace     = "esassociation.k8s.elastic.co/namespace"
 )
 
 func newUserSecret(
@@ -136,6 +139,18 @@ func TestUsersGarbageCollector_GC(t *testing.T) {
 			wantRemaining: []string{"orphaned-in-unmanaged-client-cert-source"},
 		},
 		{
+			name:              "deletes the secrets of deleted Elasticsearch stack monitoring associations",
+			managedNamespaces: []string{AllNamespaces},
+			objs: []client.Object{
+				newUserSecret("monitoring", "ns1-monitored-beat-es-mon-user", EsAssociationLabelNamespace, EsAssociationLabelName, "ns1", "monitored"),
+				newUserSecret("monitoring", "ns1-orphaned-beat-es-mon-user", EsAssociationLabelNamespace, EsAssociationLabelName, "ns1", "orphaned-es"),
+				newClientCertTrustSource("monitoring", "monitored-client-cert-source", EsAssociationLabelNamespace, EsAssociationLabelName, "ns1", "monitored"),
+				newClientCertTrustSource("monitoring", "orphaned-es-client-cert-source", EsAssociationLabelNamespace, EsAssociationLabelName, "ns1", "orphaned-es"),
+				&esv1.Elasticsearch{Name: "monitored", Namespace: "ns1"},
+			},
+			wantRemaining: []string{"ns1-monitored-beat-es-mon-user", "monitored-client-cert-source"},
+		},
+		{
 			// A secret in the server namespace which carries association labels but is not typed as a trust source
 			// (or any other kind of association secret) is not ours to delete.
 			name:              "keeps the secrets which are not association secrets",
@@ -156,6 +171,7 @@ func TestUsersGarbageCollector_GC(t *testing.T) {
 			// register some resources
 			ugc.For(&apmv1.ApmServerList{}, ApmAssociationLabelNamespace, ApmAssociationLabelName)
 			ugc.For(&kbv1.KibanaList{}, KibanaAssociationLabelNamespace, KibanaAssociationLabelName)
+			ugc.For(&esv1.ElasticsearchList{}, EsAssociationLabelNamespace, EsAssociationLabelName)
 
 			assert.NoError(t, ugc.DoGarbageCollection(t.Context()))
 

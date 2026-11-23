@@ -1148,6 +1148,7 @@ func garbageCollectUsers(ctx context.Context, cfg *rest.Config, managedNamespace
 		For(&agentv1alpha1.AgentList{}, associationctl.AgentAssociationLabelNamespace, associationctl.AgentAssociationLabelName).
 		For(&emsv1alpha1.ElasticMapsServerList{}, associationctl.MapsESAssociationLabelNamespace, associationctl.MapsESAssociationLabelName).
 		For(&logstashv1alpha1.LogstashList{}, associationctl.LogstashAssociationLabelNamespace, associationctl.LogstashAssociationLabelName).
+		For(&esv1.ElasticsearchList{}, associationctl.EsAssociationLabelNamespace, associationctl.EsAssociationLabelName).
 		DoGarbageCollection(ctx)
 	if err != nil {
 		return fmt.Errorf("user garbage collector failed: %w", err)
