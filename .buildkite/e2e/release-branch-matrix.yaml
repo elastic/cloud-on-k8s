@@ -81,6 +81,10 @@
       E2E_STACK_VERSION: "9.4.5"
     - DEPLOYER_CLIENT_VERSION: "4.22.2"
       E2E_STACK_VERSION: "9.5.1"
+    - DEPLOYER_CLIENT_VERSION: "5.0.2"
+      E2E_STACK_VERSION: "9.4.5"
+    - DEPLOYER_CLIENT_VERSION: "5.0.2"
+      E2E_STACK_VERSION: "9.5.1"
 
 - label: ocp-wolfi
   fixed:
@@ -88,6 +92,8 @@
     CONTAINER_SUFFIX: "-wolfi"
   mixed:
     - DEPLOYER_CLIENT_VERSION: "4.22.2"
+      E2E_STACK_VERSION: "9.5.1"
+    - DEPLOYER_CLIENT_VERSION: "5.0.2"
       E2E_STACK_VERSION: "9.5.1"
 
 - label: eks-arm
