@@ -36,7 +36,7 @@ var (
 		checkAssociations,
 		checkConsistentESRefAuthentication,
 		checkClientAuthentication,
-		checkAdditionalTrustedClientCAs,
+		checkClientCertificateAuthorities,
 		checkNoPKIAuthentication,
 		commonv1.PauseOrchestrationAnnotationCheck[*Agent](),
 	}
@@ -356,16 +356,16 @@ func checkNoPKIAuthentication(a *Agent) field.ErrorList {
 	return errs
 }
 
-// checkAdditionalTrustedClientCAs checks that the additional trusted client CAs are only set on a Fleet Server.
+// checkClientCertificateAuthorities checks that the client certificate authorities are only set on a Fleet Server.
 // It does not depend on spec.http.tls.client.authentication, as client authentication can also be required by
 // the pod template.
-func checkAdditionalTrustedClientCAs(a *Agent) field.ErrorList {
+func checkClientCertificateAuthorities(a *Agent) field.ErrorList {
 	var errs field.ErrorList
-	if len(a.Spec.HTTP.TLS.Client.AdditionalTrustedCAs) > 0 && !a.Spec.FleetServerEnabled {
-		errs = append(errs, field.Forbidden(commonv1.AdditionalTrustedClientCAsPath,
-			"additional trusted client CAs are only supported when Fleet Server is enabled"))
+	if a.Spec.HTTP.TLS.Client.CertificateAuthorities.IsDefined() && !a.Spec.FleetServerEnabled {
+		errs = append(errs, field.Forbidden(commonv1.ClientCertificateAuthoritiesPath,
+			"client certificate authorities are only supported when Fleet Server is enabled"))
 	}
-	return append(errs, commonv1.CheckAdditionalTrustedClientCAs(a.Spec.HTTP.TLS)...)
+	return append(errs, commonv1.CheckClientCertificateAuthorities(a.Spec.HTTP.TLS)...)
 }
 
 func checkClientAuthentication(a *Agent) field.ErrorList {

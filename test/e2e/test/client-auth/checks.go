@@ -108,35 +108,40 @@ func listClientCertificateTrustSources(k *test.K8sClient, namespace, serverName,
 // client certificate secret for custom certificate tests. The certPEM and keyPEM are the pre-generated
 // certificate data to use. Pass the returned StepsFuncs to test.BeforeAfterSequence.
 func UserCustomCertificateSecretLifecycleSteps(namespace, secretName string, certPEM, keyPEM []byte) (test.StepsFunc, test.StepsFunc) {
-	return secretLifecycleSteps("user-provided client certificate", namespace, secretName, map[string][]byte{
-		certificates.CertFileName: certPEM,
-		certificates.KeyFileName:  keyPEM,
+	return objectLifecycleSteps("user-provided client certificate secret", func() k8sclient.Object {
+		return &corev1.Secret{
+			Name:      secretName,
+			Namespace: namespace,
+			Data: map[string][]byte{
+				certificates.CertFileName: certPEM,
+				certificates.KeyFileName:  keyPEM,
+			},
+		}
 	})
 }
 
-// AdditionalTrustedCASecretLifecycleSteps returns before/after StepsFuncs that create and delete a secret holding the
-// given PEM-encoded CA certificate, to reference in spec.http.tls.client.additionalTrustedCAs.
+// ClientCAConfigMapLifecycleSteps returns before/after StepsFuncs that create and delete a config map holding the
+// given PEM-encoded CA certificate, to reference in spec.http.tls.client.certificateAuthorities.
 // Pass the returned StepsFuncs to test.BeforeAfterSequence.
-func AdditionalTrustedCASecretLifecycleSteps(namespace, secretName string, caPEM []byte) (test.StepsFunc, test.StepsFunc) {
-	return secretLifecycleSteps("additional trusted client CA", namespace, secretName, map[string][]byte{
-		certificates.CAFileName: caPEM,
+func ClientCAConfigMapLifecycleSteps(namespace, configMapName string, caPEM []byte) (test.StepsFunc, test.StepsFunc) {
+	return objectLifecycleSteps("client CAs config map", func() k8sclient.Object {
+		return &corev1.ConfigMap{
+			Name:      configMapName,
+			Namespace: namespace,
+			Data:      map[string]string{certificates.CAFileName: string(caPEM)},
+		}
 	})
 }
 
-// secretLifecycleSteps returns before/after StepsFuncs that create and delete a secret with the given data.
-func secretLifecycleSteps(description, namespace, secretName string, data map[string][]byte) (test.StepsFunc, test.StepsFunc) {
+// objectLifecycleSteps returns before/after StepsFuncs that create and delete the object returned by newObj.
+func objectLifecycleSteps(description string, newObj func() k8sclient.Object) (test.StepsFunc, test.StepsFunc) {
 	before := test.StepsFunc(func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			{
-				Name: "Create " + description + " secret",
+				Name: "Create " + description,
 				Test: func(t *testing.T) {
 					t.Helper()
-					secret := corev1.Secret{
-						Name:      secretName,
-						Namespace: namespace,
-						Data:      data,
-					}
-					require.NoError(t, k.Client.Create(t.Context(), &secret))
+					require.NoError(t, k.Client.Create(t.Context(), newObj()))
 				},
 			},
 		}
@@ -145,14 +150,10 @@ func secretLifecycleSteps(description, namespace, secretName string, data map[st
 	after := test.StepsFunc(func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			{
-				Name: "Delete " + description + " secret",
+				Name: "Delete " + description,
 				Test: func(t *testing.T) {
 					t.Helper()
-					secret := corev1.Secret{
-						Name:      secretName,
-						Namespace: namespace,
-					}
-					require.NoError(t, k8sclient.IgnoreNotFound(k.Client.Delete(t.Context(), &secret)))
+					require.NoError(t, k8sclient.IgnoreNotFound(k.Client.Delete(t.Context(), newObj())))
 				},
 			},
 		}

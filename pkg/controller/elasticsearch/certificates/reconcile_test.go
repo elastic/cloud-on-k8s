@@ -28,23 +28,23 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
-func TestReconcileOperatorClientCertAndTrustBundle_AdditionalTrustedCAs(t *testing.T) {
+func TestReconcileOperatorClientCertAndTrustBundle_ClientCAs(t *testing.T) {
 	esNSN := types.NamespacedName{Namespace: "ns", Name: "es"}
-	watchKey := certificates.AdditionalTrustedClientCAsWatchKey(esv1.ESNamer, esNSN)
+	watchKey := certificates.ClientCAWatchKey(esv1.ESNamer, esNSN)
 	trustBundleNSN := types.NamespacedName{Namespace: esNSN.Namespace, Name: certificates.ClientCertTrustBundleSecretName(esv1.ESNamer, esNSN.Name)}
 
 	ca, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{})
 	require.NoError(t, err)
 	caPEM := certificates.EncodePEMCert(ca.Cert.Raw)
-	caSecret := &corev1.Secret{
-		Namespace: esNSN.Namespace, Name: "additional-ca",
-		Data: map[string][]byte{certificates.CAFileName: caPEM},
+	caConfigMap := &corev1.ConfigMap{
+		Namespace: esNSN.Namespace, Name: "client-cas",
+		Data: map[string]string{certificates.CAFileName: string(caPEM)},
 	}
-	newES := func(additionalTrustedCA bool) *esv1.Elasticsearch {
+	newES := func(clientCAs bool) *esv1.Elasticsearch {
 		es := &esv1.Elasticsearch{Namespace: esNSN.Namespace, Name: esNSN.Name}
 		es.Spec.HTTP.TLS.Client.Authentication = true
-		if additionalTrustedCA {
-			es.Spec.HTTP.TLS.Client.AdditionalTrustedCAs = []commonv1.SecretRef{{SecretName: caSecret.Name}}
+		if clientCAs {
+			es.Spec.HTTP.TLS.Client.CertificateAuthorities = commonv1.ConfigMapRef{ConfigMapName: caConfigMap.Name}
 		}
 		return es
 	}
@@ -56,13 +56,13 @@ func TestReconcileOperatorClientCertAndTrustBundle_AdditionalTrustedCAs(t *testi
 		return string(secret.Data[certificates.ClientCertificatesTrustBundleFileName])
 	}
 
-	deleteCASecret := func(t *testing.T, _ *esv1.Elasticsearch, c k8s.Client) {
+	deleteCAConfigMap := func(t *testing.T, _ *esv1.Elasticsearch, c k8s.Client) {
 		t.Helper()
-		require.NoError(t, c.Delete(t.Context(), caSecret.DeepCopy()))
+		require.NoError(t, c.Delete(t.Context(), caConfigMap.DeepCopy()))
 	}
 
-	// caSecretUnreadable makes reading the secret of the additional trusted CA fail, for another reason than not existing
-	var caSecretUnreadable bool
+	// caConfigMapUnreadable makes reading the config map of the client CAs fail with an error other than NotFound
+	var caConfigMapUnreadable bool
 
 	for _, tt := range []struct {
 		name string
@@ -72,8 +72,7 @@ func TestReconcileOperatorClientCertAndTrustBundle_AdditionalTrustedCAs(t *testi
 		change               func(t *testing.T, es *esv1.Elasticsearch, c k8s.Client)
 		// clientAuthenticationRequired is passed to the reconciliation under test
 		clientAuthenticationRequired bool
-		// wantErr is an error in the results, wantDeferredErr an error returned apart for the caller to report once
-		// the nodes are reconciled
+		// wantErr is the error in the results, wantDeferredErr the error returned separately
 		wantErr         bool
 		wantDeferredErr bool
 		// wantCert is whether the operator client certificate is returned: the trust bundle is checked if so
@@ -83,7 +82,7 @@ func TestReconcileOperatorClientCertAndTrustBundle_AdditionalTrustedCAs(t *testi
 		wantWarning bool
 	}{
 		{
-			name:                         "additional trusted CA is part of the trust bundle and its secret is watched",
+			name:                         "client CAs are part of the trust bundle and their config map is watched",
 			es:                           newES(true),
 			clientAuthenticationRequired: true,
 			wantCert:                     true,
@@ -95,16 +94,16 @@ func TestReconcileOperatorClientCertAndTrustBundle_AdditionalTrustedCAs(t *testi
 			es:                   newES(true),
 			previouslyReconciled: true,
 			change: func(_ *testing.T, es *esv1.Elasticsearch, _ k8s.Client) {
-				es.Spec.HTTP.TLS.Client.AdditionalTrustedCAs = nil
+				es.Spec.HTTP.TLS.Client.CertificateAuthorities = commonv1.ConfigMapRef{}
 			},
 			clientAuthenticationRequired: true,
 			wantCert:                     true,
 		},
 		{
-			name:                         "additional trusted CA secret is deleted: deferred error, the CA is not trusted anymore and the operator certificate returned",
+			name:                         "client CAs config map is deleted: deferred error, the CA is not trusted anymore and the operator certificate returned",
 			es:                           newES(true),
 			previouslyReconciled:         true,
-			change:                       deleteCASecret,
+			change:                       deleteCAConfigMap,
 			clientAuthenticationRequired: true,
 			wantDeferredErr:              true,
 			wantCert:                     true,
@@ -112,20 +111,20 @@ func TestReconcileOperatorClientCertAndTrustBundle_AdditionalTrustedCAs(t *testi
 		},
 		{
 			// the trust bundle is mounted in the Pods, which cannot start without it
-			name:                         "additional trusted CA secret is missing from the start: deferred error, trust bundle is created without it",
+			name:                         "client CAs config map is missing from the start: deferred error, trust bundle is created without it",
 			es:                           newES(true),
-			change:                       deleteCASecret,
+			change:                       deleteCAConfigMap,
 			clientAuthenticationRequired: true,
 			wantDeferredErr:              true,
 			wantCert:                     true,
 			wantWatch:                    true,
 		},
 		{
-			// what the secret holds is not known: the CA is not removed from the trust bundle
-			name:                         "additional trusted CA secret cannot be read: error in the results, the trust bundle is left as it is",
+			// what the config map holds is not known: the CA is not removed from the trust bundle
+			name:                         "client CAs config map cannot be read: error in the results, the trust bundle is left as it is",
 			es:                           newES(true),
 			previouslyReconciled:         true,
-			change:                       func(_ *testing.T, _ *esv1.Elasticsearch, _ k8s.Client) { caSecretUnreadable = true },
+			change:                       func(_ *testing.T, _ *esv1.Elasticsearch, _ k8s.Client) { caConfigMapUnreadable = true },
 			clientAuthenticationRequired: true,
 			wantErr:                      true,
 			wantCert:                     true,
@@ -134,19 +133,19 @@ func TestReconcileOperatorClientCertAndTrustBundle_AdditionalTrustedCAs(t *testi
 		},
 		{
 			// client authentication is not required anymore, but the annotation is still there until the nodes are rolled
-			name:                 "client authentication is being disabled and the additional trusted CA secret is deleted: no error, the CA is not trusted anymore",
+			name:                 "client authentication is being disabled and the client CAs config map is deleted: no error, the CA is not trusted anymore",
 			es:                   newES(true),
 			previouslyReconciled: true,
-			change:               deleteCASecret,
+			change:               deleteCAConfigMap,
 			wantCert:             true,
 			wantWatch:            true,
 		},
 		{
-			// what the secret holds is not known: retried like any other API error, even while disabling
-			name:                 "client authentication is being disabled and the additional trusted CA secret cannot be read: error in the results, the trust bundle is left as it is",
+			// what the config map holds is not known: retried like any other API error, even while disabling
+			name:                 "client authentication is being disabled and the client CAs config map cannot be read: error in the results, the trust bundle is left as it is",
 			es:                   newES(true),
 			previouslyReconciled: true,
-			change:               func(_ *testing.T, _ *esv1.Elasticsearch, _ k8s.Client) { caSecretUnreadable = true },
+			change:               func(_ *testing.T, _ *esv1.Elasticsearch, _ k8s.Client) { caConfigMapUnreadable = true },
 			wantErr:              true,
 			wantCert:             true,
 			wantTrusted:          true,
@@ -163,17 +162,17 @@ func TestReconcileOperatorClientCertAndTrustBundle_AdditionalTrustedCAs(t *testi
 			wantWarning: true,
 		},
 		{
-			name: "client authentication is not in use, no additional trusted CA: no warning",
+			name: "client authentication is not in use, no client CAs: no warning",
 			es:   newES(false),
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			caSecretUnreadable = false
+			caConfigMapUnreadable = false
 			d := driver.TestDriver{
-				Client: k8s.NewFakeClientBuilder(tt.es, caSecret).WithInterceptorFuncs(interceptor.Funcs{
+				Client: k8s.NewFakeClientBuilder(tt.es, caConfigMap).WithInterceptorFuncs(interceptor.Funcs{
 					Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-						if caSecretUnreadable && key.Name == caSecret.Name {
-							return apierrors.NewInternalError(errors.New("cannot read the secret"))
+						if caConfigMapUnreadable && key.Name == caConfigMap.Name {
+							return apierrors.NewInternalError(errors.New("cannot read the config map"))
 						}
 						return c.Get(ctx, key, obj, opts...)
 					},
@@ -203,13 +202,13 @@ func TestReconcileOperatorClientCertAndTrustBundle_AdditionalTrustedCAs(t *testi
 				require.Contains(t, bundle, string(certificates.EncodePEMCert(cert.Certificate[0])))
 			}
 			if tt.wantWatch {
-				require.Contains(t, d.Watches.Secrets.Registrations(), watchKey)
+				require.Contains(t, d.Watches.ConfigMaps.Registrations(), watchKey)
 			} else {
-				require.NotContains(t, d.Watches.Secrets.Registrations(), watchKey)
+				require.NotContains(t, d.Watches.ConfigMaps.Registrations(), watchKey)
 			}
 			if tt.wantWarning {
 				require.Len(t, d.FakeRecorder.Events, 1)
-				require.Contains(t, <-d.FakeRecorder.Events, "spec.http.tls.client.additionalTrustedCAs is ineffective")
+				require.Contains(t, <-d.FakeRecorder.Events, "spec.http.tls.client.certificateAuthorities is ineffective")
 			} else {
 				require.Empty(t, d.FakeRecorder.Events)
 			}

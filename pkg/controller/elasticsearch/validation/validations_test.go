@@ -1742,17 +1742,16 @@ func Test_validPKIRealm(t *testing.T) {
 	}
 }
 
-func Test_validAdditionalTrustedClientCAs(t *testing.T) {
-	esWith := func(clientAuthentication bool, secretNames ...string) esv1.Elasticsearch {
-		refs := make([]commonv1.SecretRef, 0, len(secretNames))
-		for _, secretName := range secretNames {
-			refs = append(refs, commonv1.SecretRef{SecretName: secretName})
-		}
+func Test_validClientCertificateAuthorities(t *testing.T) {
+	esWith := func(clientAuthentication bool, configMapName string) esv1.Elasticsearch {
 		return esv1.Elasticsearch{
 			Spec: esv1.ElasticsearchSpec{
 				HTTP: commonv1.HTTPConfigWithClientOptions{
 					TLS: commonv1.TLSWithClientOptions{
-						Client: commonv1.ClientOptions{Authentication: clientAuthentication, AdditionalTrustedCAs: refs},
+						Client: commonv1.ClientOptions{
+							Authentication:         clientAuthentication,
+							CertificateAuthorities: commonv1.ConfigMapRef{ConfigMapName: configMapName},
+						},
 					},
 				},
 			},
@@ -1767,43 +1766,20 @@ func Test_validAdditionalTrustedClientCAs(t *testing.T) {
 		es         esv1.Elasticsearch
 		wantFields []string
 	}{
-		{name: "no additional trusted CA: OK", es: esWith(false)},
-		{name: "no additional trusted CA, TLS disabled: OK", es: tlsDisabled(esWith(false))},
-		{name: "additional trusted CAs with client authentication: OK", es: esWith(true, "ca-1", "ca-2")},
-		{name: "additional trusted CAs without client authentication in the spec: OK", es: esWith(false, "ca-1")},
+		{name: "no client CAs: OK", es: esWith(false, "")},
+		{name: "no client CAs, TLS disabled: OK", es: tlsDisabled(esWith(false, ""))},
+		{name: "client CAs with client authentication: OK", es: esWith(true, "client-cas")},
+		{name: "client CAs without client authentication in the spec: OK, it can be required by the config", es: esWith(false, "client-cas")},
 		{
-			name:       "additional trusted CAs referencing the same secret twice without client authentication in the spec: NOK, it can be required by the config",
-			es:         esWith(false, "ca-1", "ca-1"),
-			wantFields: []string{"spec.http.tls.client.additionalTrustedCAs[1].secretName"},
-		},
-		{
-			name:       "additional trusted CA without secret name: NOK",
-			es:         esWith(true, "ca-1", ""),
-			wantFields: []string{"spec.http.tls.client.additionalTrustedCAs[1].secretName"},
-		},
-		{
-			name:       "additional trusted CAs referencing the same secret twice: NOK",
-			es:         esWith(true, "ca-1", "ca-1"),
-			wantFields: []string{"spec.http.tls.client.additionalTrustedCAs[1].secretName"},
-		},
-		{
-			name:       "additional trusted CAs, TLS disabled: NOK",
-			es:         tlsDisabled(esWith(false, "ca-1")),
-			wantFields: []string{"spec.http.tls.client.additionalTrustedCAs"},
-		},
-		{
-			name: "additional trusted CAs, TLS disabled, same secret twice: NOK, all are reported",
-			es:   tlsDisabled(esWith(false, "ca-1", "ca-1")),
-			wantFields: []string{
-				"spec.http.tls.client.additionalTrustedCAs",
-				"spec.http.tls.client.additionalTrustedCAs[1].secretName",
-			},
+			name:       "client CAs, TLS disabled: NOK",
+			es:         tlsDisabled(esWith(false, "client-cas")),
+			wantFields: []string{"spec.http.tls.client.certificateAuthorities"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var gotFields []string
-			for _, err := range validAdditionalTrustedClientCAs(tt.es) {
+			for _, err := range validClientCertificateAuthorities(tt.es) {
 				gotFields = append(gotFields, err.Field)
 			}
 			require.Equal(t, tt.wantFields, gotFields)

@@ -33,7 +33,7 @@ import (
 
 // TestClientAuthRequiredTransition tests transitioning from no client authentication to required and back to disabled.
 // Verifies the cluster remains healthy, client cert secrets are created (and are valid self-signed certs),
-// a client certificate issued by an additional trusted CA is accepted while client authentication is required,
+// a client certificate issued by a CA of spec.http.tls.client.certificateAuthorities is accepted while client authentication is required,
 // and client cert secrets are cleaned up across transitions.
 func TestClientAuthRequiredTransition(t *testing.T) {
 	if test.Ctx().TestLicense == "" {
@@ -53,16 +53,16 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 	// Use the builder's actual ES name (includes random suffix from NewBuilder).
 	actualESName := initialBuilder.Elasticsearch.Name
 
-	// An additional trusted CA, and a client certificate issued by it.
-	caSecretName := actualESName + "-additional-client-ca"
-	caPEM, ca, caKey := helper.GenerateCA(t, esName+"-additional-client-ca")
-	clientCertPEM, clientKeyPEM := helper.GenerateClientCertSignedBy(t, esName+"-additional-client", ca, caKey)
-	createCASecret, deleteCASecret := clientauth.AdditionalTrustedCASecretLifecycleSteps(esNamespace, caSecretName, caPEM)
+	// A client CA, and a client certificate issued by it.
+	caConfigMapName := actualESName + "-client-ca"
+	caPEM, ca, caKey := helper.GenerateCA(t, esName+"-client-ca")
+	clientCertPEM, clientKeyPEM := helper.GenerateClientCertSignedBy(t, esName+"-client", ca, caKey)
+	createCAConfigMap, deleteCAConfigMap := clientauth.ClientCAConfigMapLifecycleSteps(esNamespace, caConfigMapName, caPEM)
 
-	// Phase 1: transition to client_authentication: required, trusting the additional CA
+	// Phase 1: transition to client_authentication: required, trusting the client CA
 	enabledBuilder := initialBuilder.DeepCopy()
 	enabledBuilder.Elasticsearch.Spec.HTTP.TLS.Client.Authentication = true
-	enabledBuilder.Elasticsearch.Spec.HTTP.TLS.Client.AdditionalTrustedCAs = []commonv1.SecretRef{{SecretName: caSecretName}}
+	enabledBuilder.Elasticsearch.Spec.HTTP.TLS.Client.CertificateAuthorities = commonv1.ConfigMapRef{ConfigMapName: caConfigMapName}
 	enabledBuilder.MutatedFrom = &initialBuilder
 
 	// Phase 2: transition back to disabled
@@ -75,7 +75,7 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 	test.StepList{}.
 		// Create with client auth disabled (with license)
 		WithSteps(initialWithLicense.InitTestSteps(k)).
-		WithSteps(createCASecret(k)).
+		WithSteps(createCAConfigMap(k)).
 		WithSteps(initialWithLicense.CreationTestSteps(k)).
 		WithSteps(test.CheckTestSteps(initialWithLicense, k)).
 		WithSteps(verifyClientCertResourcesRemoved(k, esNamespace, actualESName)).
@@ -93,7 +93,7 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 		WithSteps(test.CheckTestSteps(*disabledBuilder, k)).
 		WithSteps(verifyClientCertResourcesRemoved(k, esNamespace, actualESName)).
 		WithSteps(initialWithLicense.DeletionTestSteps(k)).
-		WithSteps(deleteCASecret(k)).
+		WithSteps(deleteCAConfigMap(k)).
 		RunSequential(t)
 }
 
@@ -101,7 +101,7 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 // given client certificate.
 func verifyClientCertAccepted(ctx context.Context, k *test.K8sClient, namespace, esName string, certPEM, keyPEM []byte) test.Step {
 	return test.Step{
-		Name: "Verify a client certificate issued by an additional trusted CA is accepted",
+		Name: "Verify a client certificate issued by a client CA is accepted",
 		Test: test.Eventually(func() error {
 			clientCert, err := tls.X509KeyPair(certPEM, keyPEM)
 			if err != nil {

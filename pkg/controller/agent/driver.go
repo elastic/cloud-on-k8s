@@ -155,21 +155,21 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 	}
 
 	if params.Agent.Spec.FleetServerEnabled {
-		clientCertResults, additionalTrustedCAsErr := reconcileFleetServerClientAuth(params, clientAuthRequired, fleetCerts, configHash)
+		clientCertResults, clientCAsErr := reconcileFleetServerClientAuth(params, clientAuthRequired, fleetCerts, configHash)
 		results = results.WithResults(clientCertResults)
 		if results.HasError() {
 			return results, params.Status
 		}
-		// invalid additional trusted CAs must not block the Pods: report the error once they are reconciled
-		if additionalTrustedCAsErr != nil {
-			k8s.MaybeEmitErrorEventf(params.EventRecorder, additionalTrustedCAsErr, &params.Agent, events.EventReconciliationError, events.EventActionCertificateReconciliation,
-				"Additional trusted client CAs reconciliation error: %v", additionalTrustedCAsErr)
+		// invalid client certificate authorities must not block the Pods: add the error to the results on every return path
+		if clientCAsErr != nil {
+			k8s.MaybeEmitErrorEventf(params.EventRecorder, clientCAsErr, &params.Agent, events.EventReconciliationError, events.EventActionCertificateReconciliation,
+				"Client certificate authorities reconciliation error: %v", clientCAsErr)
 		}
-		defer results.WithError(additionalTrustedCAsErr)
+		defer results.WithError(clientCAsErr)
 	} else {
-		// not a Fleet Server (anymore): stop watching the additional trusted CAs
-		params.Watches.Secrets.RemoveHandlerForKey(
-			certificates.AdditionalTrustedClientCAsWatchKey(Namer, k8s.ExtractNamespacedName(&params.Agent)))
+		// not a Fleet Server (anymore): stop watching the client certificate authorities
+		params.Watches.ConfigMaps.RemoveHandlerForKey(
+			certificates.ClientCAWatchKey(Namer, k8s.ExtractNamespacedName(&params.Agent)))
 	}
 
 	fleetToken := maybeReconcileFleetEnrollment(params, results)
@@ -341,7 +341,8 @@ func isFleetServerClientAuthRequired(params Params) (bool, string, error) {
 // the annotation and related secrets are cleaned up.
 // The trust bundle includes the fleet HTTP cert so that the internal agent can verify the
 // fleet-server's server certificate (FLEET_CA points to the trust bundle).
-// Missing or invalid additional trusted CAs are left out of the trust bundle and returned as a separate error.
+// Missing or invalid client certificate authorities are left out of the trust bundle and returned as a separate error,
+// unless client authentication is being disabled, in which case they are only logged.
 func reconcileFleetServerClientAuth(params Params, clientAuthRequired bool, fleetCerts *certificates.CertificatesSecret, configHash io.Writer) (*reconciler.Results, error) {
 	results := reconciler.NewResult(params.Context)
 
@@ -354,13 +355,21 @@ func reconcileFleetServerClientAuth(params Params, clientAuthRequired bool, flee
 		CertRotation:   params.OperatorParams.CertRotation,
 	}
 
-	additionalTrustedCAs, additionalTrustedCAsReadErr := certReconciler.ReconcileAdditionalTrustedClientCAs(
-		params.Context, params.EventRecorder, params.Agent.Spec.HTTP.TLS.Client.AdditionalTrustedCAs, clientAuthRequired)
+	// Client authentication is still in use while it is being disabled, until the annotation is removed.
+	clientAuthInUse := clientAuthRequired || annotation.HasClientAuthenticationRequired(&params.Agent)
+
+	clientCAs, clientCAsReadErr := certReconciler.ReconcileClientCertificateAuthorities(
+		params.Context, params.EventRecorder, params.Agent.Spec.HTTP.TLS.Client.CertificateAuthorities, clientAuthInUse)
 
 	// Client auth is being disabled: clean up annotation and secrets.
 	if !clientAuthRequired {
 		if !annotation.HasClientAuthenticationRequired(&params.Agent) {
 			return results, nil
+		}
+		if clientCAs.InvalidErr != nil {
+			// client authentication is being disabled, the CAs are about to be unused
+			params.Logger().V(1).Info("Ignoring the invalid client certificate authorities while client authentication is being disabled",
+				"namespace", params.Agent.Namespace, "agent_name", params.Agent.Name, "error", clientCAs.InvalidErr.Error())
 		}
 		if err := certificates.DeleteClientCertResources(params.Context, params.Client, &params.Agent, Namer); err != nil {
 			return results.WithError(err), nil
@@ -384,17 +393,17 @@ func reconcileFleetServerClientAuth(params Params, clientAuthRequired bool, flee
 		extraCerts = append(extraCerts, fleetCerts)
 	}
 
-	// Keep the trust bundle as it is if the additional CAs could not be read, not to drop CAs that are still trusted.
-	if additionalTrustedCAsReadErr != nil {
-		return results.WithError(additionalTrustedCAsReadErr), nil
+	// On a read error keep the trust bundle as it is, so CAs that are still trusted are not dropped.
+	if clientCAsReadErr != nil {
+		return results.WithError(clientCAsReadErr), nil
 	}
-	extraCerts = append(extraCerts, additionalTrustedCAs.CAs...)
+	extraCerts = append(extraCerts, clientCAs.CAs...)
 	bundleData, err := certReconciler.ReconcileTrustBundle(params.Context, extraCerts...)
 	if err != nil {
 		return results.WithError(err), nil
 	}
 	_, _ = configHash.Write(bundleData)
-	return results, additionalTrustedCAs.InvalidErr
+	return results, clientCAs.InvalidErr
 }
 
 // fleetManagedAgentTransitiveRef returns the TransitiveESRef from the Fleet Server association

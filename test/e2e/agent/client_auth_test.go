@@ -289,7 +289,7 @@ func TestClientAuthRequiredCustomCertificate_FleetAgent(t *testing.T) {
 
 // TestClientAuthRequiredCustomCertificate_FleetServerToAgent tests that a fleet-managed Agent uses a user-provided
 // client certificate when connecting to a Fleet Server that has client authentication enabled, and that the Fleet
-// Server accepts a client certificate issued by an additional trusted CA.
+// Server accepts a client certificate issued by a CA of spec.http.tls.client.certificateAuthorities.
 func TestClientAuthRequiredCustomCertificate_FleetServerToAgent(t *testing.T) {
 	if test.Ctx().TestLicense == "" {
 		t.Skip("Skipping client authentication test: no enterprise test license configured")
@@ -299,7 +299,7 @@ func TestClientAuthRequiredCustomCertificate_FleetServerToAgent(t *testing.T) {
 	name := "test-fs-mtls-custom"
 	namespace := test.Ctx().ManagedNamespace(0)
 	userCertSecretName := name + "-user-client-cert"
-	caSecretName := name + "-additional-client-ca"
+	caConfigMapName := name + "-client-ca"
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
@@ -318,7 +318,7 @@ func TestClientAuthRequiredCustomCertificate_FleetServerToAgent(t *testing.T) {
 		WithElasticsearchRefs(agent.ToOutput(esBuilder.Ref(), "default")).
 		WithKibanaRef(kbBuilder.Ref()).
 		WithFleetAgentDataStreamsValidation()
-	fleetServerBuilder.Agent.Spec.HTTP.TLS.Client.AdditionalTrustedCAs = []commonv1.SecretRef{{SecretName: caSecretName}}
+	fleetServerBuilder.Agent.Spec.HTTP.TLS.Client.CertificateAuthorities = commonv1.ConfigMapRef{ConfigMapName: caConfigMapName}
 
 	kbBuilder = kbBuilder.WithConfig(fleetConfigWithOutputsForKibana(t, fleetServerBuilder.Agent.Spec.Version, esBuilder.Ref(), fleetServerBuilder.Ref()))
 
@@ -334,9 +334,9 @@ func TestClientAuthRequiredCustomCertificate_FleetServerToAgent(t *testing.T) {
 
 	certPEM, keyPEM := helper.GenerateSelfSignedClientCert(t, name)
 
-	// An additional trusted CA, and a client certificate issued by it.
-	caPEM, ca, caKey := helper.GenerateCA(t, name+"-additional-client-ca")
-	caClientCertPEM, caClientKeyPEM := helper.GenerateClientCertSignedBy(t, name+"-additional-client", ca, caKey)
+	// A client CA, and a client certificate issued by it.
+	caPEM, ca, caKey := helper.GenerateCA(t, name+"-client-ca")
+	caClientCertPEM, caClientKeyPEM := helper.GenerateClientCertSignedBy(t, name+"-client", ca, caKey)
 
 	// Wrap the agent builder to verify the custom cert is used in the fleet-server trust bundle.
 	agentWrapped := test.WrappedBuilder{
@@ -346,7 +346,7 @@ func TestClientAuthRequiredCustomCertificate_FleetServerToAgent(t *testing.T) {
 				clientauth.CheckClientCertificateDataStep(k, namespace, fleetServerBuilder.Agent.Name,
 					agentcontroller.AgentAssociationLabelName, agentBuilder.Agent.Name, certPEM, keyPEM),
 				{
-					Name: "Verify Fleet Server accepts a client certificate issued by an additional trusted CA",
+					Name: "Verify Fleet Server accepts a client certificate issued by a client CA",
 					Test: test.Eventually(func() error {
 						clientCert, err := tls.X509KeyPair(caClientCertPEM, caClientKeyPEM)
 						if err != nil {
@@ -386,12 +386,12 @@ func TestClientAuthRequiredCustomCertificate_FleetServerToAgent(t *testing.T) {
 	}
 
 	createUserCertSecret, deleteUserCertSecret := clientauth.UserCustomCertificateSecretLifecycleSteps(namespace, userCertSecretName, certPEM, keyPEM)
-	createCASecret, deleteCASecret := clientauth.AdditionalTrustedCASecretLifecycleSteps(namespace, caSecretName, caPEM)
+	createCAConfigMap, deleteCAConfigMap := clientauth.ClientCAConfigMapLifecycleSteps(namespace, caConfigMapName, caPEM)
 	before := func(k *test.K8sClient) test.StepList {
-		return createUserCertSecret(k).WithSteps(createCASecret(k))
+		return createUserCertSecret(k).WithSteps(createCAConfigMap(k))
 	}
 	after := func(k *test.K8sClient) test.StepList {
-		return deleteUserCertSecret(k).WithSteps(deleteCASecret(k))
+		return deleteUserCertSecret(k).WithSteps(deleteCAConfigMap(k))
 	}
 
 	test.BeforeAfterSequence(before, after, test.LicenseTestBuilder(esBuilder), kbBuilder, fleetServerBuilder, agentWrapped).RunSequential(t)

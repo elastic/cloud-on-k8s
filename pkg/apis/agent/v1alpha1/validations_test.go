@@ -1071,19 +1071,18 @@ func Test_checkClientAuthentication(t *testing.T) {
 	}
 }
 
-func Test_checkAdditionalTrustedClientCAs(t *testing.T) {
-	withAdditionalTrustedCAs := func(authentication bool, secretNames ...string) *Agent {
-		refs := make([]commonv1.SecretRef, 0, len(secretNames))
-		for _, secretName := range secretNames {
-			refs = append(refs, commonv1.SecretRef{SecretName: secretName})
-		}
+func Test_checkClientCertificateAuthorities(t *testing.T) {
+	withClientCAs := func(authentication bool, configMapName string) *Agent {
 		return &Agent{
 			Spec: AgentSpec{
 				Version:            "9.5.0",
 				FleetServerEnabled: true,
 				HTTP: commonv1.HTTPConfigWithClientOptions{
 					TLS: commonv1.TLSWithClientOptions{
-						Client: commonv1.ClientOptions{Authentication: authentication, AdditionalTrustedCAs: refs},
+						Client: commonv1.ClientOptions{
+							Authentication:         authentication,
+							CertificateAuthorities: commonv1.ConfigMapRef{ConfigMapName: configMapName},
+						},
 					},
 				},
 			},
@@ -1103,58 +1102,42 @@ func Test_checkAdditionalTrustedClientCAs(t *testing.T) {
 		wantFields []string
 	}{
 		{
-			name: "no additional trusted CA: OK",
-			a:    withAdditionalTrustedCAs(true),
+			name: "no client CAs: OK",
+			a:    withClientCAs(true, ""),
 		},
 		{
-			name: "additional trusted CAs, authentication true: OK",
-			a:    withAdditionalTrustedCAs(true, "ca-1", "ca-2"),
+			name: "client CAs, authentication true: OK",
+			a:    withClientCAs(true, "client-cas"),
 		},
 		{
-			name: "additional trusted CAs, authentication false: OK, it can be required by the pod template",
-			a:    withAdditionalTrustedCAs(false, "ca-1"),
+			name: "client CAs, authentication false: OK, it can be required by the pod template",
+			a:    withClientCAs(false, "client-cas"),
 		},
 		{
-			name:       "additional trusted CAs referencing the same secret twice, authentication false: NOK, it can be required by the pod template",
-			a:          withAdditionalTrustedCAs(false, "ca-1", "ca-1"),
-			wantFields: []string{"spec.http.tls.client.additionalTrustedCAs[1].secretName"},
+			name: "no client CAs, not a Fleet Server, TLS disabled: OK",
+			a:    tlsDisabled(notFleetServer(withClientCAs(false, ""))),
 		},
 		{
-			name:       "additional trusted CA without secret name: NOK",
-			a:          withAdditionalTrustedCAs(true, "ca-1", ""),
-			wantFields: []string{"spec.http.tls.client.additionalTrustedCAs[1].secretName"},
+			name:       "client CAs, not a Fleet Server: NOK",
+			a:          notFleetServer(withClientCAs(false, "client-cas")),
+			wantFields: []string{"spec.http.tls.client.certificateAuthorities"},
 		},
 		{
-			name:       "additional trusted CAs referencing the same secret twice: NOK",
-			a:          withAdditionalTrustedCAs(true, "ca-1", "ca-1"),
-			wantFields: []string{"spec.http.tls.client.additionalTrustedCAs[1].secretName"},
+			name:       "client CAs, TLS disabled: NOK",
+			a:          tlsDisabled(withClientCAs(false, "client-cas")),
+			wantFields: []string{"spec.http.tls.client.certificateAuthorities"},
 		},
 		{
-			name: "no additional trusted CA, not a Fleet Server, TLS disabled: OK",
-			a:    tlsDisabled(notFleetServer(withAdditionalTrustedCAs(false))),
-		},
-		{
-			name:       "additional trusted CAs, not a Fleet Server: NOK",
-			a:          notFleetServer(withAdditionalTrustedCAs(false, "ca-1")),
-			wantFields: []string{"spec.http.tls.client.additionalTrustedCAs"},
-		},
-		{
-			name:       "additional trusted CAs, TLS disabled: NOK",
-			a:          tlsDisabled(withAdditionalTrustedCAs(false, "ca-1")),
-			wantFields: []string{"spec.http.tls.client.additionalTrustedCAs"},
-		},
-		{
-			name: "additional trusted CAs, not a Fleet Server, TLS disabled, same secret twice: NOK, all are reported",
-			a:    tlsDisabled(notFleetServer(withAdditionalTrustedCAs(false, "ca-1", "ca-1"))),
+			name: "client CAs, not a Fleet Server, TLS disabled: NOK, all are reported",
+			a:    tlsDisabled(notFleetServer(withClientCAs(false, "client-cas"))),
 			wantFields: []string{
-				"spec.http.tls.client.additionalTrustedCAs",
-				"spec.http.tls.client.additionalTrustedCAs",
-				"spec.http.tls.client.additionalTrustedCAs[1].secretName",
+				"spec.http.tls.client.certificateAuthorities",
+				"spec.http.tls.client.certificateAuthorities",
 			},
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			got := checkAdditionalTrustedClientCAs(tt.a)
+			got := checkClientCertificateAuthorities(tt.a)
 			var gotFields []string
 			for _, err := range got {
 				gotFields = append(gotFields, err.Field)

@@ -98,7 +98,7 @@ func validations(ctx context.Context, checker license.Checker, exposedNodeLabels
 			return validClientAuthentication(ctx, proposed, checker)
 		},
 		validPKIRealm,
-		validAdditionalTrustedClientCAs,
+		validClientCertificateAuthorities,
 		func(es esv1.Elasticsearch) field.ErrorList { return commonv1.CheckPauseOrchestrationAnnotation(&es) },
 	}
 }
@@ -639,11 +639,11 @@ func validPKIRealm(es esv1.Elasticsearch) field.ErrorList {
 	return errs
 }
 
-// validAdditionalTrustedClientCAs checks the additional trusted client CAs.
+// validClientCertificateAuthorities checks the client certificate authorities.
 // It does not depend on spec.http.tls.client.authentication, as client authentication can also be required by
 // the Elasticsearch configuration.
-func validAdditionalTrustedClientCAs(es esv1.Elasticsearch) field.ErrorList {
-	return commonv1.CheckAdditionalTrustedClientCAs(es.Spec.HTTP.TLS)
+func validClientCertificateAuthorities(es esv1.Elasticsearch) field.ErrorList {
+	return commonv1.CheckClientCertificateAuthorities(es.Spec.HTTP.TLS)
 }
 
 // validClientAuthentication checks that client certificate authentication is only enabled with an enterprise license.

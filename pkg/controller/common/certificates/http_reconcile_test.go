@@ -1055,14 +1055,13 @@ func TestWatchKeys_NamespaceScoped(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.NotEqual(t, AdditionalCAWatchKey(esv1.ESNamer, tt.a), AdditionalCAWatchKey(esv1.ESNamer, tt.b))
 			assert.NotEqual(t, CertificateWatchKey(esv1.ESNamer, tt.a), CertificateWatchKey(esv1.ESNamer, tt.b))
-			assert.NotEqual(t, AdditionalTrustedClientCAsWatchKey(esv1.ESNamer, tt.a), AdditionalTrustedClientCAsWatchKey(esv1.ESNamer, tt.b))
+			assert.NotEqual(t, ClientCAWatchKey(esv1.ESNamer, tt.a), ClientCAWatchKey(esv1.ESNamer, tt.b))
 		})
 	}
 }
 
-// TestWatchKeys_Distinct checks that the watch keys of an owner, which may be registered in the same dynamic
-// watches, do not collide with each other. A suffix exceeding the limit of the namer is truncated, which could
-// make keys collide: check the suffixes are within the limit too.
+// TestWatchKeys_Distinct checks that the watch keys of an owner do not collide, including when the namer
+// would truncate a suffix that is too long.
 func TestWatchKeys_Distinct(t *testing.T) {
 	longestName := strings.Repeat("a", name.MaxResourceNameLength)
 	tests := []struct {
@@ -1077,7 +1076,7 @@ func TestWatchKeys_Distinct(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			for _, suffix := range []string{"http-certificate", "http-additional-cas", "client-trusted-cas"} {
+			for _, suffix := range []string{"http-certificate", "http-additional-cas", "client-cas"} {
 				_, err := tt.namer.SafeSuffix(longestName, suffix)
 				require.NoError(t, err)
 			}
@@ -1085,7 +1084,7 @@ func TestWatchKeys_Distinct(t *testing.T) {
 			keys := []string{
 				CertificateWatchKey(tt.namer, owner),
 				AdditionalCAWatchKey(tt.namer, owner),
-				AdditionalTrustedClientCAsWatchKey(tt.namer, owner),
+				ClientCAWatchKey(tt.namer, owner),
 			}
 			slices.Sort(keys)
 			assert.Len(t, slices.Compact(keys), 3)

@@ -89,7 +89,8 @@ func ReconcileHTTP(
 // and the presence of the client-authentication-required annotation on the ES resource.
 // When client authentication is enabled, the annotation is set to signal association controllers.
 // Returns nil certificate (without error) when client authentication is not in use.
-// Missing or invalid additional trusted CAs are left out of the trust bundle and returned as a separate error.
+// Missing or invalid client certificate authorities are left out of the trust bundle and returned as a separate error,
+// unless client authentication is being disabled, in which case they are only logged.
 func ReconcileOperatorClientCertAndTrustBundle(
 	ctx context.Context,
 	driver driver.Interface,
@@ -115,8 +116,8 @@ func ReconcileOperatorClientCertAndTrustBundle(
 	// Client authentication is still in use while it is being disabled, until the annotation is removed.
 	clientAuthenticationInUse := clientAuthenticationRequired || annotation.HasClientAuthenticationRequired(es)
 
-	additionalTrustedCAs, additionalTrustedCAsReadErr := certReconciler.ReconcileAdditionalTrustedClientCAs(
-		ctx, driver.Recorder(), es.Spec.HTTP.TLS.Client.AdditionalTrustedCAs, clientAuthenticationInUse)
+	clientCAs, clientCAsReadErr := certReconciler.ReconcileClientCertificateAuthorities(
+		ctx, driver.Recorder(), es.Spec.HTTP.TLS.Client.CertificateAuthorities, clientAuthenticationInUse)
 
 	if !clientAuthenticationInUse {
 		return nil, results, nil
@@ -143,22 +144,22 @@ func ReconcileOperatorClientCertAndTrustBundle(
 			ReconciliationComplete(),
 	)
 
-	// Keep the trust bundle as it is if the additional CAs could not be read, not to drop CAs that are still trusted.
-	if additionalTrustedCAsReadErr != nil {
-		results.WithError(additionalTrustedCAsReadErr)
-	} else if _, err := certReconciler.ReconcileTrustBundle(ctx, append([]*certificates.CertificatesSecret{operatorClientCertSecret}, additionalTrustedCAs.CAs...)...); err != nil {
+	// On a read error keep the trust bundle as it is, so CAs that are still trusted are not dropped.
+	if clientCAsReadErr != nil {
+		results.WithError(clientCAsReadErr)
+	} else if _, err := certReconciler.ReconcileTrustBundle(ctx, append([]*certificates.CertificatesSecret{operatorClientCertSecret}, clientCAs.CAs...)...); err != nil {
 		return nil, results.WithError(err), nil
 	}
 	var deferredErr error
 	switch {
-	case additionalTrustedCAs.InvalidErr == nil:
+	case clientCAs.InvalidErr == nil:
 	case !clientAuthenticationRequired:
 		// client authentication is being disabled, the CAs are about to be unused
-		ulog.FromContext(ctx).V(1).Info("Ignoring the invalid additional trusted client CAs while client authentication is being disabled",
-			"namespace", es.Namespace, "es_name", es.Name, "error", additionalTrustedCAs.InvalidErr.Error())
+		ulog.FromContext(ctx).V(1).Info("Ignoring the invalid client certificate authorities while client authentication is being disabled",
+			"namespace", es.Namespace, "es_name", es.Name, "error", clientCAs.InvalidErr.Error())
 	default:
-		// reported once the nodes are reconciled, not to block them
-		deferredErr = additionalTrustedCAs.InvalidErr
+		// reported by the driver without blocking the nodes
+		deferredErr = clientCAs.InvalidErr
 	}
 
 	operatorClientCert, err := certificates.ParseTLSCertificate(operatorClientCertSecret.Secret)

@@ -133,35 +133,15 @@ func CheckNoPKIAuthenticationMode(path *field.Path, ref ElasticsearchSelector, r
 	return nil
 }
 
-// AdditionalTrustedClientCAsPath is the path of the additional trusted client CAs in the spec.
-var AdditionalTrustedClientCAsPath = field.NewPath("spec").Child("http", "tls", "client", "additionalTrustedCAs")
+// ClientCertificateAuthoritiesPath is the path of the client certificate authorities in the spec.
+var ClientCertificateAuthoritiesPath = field.NewPath("spec").Child("http", "tls", "client", "certificateAuthorities")
 
-// CheckAdditionalTrustedClientCAs checks that the additional trusted client CAs are only set with TLS enabled, and
-// that each of them references a distinct, named secret.
-func CheckAdditionalTrustedClientCAs(tls TLSWithClientOptions) field.ErrorList {
-	refs := tls.Client.AdditionalTrustedCAs
-	if len(refs) == 0 {
-		return nil
+// CheckClientCertificateAuthorities checks that the client certificate authorities are only set with TLS enabled.
+func CheckClientCertificateAuthorities(tls TLSWithClientOptions) field.ErrorList {
+	if tls.Client.CertificateAuthorities.IsDefined() && !tls.Enabled() {
+		return field.ErrorList{field.Forbidden(ClientCertificateAuthoritiesPath, "client certificate authorities require TLS to be enabled")}
 	}
-	path := AdditionalTrustedClientCAsPath
-	var errs field.ErrorList
-	if !tls.Enabled() {
-		errs = append(errs, field.Forbidden(path, "additional trusted client CAs require TLS to be enabled"))
-	}
-	seen := make(map[string]struct{}, len(refs))
-	for i, ref := range refs {
-		secretNamePath := path.Index(i).Child("secretName")
-		if ref.SecretName == "" {
-			errs = append(errs, field.Required(secretNamePath, "secretName must be set"))
-			continue
-		}
-		if _, exists := seen[ref.SecretName]; exists {
-			errs = append(errs, field.Duplicate(secretNamePath, ref.SecretName))
-			continue
-		}
-		seen[ref.SecretName] = struct{}{}
-	}
-	return errs
+	return nil
 }
 
 // CheckReservedPKIRealmConfig rejects realm settings in cfg that clash with the ECK-managed PKI realm: settings under

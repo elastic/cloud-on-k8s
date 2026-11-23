@@ -23,7 +23,7 @@ type ReconcileState struct {
 	// ESReachable indicates whether Elasticsearch is reachable.
 	ESReachable bool
 
-	// AdditionalTrustedClientCAsErr reports missing or invalid additional trusted client CAs.
-	// Drivers report it once the nodes are reconciled, not to block them.
-	AdditionalTrustedClientCAsErr error
+	// ClientCAsErr reports missing or invalid client certificate authorities.
+	// Drivers add it to their results on every return path, so it does not block the nodes.
+	ClientCAsErr error
 }

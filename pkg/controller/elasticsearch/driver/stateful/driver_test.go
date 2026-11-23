@@ -817,44 +817,44 @@ func (f *fakeSecurityClient) withFileTokens(namespacedService, tokenName string,
 	return f
 }
 
-func TestDriver_reconcileWithSharedState_additionalTrustedClientCAsErr(t *testing.T) {
+func TestDriver_reconcileWithSharedState_clientCAsErr(t *testing.T) {
 	const esName = "test-cluster"
 	const namespace = "test-ns"
 	const nodeSetName = "default"
 
-	additionalTrustedCAsErr := errors.New("could not retrieve secret test-ns/additional-ca specified in spec.http.tls.client.additionalTrustedCAs")
+	clientCAsErr := errors.New("could not retrieve config map test-ns/client-cas specified in spec.http.tls.client.certificateAuthorities")
 	fileSettingsErr := apierrors.NewInternalError(errors.New("cannot read the file settings secret"))
 
 	for _, tt := range []struct {
-		name                    string
-		paused                  bool
-		additionalTrustedCAsErr error
+		name         string
+		paused       bool
+		clientCAsErr error
 		// fileSettingsUnreadable makes the reconciliation return before the nodes are reconciled
 		fileSettingsUnreadable bool
 		wantErrs               []error
 		wantStatefulSet        bool
 	}{
 		{
-			name:            "no additional trusted CAs error: the nodes are reconciled",
+			name:            "no client CAs error: the nodes are reconciled",
 			wantStatefulSet: true,
 		},
 		{
-			name:                    "additional trusted CAs error: the nodes are reconciled, then the error is reported",
-			additionalTrustedCAsErr: additionalTrustedCAsErr,
-			wantErrs:                []error{additionalTrustedCAsErr},
-			wantStatefulSet:         true,
+			name:            "client CAs error: the nodes are reconciled, then the error is reported",
+			clientCAsErr:    clientCAsErr,
+			wantErrs:        []error{clientCAsErr},
+			wantStatefulSet: true,
 		},
 		{
-			name:                    "additional trusted CAs error while paused: the critical steps are reconciled, then the error is reported",
-			paused:                  true,
-			additionalTrustedCAsErr: additionalTrustedCAsErr,
-			wantErrs:                []error{additionalTrustedCAsErr},
+			name:         "client CAs error while paused: the critical steps are reconciled, then the error is reported",
+			paused:       true,
+			clientCAsErr: clientCAsErr,
+			wantErrs:     []error{clientCAsErr},
 		},
 		{
-			name:                    "additional trusted CAs error and an error before the nodes are reconciled: both are reported",
-			additionalTrustedCAsErr: additionalTrustedCAsErr,
-			fileSettingsUnreadable:  true,
-			wantErrs:                []error{fileSettingsErr, additionalTrustedCAsErr},
+			name:                   "client CAs error and an error before the nodes are reconciled: both are reported",
+			clientCAsErr:           clientCAsErr,
+			fileSettingsUnreadable: true,
+			wantErrs:               []error{fileSettingsErr, clientCAsErr},
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -899,10 +899,10 @@ func TestDriver_reconcileWithSharedState_additionalTrustedClientCAsErr(t *testin
 			}
 
 			results := d.reconcileWithSharedState(t.Context(), &shared.ReconcileState{
-				Meta:                          metadata.Metadata{},
-				ResourcesState:                resourcesState,
-				ESClient:                      esClient,
-				AdditionalTrustedClientCAsErr: tt.additionalTrustedCAsErr,
+				Meta:           metadata.Metadata{},
+				ResourcesState: resourcesState,
+				ESClient:       esClient,
+				ClientCAsErr:   tt.clientCAsErr,
 			}, resolvedConfig)
 
 			_, err = results.Aggregate()

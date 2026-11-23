@@ -498,7 +498,7 @@ ClientOptions configures client certificate authentication for incoming connecti
 | Field | Description |
 | --- | --- |
 | *`authentication`* __boolean__ | Authentication enables client authentication (enterprise-only feature). |
-| *`additionalTrustedCAs`* __[SecretRef](#secretref) array__ | AdditionalTrustedCAs is a list of references to secrets, each with a `ca.crt` file that contains one or more<br>CA certificates in PEM format. Each certificate must be a CA certificate: a secret with any other certificate,<br>such as a self-signed client certificate, is not trusted. Client certificates issued by these CAs are trusted<br>when client authentication is required (enterprise-only feature). |
+| *`certificateAuthorities`* __[ConfigMapRef](#configmapref)__ | CertificateAuthorities is a reference to a config map with a `ca.crt` file holding one or more PEM-encoded<br>CA certificates. Client certificates issued by these CAs are trusted when client authentication is required<br>(enterprise-only feature). All certificates must be CA certificates (with the BasicConstraints extension set to<br>CA:TRUE). If any of them is not, none of the certificates in the config map are trusted. Other PEM blocks are ignored. |
 
 
 ### Condition  [#condition]
@@ -594,6 +594,7 @@ At most one of [secretName, configMapName] might be specified.
 ConfigMapRef is a reference to a config map that exists in the same namespace as the referring resource.
 
 :::{admonition} Appears In:
+* [ClientOptions](#clientoptions)
 * [ConfigMapOrSecretSource](#configmaporsecretsource)
 * [TLSOptions](#tlsoptions)
 * [TLSWithClientOptions](#tlswithclientoptions)
@@ -892,7 +893,6 @@ PodTemplate are preserved as-is.
 SecretRef is a reference to a secret that exists in the same namespace.
 
 :::{admonition} Appears In:
-* [ClientOptions](#clientoptions)
 * [ConfigMapOrSecretSource](#configmaporsecretsource)
 * [ConfigSource](#configsource)
 * [FileRealmSource](#filerealmsource)

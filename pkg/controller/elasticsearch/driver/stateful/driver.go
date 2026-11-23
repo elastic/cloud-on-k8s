@@ -86,8 +86,8 @@ func (d *Driver) reconcileWithSharedState(
 	resolvedConfig nodespec.ResolvedConfig,
 ) *reconciler.Results {
 	results := reconciler.NewResult(ctx)
-	// invalid additional trusted CAs must not block the nodes: report the error on every return path
-	defer results.WithError(sharedState.AdditionalTrustedClientCAsErr)
+	// invalid client certificate authorities must not block the nodes: report the error on every return path
+	defer results.WithError(sharedState.ClientCAsErr)
 
 	// File settings (stateful: SCP-deferred empty secret creation).
 	// Stateless clusters manage the file-settings Secret themselves via

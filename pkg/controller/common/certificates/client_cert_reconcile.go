@@ -36,7 +36,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	ulog "github.com/elastic/cloud-on-k8s/v3/pkg/utils/log"
 	utilmaps "github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
@@ -67,9 +66,6 @@ const (
 	clientCertSourceNamespaceAnnotation = "certificates.k8s.elastic.co/client-cert-source-namespace"
 	clientCertSourceNameAnnotation      = "certificates.k8s.elastic.co/client-cert-source-name"
 )
-
-// AdditionalTrustedClientCAsFieldPath is the path of the additional trusted client CAs in the spec.
-var AdditionalTrustedClientCAsFieldPath = commonv1.AdditionalTrustedClientCAsPath.String()
 
 // clientCertTrustSourceNamer names trust source secrets using DNS subdomain naming (253 chars max).
 var clientCertTrustSourceNamer = name.NewSecretNamer()
@@ -140,9 +136,9 @@ func (r Reconciler) ReconcileClientCertificate(
 }
 
 // ReconcileTrustBundle builds a trust bundle containing:
-// 1. The operator client certificate (passed directly, owned by the server resource)
+// 1. The certificates passed in by the caller, such as the operator client certificate.
 // 2. Any association client certificates published as trust source records into the server namespace.
-// 3. The additional trusted CAs provided by the user, if any (passed directly).
+// 3. The client certificate authorities provided by the user, if any (passed directly).
 //
 // The trust bundle secret contains concatenated PEM-encoded certificates for client certificate validation.
 func (r Reconciler) ReconcileTrustBundle(ctx context.Context, extraCertificates ...*CertificatesSecret) ([]byte, error) {
@@ -180,77 +176,55 @@ func (r Reconciler) ReconcileTrustBundle(ctx context.Context, extraCertificates 
 	return bundleData, err
 }
 
-// AdditionalTrustedClientCAs holds the additional trusted client CAs read by ReconcileAdditionalTrustedClientCAs.
-type AdditionalTrustedClientCAs struct {
-	// CAs holds the CA certificates of each valid secret, to pass to ReconcileTrustBundle.
+// ClientCertificateAuthorities holds the client certificate authorities read by ReconcileClientCertificateAuthorities.
+type ClientCertificateAuthorities struct {
+	// CAs holds the CA certificates of the config map if it is valid, to pass to ReconcileTrustBundle.
 	CAs []*CertificatesSecret
-	// InvalidErr reports the missing or invalid secrets, left out of CAs.
+	// InvalidErr reports a missing or invalid config map, left out of CAs.
 	InvalidErr error
 }
 
-// ReconcileAdditionalTrustedClientCAs reads the CA certificates of the referenced secrets and watches them.
+// ReconcileClientCertificateAuthorities reads the CA certificates of the referenced config map and watches it.
 // Nothing is read or watched if client authentication is not in use.
-// Missing or invalid secrets are left out and reported in InvalidErr, so they are not trusted until fixed.
+// A missing or invalid config map is left out and reported in InvalidErr, so it is not trusted until fixed.
 // Any other read error is returned as err, in which case the trust bundle should be left as it is.
-func (r Reconciler) ReconcileAdditionalTrustedClientCAs(
+func (r Reconciler) ReconcileClientCertificateAuthorities(
 	ctx context.Context,
 	recorder toolsevents.EventRecorder,
-	refs []commonv1.SecretRef,
+	ref commonv1.ConfigMapRef,
 	clientAuthInUse bool,
-) (AdditionalTrustedClientCAs, error) {
+) (ClientCertificateAuthorities, error) {
+	fieldPath := commonv1.ClientCertificateAuthoritiesPath.String()
+	if !clientAuthInUse && ref.IsDefined() {
+		k8s.EmitEvent(recorder, r.Owner, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation,
+			fieldPath+" is ineffective because client certificate authentication is not required, or an Enterprise license is not enabled")
+		// an empty ref releases the watch in ReconcileAdditionalCAs
+		ref = commonv1.ConfigMapRef{}
+	}
 	owner := k8s.ExtractNamespacedName(r.Owner)
-	watchKey := AdditionalTrustedClientCAsWatchKey(r.Namer, owner)
-	if !clientAuthInUse || len(refs) == 0 {
-		r.DynamicWatches.Secrets.RemoveHandlerForKey(watchKey)
-		if len(refs) > 0 {
-			k8s.EmitEvent(recorder, r.Owner, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation,
-				AdditionalTrustedClientCAsFieldPath+" is ineffective because client certificate authentication is not required, or an Enterprise license is not enabled")
-		}
-		return AdditionalTrustedClientCAs{}, nil
+	caCerts, err := ReconcileAdditionalCAs(ctx, r.K8sClient, r.DynamicWatches, AdditionalCAsOptions{
+		Owner:     owner,
+		Ref:       ref,
+		WatchKey:  ClientCAWatchKey(r.Namer, owner),
+		FieldPath: fieldPath,
+		CAOnly:    true,
+	})
+	_, invalid := errors.AsType[*InvalidCAsError](err)
+	switch {
+	case err != nil && (invalid || apierrors.IsNotFound(err)):
+		// the config map is missing or invalid
+		return ClientCertificateAuthorities{InvalidErr: err}, nil
+	case err != nil:
+		// the config map could not be read, it may still be valid
+		return ClientCertificateAuthorities{}, err
+	case caCerts == nil:
+		return ClientCertificateAuthorities{}, nil
 	}
-
-	watched := make([]types.NamespacedName, 0, len(refs))
-	for _, ref := range refs {
-		watched = append(watched, types.NamespacedName{Namespace: owner.Namespace, Name: ref.SecretName})
-	}
-	// Watch before reading, to reconcile again once a missing or invalid secret is fixed.
-	if err := r.DynamicWatches.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{
-		Name:    watchKey,
-		Watched: watched,
-		Watcher: owner,
-	}); err != nil {
-		return AdditionalTrustedClientCAs{}, err
-	}
-
-	cas := make([]*CertificatesSecret, 0, len(watched))
-	var invalidErr error
-	for _, nsn := range watched {
-		var secret corev1.Secret
-		if err := r.K8sClient.Get(ctx, nsn, &secret); err != nil {
-			err = fmt.Errorf("could not retrieve secret %s specified in %s: %w", nsn, AdditionalTrustedClientCAsFieldPath, err)
-			if !apierrors.IsNotFound(err) {
-				return AdditionalTrustedClientCAs{}, err
-			}
-			invalidErr = errors.Join(invalidErr, err)
-			continue
-		}
-		pem, exists := secret.Data[CAFileName]
-		if !exists {
-			invalidErr = errors.Join(invalidErr, fmt.Errorf("secret %s specified in %s must contain %s file", nsn, AdditionalTrustedClientCAsFieldPath, CAFileName))
-			continue
-		}
-		caCerts, err := parseCAFile(fmt.Sprintf("secret %s", nsn), AdditionalTrustedClientCAsFieldPath, pem, true)
-		if err != nil {
-			invalidErr = errors.Join(invalidErr, err)
-			continue
-		}
-		cas = append(cas, &CertificatesSecret{
-			Namespace: nsn.Namespace,
-			Name:      nsn.Name,
-			Data:      map[string][]byte{CertFileName: caCerts},
-		})
-	}
-	return AdditionalTrustedClientCAs{CAs: cas, InvalidErr: invalidErr}, nil
+	return ClientCertificateAuthorities{CAs: []*CertificatesSecret{{
+		Namespace: owner.Namespace,
+		Name:      ref.ConfigMapName,
+		Data:      map[string][]byte{CertFileName: caCerts},
+	}}}, nil
 }
 
 // clientCertTrustSourceSecretName returns the deterministic name of the trust source secret published into
