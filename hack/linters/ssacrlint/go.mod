@@ -9,7 +9,7 @@ require (
 	golang.org/x/tools v0.53.0
 	k8s.io/api v0.37.2
 	k8s.io/apimachinery v0.37.2
-	sigs.k8s.io/controller-runtime v0.25.2
+	sigs.k8s.io/controller-runtime v0.25.3
 )
 
 require (
