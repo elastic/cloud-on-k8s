@@ -122,15 +122,27 @@ func UserCustomCertificateSecretLifecycleSteps(namespace, secretName string, cer
 
 // ClientCAConfigMapLifecycleSteps returns before/after StepsFuncs that create and delete a config map holding the
 // given PEM-encoded CA certificate, to reference in spec.http.tls.client.certificateAuthorities.
-// Pass the returned StepsFuncs to test.BeforeAfterSequence.
-func ClientCAConfigMapLifecycleSteps(namespace, configMapName string, caPEM []byte) (test.StepsFunc, test.StepsFunc) {
-	return objectLifecycleSteps("client CAs config map", func() k8sclient.Object {
+// Pass the returned StepsFuncs to test.BeforeAfterSequence. The config map is also deleted when t completes, in case
+// a step fails before the after steps run.
+func ClientCAConfigMapLifecycleSteps(t *testing.T, namespace, configMapName string, caPEM []byte) (test.StepsFunc, test.StepsFunc) {
+	t.Helper()
+	newConfigMap := func() k8sclient.Object {
 		return &corev1.ConfigMap{
 			Name:      configMapName,
 			Namespace: namespace,
 			Data:      map[string]string{certificates.CAFileName: string(caPEM)},
 		}
-	})
+	}
+	before, after := objectLifecycleSteps("client CAs config map", newConfigMap)
+	beforeWithCleanup := func(k *test.K8sClient) test.StepList {
+		// t.Context() is canceled before the cleanup functions run.
+		ctx := context.WithoutCancel(t.Context())
+		t.Cleanup(func() {
+			require.NoError(t, k8sclient.IgnoreNotFound(k.Client.Delete(ctx, newConfigMap())))
+		})
+		return before(k)
+	}
+	return beforeWithCleanup, after
 }
 
 // objectLifecycleSteps returns before/after StepsFuncs that create and delete the object returned by newObj.

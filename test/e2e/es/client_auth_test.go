@@ -57,7 +57,7 @@ func TestClientAuthRequiredTransition(t *testing.T) {
 	caConfigMapName := actualESName + "-client-ca"
 	caPEM, ca, caKey := helper.GenerateCA(t, esName+"-client-ca")
 	clientCertPEM, clientKeyPEM := helper.GenerateClientCertSignedBy(t, esName+"-client", ca, caKey)
-	createCAConfigMap, deleteCAConfigMap := clientauth.ClientCAConfigMapLifecycleSteps(esNamespace, caConfigMapName, caPEM)
+	createCAConfigMap, deleteCAConfigMap := clientauth.ClientCAConfigMapLifecycleSteps(t, esNamespace, caConfigMapName, caPEM)
 
 	// Phase 1: transition to client_authentication: required, trusting the client CA
 	enabledBuilder := initialBuilder.DeepCopy()

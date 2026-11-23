@@ -386,7 +386,7 @@ func TestClientAuthRequiredCustomCertificate_FleetServerToAgent(t *testing.T) {
 	}
 
 	createUserCertSecret, deleteUserCertSecret := clientauth.UserCustomCertificateSecretLifecycleSteps(namespace, userCertSecretName, certPEM, keyPEM)
-	createCAConfigMap, deleteCAConfigMap := clientauth.ClientCAConfigMapLifecycleSteps(namespace, caConfigMapName, caPEM)
+	createCAConfigMap, deleteCAConfigMap := clientauth.ClientCAConfigMapLifecycleSteps(t, namespace, caConfigMapName, caPEM)
 	before := func(k *test.K8sClient) test.StepList {
 		return createUserCertSecret(k).WithSteps(createCAConfigMap(k))
 	}
