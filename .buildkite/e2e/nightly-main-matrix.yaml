@@ -29,10 +29,10 @@
       E2E_STACK_VERSION: "9.5.1"
     - DEPLOYER_CLIENT_VERSION: "4.22.2"
       E2E_STACK_VERSION: "9.6.0-SNAPSHOT"
-    - DEPLOYER_CLIENT_VERSION: "5.0.2"
-      E2E_STACK_VERSION: "9.5.1"
-    - DEPLOYER_CLIENT_VERSION: "5.0.2"
-      E2E_STACK_VERSION: "9.6.0-SNAPSHOT"
+
+    # Use the default OCP version from plan
+    - E2E_STACK_VERSION: "9.5.1"
+    - E2E_STACK_VERSION: "9.6.0-SNAPSHOT"
 
 - label: ocp-wolfi
   fixed:
@@ -45,10 +45,10 @@
       E2E_STACK_VERSION: "9.5.1"
     - DEPLOYER_CLIENT_VERSION: "4.22.2"
       E2E_STACK_VERSION: "9.6.0-SNAPSHOT"
-    - DEPLOYER_CLIENT_VERSION: "5.0.2"
-      E2E_STACK_VERSION: "9.5.1"
-    - DEPLOYER_CLIENT_VERSION: "5.0.2"
-      E2E_STACK_VERSION: "9.6.0-SNAPSHOT"
+
+    # Use the default OCP version from plan
+    - E2E_STACK_VERSION: "9.5.1"
+    - E2E_STACK_VERSION: "9.6.0-SNAPSHOT"
 
 - label: kind
   fixed:
