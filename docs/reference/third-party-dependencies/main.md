@@ -23,8 +23,8 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [github.com/KimMachineGun/automemlimit](https://github.com/KimMachineGun/automemlimit) | v1.0.2 | MIT |
 | [github.com/Masterminds/sprig/v3](https://github.com/Masterminds/sprig) | v3.3.0 | MIT |
 | [github.com/aws/aws-sdk-go-v2](https://github.com/aws/aws-sdk-go-v2) | v1.48.0 | Apache-2.0 |
-| [github.com/aws/aws-sdk-go-v2/credentials](https://github.com/aws/aws-sdk-go-v2) | v1.21.1 | Apache-2.0 |
-| [github.com/aws/aws-sdk-go-v2/service/s3](https://github.com/aws/aws-sdk-go-v2) | v1.114.10 | Apache-2.0 |
+| [github.com/aws/aws-sdk-go-v2/credentials](https://github.com/aws/aws-sdk-go-v2) | v1.21.3 | Apache-2.0 |
+| [github.com/aws/aws-sdk-go-v2/service/s3](https://github.com/aws/aws-sdk-go-v2) | v1.116.0 | Apache-2.0 |
 | [github.com/blang/semver/v4](https://github.com/blang/semver) | v4.0.0 | MIT |
 | [github.com/davecgh/go-spew](https://github.com/davecgh/go-spew) | v1.1.2-0.20180830191138-d8f796af33cc | ISC |
 | [github.com/elastic/go-ucfg](https://github.com/elastic/go-ucfg) | v0.9.2 | Apache-2.0 |
@@ -57,7 +57,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [go.uber.org/zap](https://go.uber.org/zap) | v1.28.0 | MIT |
 | [golang.org/x/crypto](https://golang.org/x/crypto) | v0.59.0 | BSD-3-Clause |
 | [golang.org/x/exp](https://golang.org/x/exp) | v0.0.0-20260813180055-c1d0aacb2297 | BSD-3-Clause |
-| [google.golang.org/api](https://google.golang.org/api) | v0.315.0 | BSD-3-Clause |
+| [google.golang.org/api](https://google.golang.org/api) | v0.316.0 | BSD-3-Clause |
 | [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3) | v3.0.1 | MIT |
 | [k8s.io/api](https://github.com/kubernetes/api) | v0.37.2 | Apache-2.0 |
 | [k8s.io/apimachinery](https://github.com/kubernetes/apimachinery) | v0.37.2 | Apache-2.0 |
