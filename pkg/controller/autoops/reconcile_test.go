@@ -781,6 +781,7 @@ func TestAutoOpsAgentPolicyReconciler_selectorChangeCleanup(t *testing.T) {
 					Namespace: ns1.Name,
 					Labels: map[string]string{
 						PolicyNameLabelKey:                      "policy-1",
+						policyNamespaceLabelKey:                 ns1.Name,
 						policySecretTypeLabelKey:                clientCertSecretType,
 						reconciler.SoftOwnerNameLabel:           es1.Name,
 						reconciler.SoftOwnerNamespaceLabel:      es1.Namespace,
