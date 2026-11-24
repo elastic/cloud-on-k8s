@@ -30,7 +30,7 @@ func SupportsKeystoreAddFromDir(v version.Version) bool {
 	case v.Major == 8 && v.Minor == 19:
 		return v.GTE(version.MinFor(8, 19, 26))
 	case v.Major == 9 && v.Minor == 5:
-		return v.GTE(version.MinFor(9, 5, 8))
+		return v.GTE(version.MinFor(9, 5, 7))
 	default:
 		return v.GTE(version.MinFor(9, 6, 1))
 	}
