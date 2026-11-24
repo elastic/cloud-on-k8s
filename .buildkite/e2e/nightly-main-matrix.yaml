@@ -33,7 +33,8 @@
     # Use the default OCP version from plan
     - E2E_STACK_VERSION: "9.5.1"
 
-- label: ocp-wolfi
+# "w" for wolfi: kept short so the truncated cluster names stay unique
+- label: ocp-w
   fixed:
     E2E_PROVIDER: ocp
     CONTAINER_SUFFIX: "-wolfi"
