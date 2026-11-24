@@ -18526,6 +18526,18 @@ spec:
                             description: Authentication enables client authentication
                               (enterprise-only feature).
                             type: boolean
+                          certificateAuthorities:
+                            description: |-
+                              CertificateAuthorities is a reference to a config map with a `ca.crt` file holding one or more PEM-encoded
+                              CA certificates. Client certificates issued by these CAs are trusted when client authentication is required
+                              (enterprise-only feature). All certificates must be CA certificates (with the BasicConstraints extension set to
+                              CA:TRUE). If any of them is not, none of the certificates in the config map are trusted. Other PEM blocks are ignored.
+                            properties:
+                              configMapName:
+                                description: ConfigMapName is the name of the config
+                                  map.
+                                type: string
+                            type: object
                         type: object
                       selfSignedCertificate:
                         description: SelfSignedCertificate allows configuring the

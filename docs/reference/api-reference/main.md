@@ -498,6 +498,7 @@ ClientOptions configures client certificate authentication for incoming connecti
 | Field | Description |
 | --- | --- |
 | *`authentication`* __boolean__ | Authentication enables client authentication (enterprise-only feature). |
+| *`certificateAuthorities`* __[ConfigMapRef](#configmapref)__ | CertificateAuthorities is a reference to a config map with a `ca.crt` file holding one or more PEM-encoded<br>CA certificates. Client certificates issued by these CAs are trusted when client authentication is required<br>(enterprise-only feature). All certificates must be CA certificates (with the BasicConstraints extension set to<br>CA:TRUE). If any of them is not, none of the certificates in the config map are trusted. Other PEM blocks are ignored. |
 
 
 ### Condition  [#condition]
@@ -593,6 +594,7 @@ At most one of [secretName, configMapName] might be specified.
 ConfigMapRef is a reference to a config map that exists in the same namespace as the referring resource.
 
 :::{admonition} Appears In:
+* [ClientOptions](#clientoptions)
 * [ConfigMapOrSecretSource](#configmaporsecretsource)
 * [TLSOptions](#tlsoptions)
 * [TLSWithClientOptions](#tlswithclientoptions)

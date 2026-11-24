@@ -1071,6 +1071,82 @@ func Test_checkClientAuthentication(t *testing.T) {
 	}
 }
 
+func Test_checkClientCertificateAuthorities(t *testing.T) {
+	withClientCAs := func(authentication bool, configMapName string) *Agent {
+		return &Agent{
+			Spec: AgentSpec{
+				Version:            "9.5.0",
+				FleetServerEnabled: true,
+				HTTP: commonv1.HTTPConfigWithClientOptions{
+					TLS: commonv1.TLSWithClientOptions{
+						Client: commonv1.ClientOptions{
+							Authentication:         authentication,
+							CertificateAuthorities: commonv1.ConfigMapRef{ConfigMapName: configMapName},
+						},
+					},
+				},
+			},
+		}
+	}
+	notFleetServer := func(a *Agent) *Agent {
+		a.Spec.FleetServerEnabled = false
+		return a
+	}
+	tlsDisabled := func(a *Agent) *Agent {
+		a.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1.SelfSignedCertificate{Disabled: true}
+		return a
+	}
+	for _, tt := range []struct {
+		name       string
+		a          *Agent
+		wantFields []string
+	}{
+		{
+			name: "no client CAs: OK",
+			a:    withClientCAs(true, ""),
+		},
+		{
+			name: "client CAs, authentication true: OK",
+			a:    withClientCAs(true, "client-cas"),
+		},
+		{
+			name: "client CAs, authentication false: OK, it can be required by the pod template",
+			a:    withClientCAs(false, "client-cas"),
+		},
+		{
+			name: "no client CAs, not a Fleet Server, TLS disabled: OK",
+			a:    tlsDisabled(notFleetServer(withClientCAs(false, ""))),
+		},
+		{
+			name:       "client CAs, not a Fleet Server: NOK",
+			a:          notFleetServer(withClientCAs(false, "client-cas")),
+			wantFields: []string{"spec.http.tls.client.certificateAuthorities"},
+		},
+		{
+			name:       "client CAs, TLS disabled: NOK",
+			a:          tlsDisabled(withClientCAs(false, "client-cas")),
+			wantFields: []string{"spec.http.tls.client.certificateAuthorities"},
+		},
+		{
+			name: "client CAs, not a Fleet Server, TLS disabled: NOK, all are reported",
+			a:    tlsDisabled(notFleetServer(withClientCAs(false, "client-cas"))),
+			wantFields: []string{
+				"spec.http.tls.client.certificateAuthorities",
+				"spec.http.tls.client.certificateAuthorities",
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got := checkClientCertificateAuthorities(tt.a)
+			var gotFields []string
+			for _, err := range got {
+				gotFields = append(gotFields, err.Field)
+			}
+			assert.Equal(t, tt.wantFields, gotFields)
+		})
+	}
+}
+
 func Test_checkNoDowngrade(t *testing.T) {
 	type args struct {
 		prev *Agent

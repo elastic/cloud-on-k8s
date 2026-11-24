@@ -154,16 +154,20 @@ func ReconcileSharedResources(
 	}
 
 	// Reconcile operator client certificate and trust bundle of client certificates.
-	// Unlike the HTTP cert reconciliation above, a failure here does not prevent subsequent steps:
-	// the ES client is still created (without a client cert), esReachable becomes false if client auth
-	// is required, and subsequent steps should handle that gracefully with a requeue.
-	operatorClientCert, clientCertResults := certificates.ReconcileOperatorClientCertAndTrustBundle(
+	// Unlike the HTTP cert reconciliation, a failure here does not stop the shared steps: the ES client is created
+	// without a client cert. Drivers still stop before the nodes on this error, but not on invalid client CAs,
+	// which are passed on in the state.
+	operatorClientCert, clientCertResults, clientCAsErr := certificates.ReconcileOperatorClientCertAndTrustBundle(
 		ctx, d, &es, clientAuthenticationRequired, params.OperatorParameters.CertRotation, meta,
 	)
 	if clientCertResults.HasError() {
 		_, err := clientCertResults.Aggregate()
 		k8s.MaybeEmitErrorEventf(d.Recorder(), err, &es, events.EventReconciliationError, events.EventActionCertificateReconciliation,
 			"Operator client certificate and trust bundle reconciliation error: %v", err)
+	}
+	if clientCAsErr != nil {
+		k8s.MaybeEmitErrorEventf(d.Recorder(), clientCAsErr, &es, events.EventReconciliationError, events.EventActionCertificateReconciliation,
+			"Client certificate authorities reconciliation error: %v", clientCAsErr)
 	}
 	results.WithResults(clientCertResults)
 
@@ -339,6 +343,8 @@ func ReconcileSharedResources(
 		ResourcesState: resourcesState,
 		ESClient:       esClient,
 		ESReachable:    esReachable,
+
+		ClientCAsErr: clientCAsErr,
 	}, results
 }
 

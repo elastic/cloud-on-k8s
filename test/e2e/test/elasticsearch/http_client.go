@@ -7,6 +7,7 @@ package elasticsearch
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"io"
 	"net/http"
@@ -79,6 +80,17 @@ func classifyK8sClientError(err error) error {
 
 // NewElasticsearchClientWithUser returns an ES client for the given ES cluster with the given basic auth user.
 func NewElasticsearchClientWithUser(es esv1.Elasticsearch, k *test.K8sClient, user client.BasicAuth) (client.Client, error) {
+	// Try to get operator client certificate if it exists
+	clientCert, err := certificates.LoadOperatorClientCertIfExists(context.Background(), k.Client, esv1.ESNamer, es.Namespace, es.Name)
+	if err != nil {
+		return nil, err
+	}
+	return NewElasticsearchClientWithClientCert(es, k, user, clientCert)
+}
+
+// NewElasticsearchClientWithClientCert returns an ES client for the given ES cluster with the given basic auth user,
+// which presents the given client certificate, if any.
+func NewElasticsearchClientWithClientCert(es esv1.Elasticsearch, k *test.K8sClient, user client.BasicAuth, clientCert *tls.Certificate) (client.Client, error) {
 	caCerts, err := k.GetHTTPCerts(esv1.ESNamer, es.Namespace, es.Name)
 	if err != nil {
 		return nil, err
@@ -88,12 +100,6 @@ func NewElasticsearchClientWithUser(es esv1.Elasticsearch, k *test.K8sClient, us
 		dialer = portforward.NewForwardingDialer()
 	}
 	v, err := version.Parse(es.Spec.Version)
-	if err != nil {
-		return nil, err
-	}
-
-	// Try to get operator client certificate if it exists
-	clientCert, err := certificates.LoadOperatorClientCertIfExists(context.Background(), k.Client, esv1.ESNamer, es.Namespace, es.Name)
 	if err != nil {
 		return nil, err
 	}

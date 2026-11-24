@@ -108,21 +108,52 @@ func listClientCertificateTrustSources(k *test.K8sClient, namespace, serverName,
 // client certificate secret for custom certificate tests. The certPEM and keyPEM are the pre-generated
 // certificate data to use. Pass the returned StepsFuncs to test.BeforeAfterSequence.
 func UserCustomCertificateSecretLifecycleSteps(namespace, secretName string, certPEM, keyPEM []byte) (test.StepsFunc, test.StepsFunc) {
+	return objectLifecycleSteps("user-provided client certificate secret", func() k8sclient.Object {
+		return &corev1.Secret{
+			Name:      secretName,
+			Namespace: namespace,
+			Data: map[string][]byte{
+				certificates.CertFileName: certPEM,
+				certificates.KeyFileName:  keyPEM,
+			},
+		}
+	})
+}
+
+// ClientCAConfigMapLifecycleSteps returns before/after StepsFuncs that create and delete a config map holding the
+// given PEM-encoded CA certificate, to reference in spec.http.tls.client.certificateAuthorities.
+// Pass the returned StepsFuncs to test.BeforeAfterSequence. The config map is also deleted when t completes, in case
+// a step fails before the after steps run.
+func ClientCAConfigMapLifecycleSteps(t *testing.T, namespace, configMapName string, caPEM []byte) (test.StepsFunc, test.StepsFunc) {
+	t.Helper()
+	newConfigMap := func() k8sclient.Object {
+		return &corev1.ConfigMap{
+			Name:      configMapName,
+			Namespace: namespace,
+			Data:      map[string]string{certificates.CAFileName: string(caPEM)},
+		}
+	}
+	before, after := objectLifecycleSteps("client CAs config map", newConfigMap)
+	beforeWithCleanup := func(k *test.K8sClient) test.StepList {
+		// t.Context() is canceled before the cleanup functions run.
+		ctx := context.WithoutCancel(t.Context())
+		t.Cleanup(func() {
+			require.NoError(t, k8sclient.IgnoreNotFound(k.Client.Delete(ctx, newConfigMap())))
+		})
+		return before(k)
+	}
+	return beforeWithCleanup, after
+}
+
+// objectLifecycleSteps returns before/after StepsFuncs that create and delete the object returned by newObj.
+func objectLifecycleSteps(description string, newObj func() k8sclient.Object) (test.StepsFunc, test.StepsFunc) {
 	before := test.StepsFunc(func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			{
-				Name: "Create user-provided client certificate secret",
+				Name: "Create " + description,
 				Test: func(t *testing.T) {
 					t.Helper()
-					secret := corev1.Secret{
-						Name:      secretName,
-						Namespace: namespace,
-						Data: map[string][]byte{
-							certificates.CertFileName: certPEM,
-							certificates.KeyFileName:  keyPEM,
-						},
-					}
-					require.NoError(t, k.Client.Create(context.Background(), &secret))
+					require.NoError(t, k.Client.Create(t.Context(), newObj()))
 				},
 			},
 		}
@@ -131,14 +162,10 @@ func UserCustomCertificateSecretLifecycleSteps(namespace, secretName string, cer
 	after := test.StepsFunc(func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			{
-				Name: "Delete user-provided client certificate secret",
+				Name: "Delete " + description,
 				Test: func(t *testing.T) {
 					t.Helper()
-					secret := corev1.Secret{
-						Name:      secretName,
-						Namespace: namespace,
-					}
-					_ = k.Client.Delete(context.Background(), &secret)
+					require.NoError(t, k8sclient.IgnoreNotFound(k.Client.Delete(t.Context(), newObj())))
 				},
 			},
 		}

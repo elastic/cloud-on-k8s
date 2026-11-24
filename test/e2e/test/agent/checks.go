@@ -6,13 +6,22 @@ package agent
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
+	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
+	commonhttp "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/http"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/dev/portforward"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 )
 
 const (
@@ -152,6 +161,37 @@ func request(esClient client.Client, url string) ([]byte, error) {
 	}
 
 	return resultBytes, nil
+}
+
+// CheckFleetServerStatus sends a request to the status API of the given Fleet Server, presenting the given client
+// certificate, if any, and returns an error if the request does not succeed.
+func CheckFleetServerStatus(ctx context.Context, k *test.K8sClient, fleetServer types.NamespacedName, clientCert *tls.Certificate) error {
+	caCerts, err := k.GetHTTPCerts(agent.Namer, fleetServer.Namespace, fleetServer.Name)
+	if err != nil {
+		return err
+	}
+	var dialer net.Dialer
+	if test.Ctx().AutoPortForwarding {
+		dialer = portforward.NewForwardingDialer()
+	}
+	httpClient := commonhttp.ClientWithCert(dialer, caCerts, clientCert, 60*time.Second)
+	defer httpClient.CloseIdleConnections()
+
+	// add .svc suffix so that requests work when using the port-forwarder during local test runs
+	url := fmt.Sprintf("https://%s.%s.svc:%d/api/status", agent.HTTPServiceName(fleetServer.Name), fleetServer.Namespace, agent.FleetServerPort)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if apiErr := commonhttp.MaybeAPIError(res); apiErr != nil {
+		return apiErr
+	}
+	return nil
 }
 
 func and(validationFuncs ...ValidationFunc) ValidationFunc {
