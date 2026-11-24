@@ -224,7 +224,7 @@ func (d *OCPDriver) create() error {
 		"NodeCount":              d.plan.Ocp.NodeCount,
 		"BaseDomain":             d.baseDomain(),
 		"OCPStateBucket":         OCPStateBucket,
-		"PullSecret":             strings.TrimSuffix(d.plan.Ocp.PullSecret, "\n"),
+		"PullSecret":             d.plan.Ocp.PullSecret,
 		"UserLabels":             elasticTags,
 	}
 	var tpl bytes.Buffer
@@ -308,6 +308,8 @@ func (d *OCPDriver) ensurePullSecret() error {
 		}
 		d.plan.Ocp.PullSecret = s
 	}
+	// install-config embeds it in a single-quoted YAML scalar; a trailing newline breaks it
+	d.plan.Ocp.PullSecret = strings.TrimSpace(d.plan.Ocp.PullSecret)
 	return nil
 }
 
