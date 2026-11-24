@@ -94,18 +94,22 @@ receivers:
           period: 10s
           metricsets:
             - cat_shards
-            - cluster_health
-            - cluster_settings
-            - license
             - node_stats
             - tasks_management
-        # Templates
+        # Less Frequent Metrics
+        - module: autoops_es
+          period: 1m
+          metricsets:
+            - cluster_health
+            - cluster_settings
+        # Templates and License Details
         - module: autoops_es
           period: 24h
           metricsets:
             - cat_template
             - component_template
             - index_template
+            - license
 `
 
 // ReconcileAutoOpsESConfigMap reconciles the ConfigMap containing the autoops configuration
