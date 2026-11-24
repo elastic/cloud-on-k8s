@@ -326,7 +326,9 @@ type testESState struct {
 	inCluster []string
 	// partialNodes is true if some nodes did not respond to the nodes request
 	partialNodes bool
-	health       client.Health
+	// partialNodesErr is returned by NodesResponsePartial
+	partialNodesErr error
+	health          client.Health
 	ESState
 }
 
@@ -347,7 +349,7 @@ func (t *testESState) NodeNameToID() (map[string]string, error) {
 }
 
 func (t *testESState) NodesResponsePartial() (bool, error) {
-	return t.partialNodes, nil
+	return t.partialNodes, t.partialNodesErr
 }
 
 func (t *testESState) NodesInCluster(nodeNames []string) (bool, error) {

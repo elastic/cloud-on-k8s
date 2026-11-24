@@ -36,6 +36,7 @@ var (
 		checkAssociations,
 		checkConsistentESRefAuthentication,
 		checkClientAuthentication,
+		checkClientCertificateAuthorities,
 		checkNoPKIAuthentication,
 		commonv1.PauseOrchestrationAnnotationCheck[*Agent](),
 	}
@@ -353,6 +354,18 @@ func checkNoPKIAuthentication(a *Agent) field.ErrorList {
 			field.NewPath("spec").Child("elasticsearchRefs").Index(i), ref.ElasticsearchSelector, resourceType)...)
 	}
 	return errs
+}
+
+// checkClientCertificateAuthorities checks that the client certificate authorities are only set on a Fleet Server.
+// It does not depend on spec.http.tls.client.authentication, as client authentication can also be required by
+// the pod template.
+func checkClientCertificateAuthorities(a *Agent) field.ErrorList {
+	var errs field.ErrorList
+	if a.Spec.HTTP.TLS.Client.CertificateAuthorities.IsDefined() && !a.Spec.FleetServerEnabled {
+		errs = append(errs, field.Forbidden(commonv1.ClientCertificateAuthoritiesPath,
+			"client certificate authorities are only supported when Fleet Server is enabled"))
+	}
+	return append(errs, commonv1.CheckClientCertificateAuthorities(a.Spec.HTTP.TLS)...)
 }
 
 func checkClientAuthentication(a *Agent) field.ErrorList {

@@ -133,6 +133,17 @@ func CheckNoPKIAuthenticationMode(path *field.Path, ref ElasticsearchSelector, r
 	return nil
 }
 
+// ClientCertificateAuthoritiesPath is the path of the client certificate authorities in the spec.
+var ClientCertificateAuthoritiesPath = field.NewPath("spec").Child("http", "tls", "client", "certificateAuthorities")
+
+// CheckClientCertificateAuthorities checks that the client certificate authorities are only set with TLS enabled.
+func CheckClientCertificateAuthorities(tls TLSWithClientOptions) field.ErrorList {
+	if tls.Client.CertificateAuthorities.IsDefined() && !tls.Enabled() {
+		return field.ErrorList{field.Forbidden(ClientCertificateAuthoritiesPath, "client certificate authorities require TLS to be enabled")}
+	}
+	return nil
+}
+
 // CheckReservedPKIRealmConfig rejects realm settings in cfg that clash with the ECK-managed PKI realm: settings under
 // its name, which would change the realm, realms of another type using its name, and realms using its order. Realm
 // names and orders must be unique across all realm types, so the last two would stop Elasticsearch from starting.

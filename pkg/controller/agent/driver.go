@@ -141,33 +141,35 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 	}
 
 	// Reconcile operator client certificate and trust bundle for Fleet Server client authentication.
-	clientAuthRequired := false
+	clientAuthRequired, err := fleetServerClientAuthRequired(params)
+	if err != nil {
+		return results.WithError(err), params.Status
+	}
+
+	// Version gate: block pod reconciliation when Fleet Server cannot present client certs to ES.
+	if clientAuthRequired && params.AgentVersion.LT(agentv1alpha1.FleetServerESClientAuthMinVersion) {
+		k8s.EmitEventf(params.EventRecorder, &params.Agent, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation,
+			"Elasticsearch mTLS support requires version 8.13.0+")
+		params.Status.Health = agentv1alpha1.AgentRedHealth
+		return results, params.Status
+	}
+
 	if params.Agent.Spec.FleetServerEnabled {
-		var (
-			clientAuthWarning string
-			err               error
-		)
-		clientAuthRequired, clientAuthWarning, err = isFleetServerClientAuthRequired(params)
-		if err != nil {
-			return results.WithError(err), params.Status
-		}
-		if clientAuthWarning != "" {
-			k8s.EmitEvent(params.EventRecorder, &params.Agent, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, clientAuthWarning)
-		}
-
-		// Version gate: block pod reconciliation when Fleet Server cannot present client certs to ES.
-		if clientAuthRequired && params.AgentVersion.LT(agentv1alpha1.FleetServerESClientAuthMinVersion) {
-			k8s.EmitEventf(params.EventRecorder, &params.Agent, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation,
-				"Elasticsearch mTLS support requires version 8.13.0+")
-			params.Status.Health = agentv1alpha1.AgentRedHealth
-			return results, params.Status
-		}
-
-		clientCertResults := reconcileFleetServerClientAuth(params, clientAuthRequired, fleetCerts, configHash)
+		clientCertResults, clientCAsErr := reconcileFleetServerClientAuth(params, clientAuthRequired, fleetCerts, configHash)
 		results = results.WithResults(clientCertResults)
 		if results.HasError() {
 			return results, params.Status
 		}
+		// invalid client certificate authorities must not block the Pods: add the error to the results on every return path
+		if clientCAsErr != nil {
+			k8s.MaybeEmitErrorEventf(params.EventRecorder, clientCAsErr, &params.Agent, events.EventReconciliationError, events.EventActionCertificateReconciliation,
+				"Client certificate authorities reconciliation error: %v", clientCAsErr)
+		}
+		defer results.WithError(clientCAsErr)
+	} else {
+		// not a Fleet Server (anymore): stop watching the client certificate authorities
+		params.Watches.ConfigMaps.RemoveHandlerForKey(
+			certificates.ClientCAWatchKey(Namer, k8s.ExtractNamespacedName(&params.Agent)))
 	}
 
 	fleetToken := maybeReconcileFleetEnrollment(params, results)
@@ -209,7 +211,8 @@ func internalReconcile(params Params) (*reconciler.Results, agentv1alpha1.AgentS
 	if err != nil {
 		return results.WithError(err), params.Status
 	}
-	return reconcilePodVehicle(params, podTemplate)
+	podResults, status := reconcilePodVehicle(params, podTemplate)
+	return results.WithResults(podResults), status
 }
 
 func reconcileService(params Params) (*corev1.Service, error) {
@@ -249,6 +252,22 @@ func newService(agent agentv1alpha1.Agent, meta metadata.Metadata) *corev1.Servi
 		},
 	}
 	return defaults.SetServiceDefaults(&svc, meta, selector, ports)
+}
+
+// fleetServerClientAuthRequired returns whether the Agent is a Fleet Server which requires client certificate
+// authentication, and emits a warning event when client authentication is set but ineffective.
+func fleetServerClientAuthRequired(params Params) (bool, error) {
+	if !params.Agent.Spec.FleetServerEnabled {
+		return false, nil
+	}
+	clientAuthRequired, clientAuthWarning, err := isFleetServerClientAuthRequired(params)
+	if err != nil {
+		return false, err
+	}
+	if clientAuthWarning != "" {
+		k8s.EmitEvent(params.EventRecorder, &params.Agent, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation, clientAuthWarning)
+	}
+	return clientAuthRequired, nil
 }
 
 // isFleetServerClientAuthRequired determines whether Fleet Server client certificate authentication
@@ -322,35 +341,49 @@ func isFleetServerClientAuthRequired(params Params) (bool, string, error) {
 // the annotation and related secrets are cleaned up.
 // The trust bundle includes the fleet HTTP cert so that the internal agent can verify the
 // fleet-server's server certificate (FLEET_CA points to the trust bundle).
-func reconcileFleetServerClientAuth(params Params, clientAuthRequired bool, fleetCerts *certificates.CertificatesSecret, configHash io.Writer) *reconciler.Results {
+// Missing or invalid client certificate authorities are left out of the trust bundle and returned as a separate error,
+// unless client authentication is being disabled, in which case they are only logged.
+func reconcileFleetServerClientAuth(params Params, clientAuthRequired bool, fleetCerts *certificates.CertificatesSecret, configHash io.Writer) (*reconciler.Results, error) {
 	results := reconciler.NewResult(params.Context)
+
+	certReconciler := certificates.Reconciler{
+		K8sClient:      params.Client,
+		DynamicWatches: params.Watches,
+		Owner:          &params.Agent,
+		Namer:          Namer,
+		Metadata:       params.Meta,
+		CertRotation:   params.OperatorParams.CertRotation,
+	}
+
+	// Client authentication is still in use while it is being disabled, until the annotation is removed.
+	clientAuthInUse := clientAuthRequired || annotation.HasClientAuthenticationRequired(&params.Agent)
+
+	clientCAs, clientCAsReadErr := certReconciler.ReconcileClientCertificateAuthorities(
+		params.Context, params.EventRecorder, params.Agent.Spec.HTTP.TLS.Client.CertificateAuthorities, clientAuthInUse)
 
 	// Client auth is being disabled: clean up annotation and secrets.
 	if !clientAuthRequired {
 		if !annotation.HasClientAuthenticationRequired(&params.Agent) {
-			return results
+			return results, nil
+		}
+		if clientCAs.InvalidErr != nil {
+			// client authentication is being disabled, the CAs are about to be unused
+			params.Logger().V(1).Info("Ignoring the invalid client certificate authorities while client authentication is being disabled",
+				"namespace", params.Agent.Namespace, "agent_name", params.Agent.Name, "error", clientCAs.InvalidErr.Error())
 		}
 		if err := certificates.DeleteClientCertResources(params.Context, params.Client, &params.Agent, Namer); err != nil {
-			return results.WithError(err)
+			return results.WithError(err), nil
 		}
-		return results
+		return results, nil
 	}
 
 	if err := annotation.SetClientAuthenticationRequiredAnnotation(params.Context, params.Client, &params.Agent); err != nil {
-		return results.WithError(err)
-	}
-
-	certReconciler := certificates.Reconciler{
-		K8sClient:    params.Client,
-		Owner:        &params.Agent,
-		Namer:        Namer,
-		Metadata:     params.Meta,
-		CertRotation: params.OperatorParams.CertRotation,
+		return results.WithError(err), nil
 	}
 
 	operatorClientCertSecret, err := certReconciler.ReconcileOperatorCertificate(params.Context)
 	if err != nil {
-		return results.WithError(err)
+		return results.WithError(err), nil
 	}
 
 	// Include the fleet HTTP cert in the trust bundle so the internal agent can verify the
@@ -360,12 +393,17 @@ func reconcileFleetServerClientAuth(params Params, clientAuthRequired bool, flee
 		extraCerts = append(extraCerts, fleetCerts)
 	}
 
+	// On a read error keep the trust bundle as it is, so CAs that are still trusted are not dropped.
+	if clientCAsReadErr != nil {
+		return results.WithError(clientCAsReadErr), nil
+	}
+	extraCerts = append(extraCerts, clientCAs.CAs...)
 	bundleData, err := certReconciler.ReconcileTrustBundle(params.Context, extraCerts...)
 	if err != nil {
-		return results.WithError(err)
+		return results.WithError(err), nil
 	}
 	_, _ = configHash.Write(bundleData)
-	return results
+	return results, clientCAs.InvalidErr
 }
 
 // fleetManagedAgentTransitiveRef returns the TransitiveESRef from the Fleet Server association

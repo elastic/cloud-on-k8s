@@ -81,14 +81,65 @@ func GenerateSelfSignedServerCertPKCS8(t *testing.T, cn string) (certPEM, keyPEM
 	return certPEM, keyPEM
 }
 
+// GenerateCA generates a self-signed CA certificate using ECDSA and returns it PEM-encoded, along with the parsed
+// certificate and its private key to sign other certificates with.
+func GenerateCA(t *testing.T, cn string) (caPEM []byte, ca *x509.Certificate, caKey crypto.Signer) {
+	t.Helper()
+
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), cryptorand.Reader)
+	require.NoError(t, err)
+
+	template := newCertTemplate(t, cn, x509.ECDSAWithSHA256)
+	template.IsCA = true
+	template.BasicConstraintsValid = true
+	template.KeyUsage = x509.KeyUsageCertSign | x509.KeyUsageCRLSign | x509.KeyUsageDigitalSignature
+
+	certDER, err := x509.CreateCertificate(cryptorand.Reader, &template, &template, privateKey.Public(), privateKey)
+	require.NoError(t, err)
+	ca, err = x509.ParseCertificate(certDER)
+	require.NoError(t, err)
+
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER}), ca, privateKey
+}
+
+// GenerateClientCertSignedBy generates a client certificate using ECDSA, signed by the given CA,
+// and returns PEM-encoded cert and key.
+func GenerateClientCertSignedBy(t *testing.T, cn string, ca *x509.Certificate, caKey crypto.Signer) (certPEM, keyPEM []byte) {
+	t.Helper()
+
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), cryptorand.Reader)
+	require.NoError(t, err)
+
+	keyDER, err := x509.MarshalECPrivateKey(privateKey)
+	require.NoError(t, err)
+	keyPEM = pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
+
+	template := newCertTemplate(t, cn, x509.ECDSAWithSHA256, x509.ExtKeyUsageClientAuth)
+	certDER, err := x509.CreateCertificate(cryptorand.Reader, &template, ca, privateKey.Public(), caKey)
+	require.NoError(t, err)
+
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER}), keyPEM
+}
+
 // generateSelfSignedCert creates a self-signed certificate using the given key, signature algorithm, and extended key usages.
 func generateSelfSignedCert(t *testing.T, cn string, sigAlg x509.SignatureAlgorithm, key crypto.Signer, extKeyUsage ...x509.ExtKeyUsage) []byte {
+	t.Helper()
+
+	template := newCertTemplate(t, cn, sigAlg, extKeyUsage...)
+	certDER, err := x509.CreateCertificate(cryptorand.Reader, &template, &template, key.Public(), key)
+	require.NoError(t, err)
+
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+}
+
+// newCertTemplate returns a certificate template valid for a day, with a random serial number.
+func newCertTemplate(t *testing.T, cn string, sigAlg x509.SignatureAlgorithm, extKeyUsage ...x509.ExtKeyUsage) x509.Certificate {
 	t.Helper()
 
 	serial, err := cryptorand.Int(cryptorand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
 	require.NoError(t, err)
 
-	template := x509.Certificate{
+	return x509.Certificate{
 		SerialNumber: serial,
 		Subject: pkix.Name{
 			CommonName:         cn,
@@ -100,9 +151,4 @@ func generateSelfSignedCert(t *testing.T, cn string, sigAlg x509.SignatureAlgori
 		ExtKeyUsage:        extKeyUsage,
 		SignatureAlgorithm: sigAlg,
 	}
-
-	certDER, err := x509.CreateCertificate(cryptorand.Reader, &template, &template, key.Public(), key)
-	require.NoError(t, err)
-
-	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
 }

@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,50 +24,82 @@ import (
 
 func TestClient_CreateAutoscalingPolicy(t *testing.T) {
 	tests := []struct {
+		name         string
+		policyName   string
 		expectedPath string
-		version      version.Version
+		policy       v1alpha1.AutoscalingPolicy
+		wantBody     string
 	}{
 		{
+			name:         "clear deciders",
+			policyName:   "di",
 			expectedPath: "/_autoscaling/policy/di",
+			policy:       v1alpha1.AutoscalingPolicy{Roles: []string{"data", "ingest"}},
+			wantBody:     `{"roles":["data","ingest"],"deciders":{}}`,
+		},
+		{
+			name:         "set deciders",
+			policyName:   "di",
+			expectedPath: "/_autoscaling/policy/di",
+			policy: v1alpha1.AutoscalingPolicy{
+				Roles:    []string{"ml"},
+				Deciders: map[string]v1alpha1.DeciderSettings{"fixed": {"memory": "4gb", "nodes": "1"}},
+			},
+			wantBody: `{"roles":["ml"],"deciders":{"fixed":{"memory":"4gb","nodes":"1"}}}`,
+		},
+		{
+			name:         "clear roles",
+			policyName:   "di",
+			expectedPath: "/_autoscaling/policy/di",
+			wantBody:     `{"roles":[],"deciders":{}}`,
+		},
+		{
+			name:         "escape policy name",
+			policyName:   "data#1",
+			expectedPath: "/_autoscaling/policy/data%231",
+			policy:       v1alpha1.AutoscalingPolicy{Roles: []string{"data"}},
+			wantBody:     `{"roles":["data"],"deciders":{}}`,
 		},
 	}
 	for _, tt := range tests {
-		testClient := client.NewMockClient(version.MustParse("7.11.0"), func(req *http.Request) *http.Response {
-			require.Equal(t, tt.expectedPath, req.URL.Path)
-			return &http.Response{
-				StatusCode: 200,
-				Body:       io.NopCloser(strings.NewReader(`{"acknowledged": true}`)),
-				Header:     make(http.Header),
-				Request:    req,
-			}
+		t.Run(tt.name, func(t *testing.T) {
+			testClient := client.NewMockClient(version.MustParse("7.11.0"), func(req *http.Request) *http.Response {
+				require.Equal(t, http.MethodPut, req.Method)
+				require.Equal(t, tt.expectedPath, req.URL.EscapedPath())
+				require.Empty(t, req.URL.Fragment)
+				body, err := io.ReadAll(req.Body)
+				require.NoError(t, err)
+				assert.JSONEq(t, tt.wantBody, string(body))
+				return client.NewMockResponse(http.StatusOK, req, `{"acknowledged":true}`)
+			})
+			require.NoError(t, testClient.CreateAutoscalingPolicy(context.Background(), tt.policyName, tt.policy))
 		})
-		in := v1alpha1.AutoscalingPolicy{
-			Roles: []string{"data", "ingest"},
-		}
-		assert.NoError(t, testClient.CreateAutoscalingPolicy(context.Background(), "di", in))
 	}
 }
 
-func TestClient_DeleteAutoscalingPolicies(t *testing.T) {
+func TestClient_DeleteAutoscalingPolicy(t *testing.T) {
 	tests := []struct {
+		policyName   string
 		expectedPath string
-		version      version.Version
 	}{
 		{
-			expectedPath: "/_autoscaling/policy/*",
+			policyName:   "di",
+			expectedPath: "/_autoscaling/policy/di",
+		},
+		{
+			policyName:   "data#1",
+			expectedPath: "/_autoscaling/policy/data%231",
 		},
 	}
 	for _, tt := range tests {
-		testClient := client.NewMockClient(version.MustParse("7.11.0"), func(req *http.Request) *http.Response {
-			require.Equal(t, tt.expectedPath, req.URL.Path)
-			return &http.Response{
-				StatusCode: 200,
-				Body:       io.NopCloser(strings.NewReader(`{"acknowledged": true}`)),
-				Header:     make(http.Header),
-				Request:    req,
-			}
+		t.Run(tt.policyName, func(t *testing.T) {
+			testClient := client.NewMockClient(version.MustParse("7.11.0"), func(req *http.Request) *http.Response {
+				require.Equal(t, http.MethodDelete, req.Method)
+				require.Equal(t, tt.expectedPath, req.URL.EscapedPath())
+				return client.NewMockResponse(http.StatusOK, req, `{"acknowledged":true}`)
+			})
+			require.NoError(t, testClient.DeleteAutoscalingPolicy(context.Background(), tt.policyName))
 		})
-		assert.NoError(t, testClient.DeleteAutoscalingPolicies(context.Background()))
 	}
 }
 

@@ -14,6 +14,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -21,12 +22,15 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	toolsevents "k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
@@ -132,15 +136,16 @@ func (r Reconciler) ReconcileClientCertificate(
 }
 
 // ReconcileTrustBundle builds a trust bundle containing:
-// 1. The operator client certificate (passed directly, owned by the server resource)
+// 1. The certificates passed in by the caller, such as the operator client certificate.
 // 2. Any association client certificates published as trust source records into the server namespace.
+// 3. The client certificate authorities provided by the user, if any (passed directly).
 //
 // The trust bundle secret contains concatenated PEM-encoded certificates for client certificate validation.
 func (r Reconciler) ReconcileTrustBundle(ctx context.Context, extraCertificates ...*CertificatesSecret) ([]byte, error) {
 	ownerNSN := k8s.ExtractNamespacedName(r.Owner)
 	secretName := ClientCertTrustBundleSecretName(r.Namer, ownerNSN.Name)
 
-	// Start with the certificates passed in by the caller (the operator client certificate).
+	// Start with the certificates passed in by the caller.
 	var allSecrets []corev1.Secret
 	for _, extraCert := range extraCertificates {
 		allSecrets = append(allSecrets, extraCert.Secret)
@@ -169,6 +174,57 @@ func (r Reconciler) ReconcileTrustBundle(ctx context.Context, extraCertificates 
 
 	_, err = reconciler.ReconcileSecret(ctx, r.K8sClient, expected, r.Owner)
 	return bundleData, err
+}
+
+// ClientCertificateAuthorities holds the client certificate authorities read by ReconcileClientCertificateAuthorities.
+type ClientCertificateAuthorities struct {
+	// CAs holds the CA certificates of the config map if it is valid, to pass to ReconcileTrustBundle.
+	CAs []*CertificatesSecret
+	// InvalidErr reports a missing or invalid config map, left out of CAs.
+	InvalidErr error
+}
+
+// ReconcileClientCertificateAuthorities reads the CA certificates of the referenced config map and watches it.
+// Nothing is read or watched if client authentication is not in use.
+// A missing or invalid config map is left out and reported in InvalidErr, so it is not trusted until fixed.
+// Any other read error is returned as err, in which case the trust bundle should be left as it is.
+func (r Reconciler) ReconcileClientCertificateAuthorities(
+	ctx context.Context,
+	recorder toolsevents.EventRecorder,
+	ref commonv1.ConfigMapRef,
+	clientAuthInUse bool,
+) (ClientCertificateAuthorities, error) {
+	fieldPath := commonv1.ClientCertificateAuthoritiesPath.String()
+	if !clientAuthInUse && ref.IsDefined() {
+		k8s.EmitEvent(recorder, r.Owner, corev1.EventTypeWarning, events.EventReasonValidation, events.EventActionValidation,
+			fieldPath+" is ineffective because client certificate authentication is not required, or an Enterprise license is not enabled")
+		// an empty ref releases the watch in ReconcileAdditionalCAs
+		ref = commonv1.ConfigMapRef{}
+	}
+	owner := k8s.ExtractNamespacedName(r.Owner)
+	caCerts, err := ReconcileAdditionalCAs(ctx, r.K8sClient, r.DynamicWatches, AdditionalCAsOptions{
+		Owner:     owner,
+		Ref:       ref,
+		WatchKey:  ClientCAWatchKey(r.Namer, owner),
+		FieldPath: fieldPath,
+		CAOnly:    true,
+	})
+	_, invalid := errors.AsType[*InvalidCAsError](err)
+	switch {
+	case err != nil && (invalid || apierrors.IsNotFound(err)):
+		// the config map is missing or invalid
+		return ClientCertificateAuthorities{InvalidErr: err}, nil
+	case err != nil:
+		// the config map could not be read, it may still be valid
+		return ClientCertificateAuthorities{}, err
+	case caCerts == nil:
+		return ClientCertificateAuthorities{}, nil
+	}
+	return ClientCertificateAuthorities{CAs: []*CertificatesSecret{{
+		Namespace: owner.Namespace,
+		Name:      ref.ConfigMapName,
+		Data:      map[string][]byte{CertFileName: caCerts},
+	}}}, nil
 }
 
 // clientCertTrustSourceSecretName returns the deterministic name of the trust source secret published into
@@ -327,7 +383,8 @@ func buildTrustBundleFromSecrets(ctx context.Context, secrets []corev1.Secret) [
 		}
 		return s.Namespace, s.Name
 	}
-	slices.SortFunc(secrets, func(a, b corev1.Secret) int {
+	// Stable sort keeps the output deterministic when a passed-in secret and a trust source share a sort key.
+	slices.SortStableFunc(secrets, func(a, b corev1.Secret) int {
 		aNS, aName := sortKey(a)
 		bNS, bName := sortKey(b)
 		return cmp.Or(
