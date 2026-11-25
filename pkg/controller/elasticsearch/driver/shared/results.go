@@ -22,4 +22,8 @@ type ReconcileState struct {
 	ESClient esclient.Client
 	// ESReachable indicates whether Elasticsearch is reachable.
 	ESReachable bool
+
+	// ClientCAsErr reports missing or invalid client certificate authorities.
+	// Drivers add it to their results on every return path, so it does not block the nodes.
+	ClientCAsErr error
 }

@@ -20,6 +20,8 @@ const (
 	LicenseLevelLabel      = "license_level"
 	OperatorNamespaceLabel = "operator_namespace"
 	UUIDLabel              = "uuid"
+	HandlerKindLabel       = "handler"
+	ControllerNameLabel    = "controller"
 )
 
 var (
@@ -28,6 +30,13 @@ var (
 		Name:      LeaderKey,
 		Help:      "Gauge used to evaluate if an instance is elected",
 	}, []string{UUIDLabel, OperatorNamespaceLabel}))
+
+	// DynamicWatchesRegistered tracks registered dynamic watch handlers per kind to detect leaks.
+	DynamicWatchesRegistered = registerGauge(prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: namespace,
+		Name:      "dynamic_watches_registered",
+		Help:      "Number of registered dynamic watch handlers, by controller and watched resource kind",
+	}, []string{ControllerNameLabel, HandlerKindLabel}))
 
 	// LicensingMaxERUGauge reports the maximum allowed enterprise resource units for licensing purposes.
 	LicensingMaxERUGauge = registerGauge(prometheus.NewGaugeVec(prometheus.GaugeOpts{

@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -84,6 +85,8 @@ func TestReconcile(t *testing.T) {
 		want       reconcile.Result
 		wantEvents []string
 		wantErr    *wantedErr
+		// wantDeletedPolicies are the names of the policies the controller is expected to try to delete.
+		wantDeletedPolicies []string
 	}{
 		{
 			name: "User should not use the Autoscaling annotation",
@@ -133,7 +136,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "Simulate an error while updating the autoscaling policies, we still want to respect min nodes count set by user",
 			fields: fields{
-				EsClient:       newFakeEsClient(t).withErrorOnDeleteAutoscalingAutoscalingPolicies(),
+				EsClient:       newFakeEsClient(t).withErrorOnCreateAutoscalingPolicy(),
 				recorder:       toolsevents.NewFakeRecorder(1000),
 				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
 			},
@@ -143,7 +146,7 @@ func TestReconcile(t *testing.T) {
 			},
 			want: defaultRequeue, // we still expect the default requeue to be set even if there was an error
 			wantErr: &wantedErr{ // Autoscaling API error should be returned.
-				message: "simulated error while calling DeleteAutoscalingAutoscalingPolicies",
+				message: "simulated error while calling CreateAutoscalingPolicy",
 				fatal:   false, // We do expect the controller to fall back on the offline mode.
 			},
 			wantEvents: []string{},
@@ -209,6 +212,24 @@ func TestReconcile(t *testing.T) {
 			want:       defaultRequeue,
 		},
 		{
+			name: "Obsolete policy cleanup failure does not prevent scaling from 8 to 10 nodes",
+			fields: fields{
+				// The obsolete policy is set before the capacity on purpose: the setup order must not matter.
+				EsClient:       newFakeEsClient(t).withErrorOnDeleteAutoscalingPolicy().withCapacity("custom_resource/storage-scaled-horizontally"),
+				recorder:       toolsevents.NewFakeRecorder(1000),
+				licenseChecker: &license.MockLicenseChecker{EnterpriseEnabled: true},
+			},
+			args: args{
+				manifestsDir: "storage-scaled-horizontally",
+				isOnline:     true,
+			},
+			wantEvents: []string{
+				`Warning Unexpected Failed to delete obsolete autoscaling policies: delete obsolete autoscaling policy "stale": simulated error while calling DeleteAutoscalingPolicy`,
+			},
+			wantDeletedPolicies: []string{"stale"},
+			want:                defaultRequeue,
+		},
+		{
 			name: "Cluster does not exit",
 			fields: fields{
 				EsClient:       newFakeEsClient(t),
@@ -261,7 +282,7 @@ func TestReconcile(t *testing.T) {
 			}
 
 			r := &ReconcileElasticsearchAutoscaler{
-				Watches:          watches.NewDynamicWatches(),
+				Watches:          watches.NewDynamicWatches("testCtr"),
 				Client:           k8sClient,
 				esClientProvider: tt.fields.EsClient.newFakeElasticsearchClient,
 				OperatorInfo: about.OperatorInfo{
@@ -288,6 +309,9 @@ func TestReconcile(t *testing.T) {
 				if tt.wantErr.fatal {
 					return
 				}
+			}
+			if tt.fields.EsClient != nil {
+				assert.ElementsMatch(t, tt.wantDeletedPolicies, tt.fields.EsClient.deletedPolicies, "unexpected autoscaling policy deletions")
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ReconcileElasticsearchAutoscaler.reconcileInternal() = %v, want %v", got, tt.want)
@@ -365,10 +389,13 @@ type fakeEsClient struct {
 	t *testing.T
 	esclient.Client
 
-	autoscalingPolicies                         esclient.AutoscalingCapacityResult
-	policiesCleaned                             bool
-	errorOnDeleteAutoscalingAutoscalingPolicies bool
-	updatedPolicies                             map[string]v1alpha1.AutoscalingPolicy
+	autoscalingPolicies            esclient.AutoscalingCapacityResult
+	errorOnCreateAutoscalingPolicy bool
+	errorOnDeleteAutoscalingPolicy bool
+	// obsoletePolicies are added to the capacity response when it is returned, so the setup order does not matter.
+	obsoletePolicies []string
+	// deletedPolicies records the names of the policies the controller attempted to delete.
+	deletedPolicies []string
 }
 
 func newFakeEsClient(t *testing.T) *fakeEsClient {
@@ -376,7 +403,6 @@ func newFakeEsClient(t *testing.T) *fakeEsClient {
 	return &fakeEsClient{
 		t:                   t,
 		autoscalingPolicies: esclient.AutoscalingCapacityResult{Policies: make(map[string]esclient.AutoscalingPolicyResult)},
-		updatedPolicies:     make(map[string]v1alpha1.AutoscalingPolicy),
 	}
 }
 
@@ -393,8 +419,14 @@ func (f *fakeEsClient) withCapacity(testdata string) *fakeEsClient {
 	return f
 }
 
-func (f *fakeEsClient) withErrorOnDeleteAutoscalingAutoscalingPolicies() *fakeEsClient {
-	f.errorOnDeleteAutoscalingAutoscalingPolicies = true
+func (f *fakeEsClient) withErrorOnCreateAutoscalingPolicy() *fakeEsClient {
+	f.errorOnCreateAutoscalingPolicy = true
+	return f
+}
+
+func (f *fakeEsClient) withErrorOnDeleteAutoscalingPolicy() *fakeEsClient {
+	f.errorOnDeleteAutoscalingPolicy = true
+	f.obsoletePolicies = append(f.obsoletePolicies, "stale")
 	return f
 }
 
@@ -402,18 +434,28 @@ func (f *fakeEsClient) newFakeElasticsearchClient(_ context.Context, _ k8s.Clien
 	return f, nil
 }
 
-func (f *fakeEsClient) DeleteAutoscalingPolicies(_ context.Context) error {
-	f.policiesCleaned = true
-	if f.errorOnDeleteAutoscalingAutoscalingPolicies {
-		return fmt.Errorf("simulated error while calling DeleteAutoscalingAutoscalingPolicies")
+func (f *fakeEsClient) DeleteAutoscalingPolicy(_ context.Context, policyName string) error {
+	f.deletedPolicies = append(f.deletedPolicies, policyName)
+	if f.errorOnDeleteAutoscalingPolicy {
+		return fmt.Errorf("simulated error while calling DeleteAutoscalingPolicy")
 	}
 	return nil
 }
 func (f *fakeEsClient) CreateAutoscalingPolicy(_ context.Context, _ string, _ v1alpha1.AutoscalingPolicy) error {
+	if f.errorOnCreateAutoscalingPolicy {
+		return fmt.Errorf("simulated error while calling CreateAutoscalingPolicy")
+	}
 	return nil
 }
 func (f *fakeEsClient) GetAutoscalingCapacity(_ context.Context) (esclient.AutoscalingCapacityResult, error) {
-	return f.autoscalingPolicies, nil
+	result := esclient.AutoscalingCapacityResult{Policies: maps.Clone(f.autoscalingPolicies.Policies)}
+	if result.Policies == nil {
+		result.Policies = make(map[string]esclient.AutoscalingPolicyResult)
+	}
+	for _, policyName := range f.obsoletePolicies {
+		result.Policies[policyName] = esclient.AutoscalingPolicyResult{}
+	}
+	return result, nil
 }
 func (f *fakeEsClient) UpdateMLNodesSettings(_ context.Context, _ int32, _ string) error {
 	return nil

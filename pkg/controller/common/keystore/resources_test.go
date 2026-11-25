@@ -101,6 +101,11 @@ func wantContainer(wantScript string) *corev1.Container {
 	}
 }
 
+func withCommand(c *corev1.Container, command []string) *corev1.Container {
+	c.Command = command
+	return c
+}
+
 func TestReconcileResources(t *testing.T) {
 	tests := []struct {
 		name                    string
@@ -246,12 +251,30 @@ echo "Keystore initialization successful."
 			wantHash: "896069204",
 			wantNil:  false,
 		},
+		{
+			name:   "use command instead of script",
+			client: k8s.NewFakeClient(&testSecureSettingsSecret),
+			kb:     testKibanaWithSecureSettings,
+			initContainerParameters: InitContainerParameters{
+				KeystoreCreateCommand:         "/keystore/bin/keystore create",
+				KeystoreAddCommand:            `/keystore/bin/keystore add "$key" "$filename"`,
+				SecureSettingsVolumeMountPath: "/foo/secret",
+				KeystoreVolumePath:            "/bar/data",
+				CustomScript:                  `echo "custom script"`,
+				Command:                       []string{"/keystore/bin/keystore", "add", "--from-dir", "/foo/secret"},
+				Resources:                     testResourceRequirements,
+			},
+			wantContainers: withCommand(wantContainer(""), []string{"/keystore/bin/keystore", "add", "--from-dir", "/foo/secret"}),
+			// since this will be created, it will be incremented
+			wantHash: "896069204",
+			wantNil:  false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testDriver := driver.TestDriver{
 				Client:       tt.client,
-				Watches:      watches2.NewDynamicWatches(),
+				Watches:      watches2.NewDynamicWatches("testCtr"),
 				FakeRecorder: toolsevents.NewFakeRecorder(1000),
 			}
 			resources, err := ReconcileResources(context.Background(), testDriver, &tt.kb, kbNamer, metadata.Metadata{}, "", tt.initContainerParameters)

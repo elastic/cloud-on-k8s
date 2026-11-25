@@ -121,7 +121,7 @@ func TestReconcileAutoOpsESCASecret(t *testing.T) {
 
 			r := &AgentPolicyReconciler{
 				Client:         k8sClient,
-				dynamicWatches: watches.NewDynamicWatches(),
+				dynamicWatches: watches.NewDynamicWatches("testCtr"),
 			}
 
 			testES := *es
@@ -171,7 +171,7 @@ func TestReconcileAutoOpsESClientCertSecretDoesNotMutatePolicy(t *testing.T) {
 
 	r := &AgentPolicyReconciler{
 		Client:         k8s.NewFakeClient(),
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches("testCtr"),
 	}
 
 	secret, results := r.reconcileAutoOpsESClientCertSecret(t.Context(), policy, *es)
@@ -235,7 +235,7 @@ func TestReconcileAutoOpsESClientCertSecretTrustSourceMetadata(t *testing.T) {
 				p.Annotations = tt.policyAnnots
 			})
 			c := k8s.NewFakeClient()
-			r := &AgentPolicyReconciler{Client: c, dynamicWatches: watches.NewDynamicWatches()}
+			r := &AgentPolicyReconciler{Client: c, dynamicWatches: watches.NewDynamicWatches("testCtr")}
 
 			clientCert, results := r.reconcileAutoOpsESClientCertSecret(t.Context(), policy, *es)
 			_, err := results.Aggregate()
@@ -410,7 +410,7 @@ func TestAutoOpsESClientCertTrustSource(t *testing.T) {
 				Client:           builder.Build(),
 				esClientProvider: newFakeESClientProvider().Provider,
 				params:           operator.Parameters{Dialer: &fakeDialer{}},
-				dynamicWatches:   watches.NewDynamicWatches(),
+				dynamicWatches:   watches.NewDynamicWatches("testCtr"),
 			}
 			clientCert, results := r.reconcileAutoOpsESClientCertSecret(t.Context(), policy, *es)
 			_, err := results.Aggregate()

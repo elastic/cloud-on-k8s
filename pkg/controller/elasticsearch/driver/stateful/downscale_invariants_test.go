@@ -5,6 +5,7 @@
 package stateful
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -17,6 +18,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
+	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	es_sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/sset"
 )
@@ -140,17 +142,18 @@ func Test_newDownscaleState(t *testing.T) {
 					},
 				},
 			},
-			want: &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: new(int32(0)), drainingRemovalsAllowed: new(int32(1)), unavailableMasters: sets.New(ssetMaster3Replicas.Name + "-3")},
+			want: &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: new(int32(0)), drainingRemovalsAllowed: new(int32(1)), unavailableMasters: sets.New(ssetMaster3Replicas.Name + "-3"),
+				readyPods: sets.New(ssetMaster3Replicas.Name+"-0", ssetMaster3Replicas.Name+"-1", ssetMaster3Replicas.Name+"-2")},
 		},
 		{
 			name:       "a terminating master is unavailable and not running",
 			actualPods: []corev1.Pod{testPod("master-0", true, true), terminating(testPod("master-1", true, true))},
-			want:       &downscaleState{masterRemovalInProgress: false, runningMasters: 1, removalsAllowed: new(int32(0)), drainingRemovalsAllowed: new(int32(1)), unavailableMasters: sets.New("master-1")},
+			want:       &downscaleState{masterRemovalInProgress: false, runningMasters: 1, removalsAllowed: new(int32(0)), drainingRemovalsAllowed: new(int32(1)), unavailableMasters: sets.New("master-1"), readyPods: sets.New("master-0", "master-1")},
 		},
 		{
 			name:       "no draining nodes",
 			actualPods: mixedPods,
-			want:       &downscaleState{masterRemovalInProgress: false, runningMasters: 1, removalsAllowed: new(int32(0)), drainingRemovalsAllowed: new(int32(1)), unavailableMasters: sets.New("master-1")},
+			want:       &downscaleState{masterRemovalInProgress: false, runningMasters: 1, removalsAllowed: new(int32(0)), drainingRemovalsAllowed: new(int32(1)), unavailableMasters: sets.New("master-1"), readyPods: sets.New("master-0", "data-0")},
 		},
 		{
 			name:               "draining nodes are not available but tracked unless ready or terminating",
@@ -160,6 +163,7 @@ func Test_newDownscaleState(t *testing.T) {
 			want: &downscaleState{
 				masterRemovalInProgress: false, runningMasters: 1, removalsAllowed: new(int32(0)), drainingRemovalsAllowed: new(int32(1)),
 				unavailableMasters: sets.New("master-1"), unavailableDrainingPods: sets.New("master-1", "data-1"), drainingMasters: sets.New("master-1"),
+				readyPods: sets.New("master-0", "data-0"),
 			},
 		},
 		{
@@ -170,6 +174,7 @@ func Test_newDownscaleState(t *testing.T) {
 			want: &downscaleState{
 				masterRemovalInProgress: false, runningMasters: 1, removalsAllowed: new(int32(0)), drainingRemovalsAllowed: new(int32(1)),
 				unavailableMasters: sets.New("master-1", "master-2"), unavailableDrainingPods: sets.New("master-1"),
+				readyPods: sets.New("master-0", "data-0"),
 			},
 		},
 		{
@@ -187,6 +192,7 @@ func Test_newDownscaleState(t *testing.T) {
 			want: &downscaleState{
 				masterRemovalInProgress: false, runningMasters: 2, removalsAllowed: new(int32(0)), drainingRemovalsAllowed: new(int32(1)),
 				unavailableMasters: sets.New("b-0", "b-1"), unavailableDrainingPods: sets.New("b-0", "b-1"), drainingMasters: sets.New("b-1"),
+				readyPods: sets.New("a-0", "a-1"),
 			},
 		},
 		{
@@ -197,6 +203,7 @@ func Test_newDownscaleState(t *testing.T) {
 			want: &downscaleState{
 				masterRemovalInProgress: false, runningMasters: 1, removalsAllowed: new(int32(0)), drainingRemovalsAllowed: new(int32(1)),
 				unavailableMasters: sets.New("master-1", "master-2"), unavailableDrainingPods: sets.New("master-2"), drainingMasters: sets.New("master-2"),
+				readyPods: sets.New("master-0"),
 			},
 		},
 		{
@@ -207,14 +214,18 @@ func Test_newDownscaleState(t *testing.T) {
 			want: &downscaleState{
 				masterRemovalInProgress: false, runningMasters: 1, removalsAllowed: new(int32(0)), drainingRemovalsAllowed: new(int32(1)),
 				unavailableMasters: sets.New("master-1"), drainingMasters: sets.New("master-1"),
+				readyPods: sets.New("master-0"),
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := newDownscaleState(tt.actualPods, tt.actualStatefulSets, es, tt.nodesWithShutdown, nil)
+			got, err := newDownscaleState(downscaleContext{es: es, parentCtx: t.Context()}, nil, downscaleStateParams{
+				actualPods: tt.actualPods, actualStatefulSets: tt.actualStatefulSets, nodesWithShutdown: tt.nodesWithShutdown,
+			})
+			require.NoError(t, err)
 			// the sets omitted from the expected state are empty
-			for _, s := range []*sets.Set[string]{&tt.want.unavailableDrainingPods, &tt.want.unavailableMasters, &tt.want.drainingMasters} {
+			for _, s := range []*sets.Set[string]{&tt.want.unavailableDrainingPods, &tt.want.unavailableMasters, &tt.want.drainingMasters, &tt.want.readyPods} {
 				if *s == nil {
 					*s = sets.New[string]()
 				}
@@ -222,6 +233,112 @@ func Test_newDownscaleState(t *testing.T) {
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewDownscaleInvariants() got = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+// newTestDownscaleState returns the state of the given Pods and StatefulSets, whose leaving nodes are all members of the
+// cluster.
+func newTestDownscaleState(
+	t *testing.T,
+	actualPods []corev1.Pod,
+	actualStatefulSets es_sset.StatefulSetList,
+	es esv1.Elasticsearch,
+	nodesWithShutdown sets.Set[string],
+) *downscaleState {
+	t.Helper()
+	state, err := newDownscaleState(downscaleContext{es: es, parentCtx: t.Context()}, nil, downscaleStateParams{
+		actualPods: actualPods, actualStatefulSets: actualStatefulSets, nodesWithShutdown: nodesWithShutdown,
+	})
+	require.NoError(t, err)
+	return state
+}
+
+func Test_newNonMemberState(t *testing.T) {
+	removedPod := sset.PodName(ssetData4Replicas.Name, 3)
+	// the Pod of a StatefulSet that is no longer expected cannot join the cluster, the other one may
+	removedNodeSetPod := sset.TestPod{Namespace: ssetData4Replicas.Namespace, Name: removedPod, StatefulSetName: ssetData4Replicas.Name, ClusterName: clusterName}.Build()
+	missingPod := sset.PodName(ssetData4Replicas.Name, 2)
+	// the node IDs of the fake Elasticsearch state are the node names
+	settledNodes := esclient.Nodes{Nodes: map[string]esclient.Node{"other-0": {Name: "other-0"}}}
+	greenHealth := esclient.Health{Status: esv1.ElasticsearchGreenHealth, NumberOfNodes: 1}
+
+	tests := []struct {
+		name         string
+		notMembers   sets.Set[string]
+		partialNodes bool
+		partialErr   error
+		nodes        esclient.Nodes
+		health       esclient.Health
+		wantErr      bool
+		wantState    nonMemberState // the func is compared by whether it is set
+		// wantRemovalsAllowed is the result of nonMemberRemovalsAllowed, which is false if it is not set
+		wantRemovalsAllowed bool
+		wantHealthRequests  int
+	}{
+		{
+			name:       "should be empty without non-members, without requesting the nodes response",
+			partialErr: errors.New("nodes error"),
+		},
+		{
+			name:         "should hold the non-members of a partial nodes response, without checking the cluster",
+			notMembers:   sets.New(removedPod),
+			partialNodes: true,
+			wantState: nonMemberState{
+				nonMembers:   map[string]nonMember{removedPod: {cannotJoin: true}},
+				partialNodes: true,
+			},
+		},
+		{
+			name:       "should classify the non-members and allow removing those that cannot join from a settled cluster",
+			notMembers: sets.New(removedPod, missingPod),
+			nodes:      settledNodes,
+			health:     greenHealth,
+			wantState: nonMemberState{
+				nonMembers: map[string]nonMember{removedPod: {cannotJoin: true}, missingPod: {}},
+			},
+			wantRemovalsAllowed: true,
+			wantHealthRequests:  1,
+		},
+		{
+			name:       "should not allow removing the non-members from a cluster that is not green",
+			notMembers: sets.New(removedPod),
+			nodes:      settledNodes,
+			health:     esclient.Health{Status: esv1.ElasticsearchYellowHealth, NumberOfNodes: 1},
+			wantState: nonMemberState{
+				nonMembers: map[string]nonMember{removedPod: {cannotJoin: true}},
+			},
+			wantHealthRequests: 1,
+		},
+		{
+			name:       "should return the error of the nodes response",
+			notMembers: sets.New(removedPod),
+			partialErr: errors.New("nodes error"),
+			wantErr:    true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			esClient := &fakeESClient{nodes: tt.nodes, health: tt.health}
+			esState := &testESState{inCluster: []string{"other-0"}, partialNodes: tt.partialNodes, partialNodesErr: tt.partialErr}
+			got, err := newNonMemberState(
+				downscaleContext{esClient: esClient, parentCtx: t.Context()},
+				&leavingNodes{esState: esState},
+				downscaleStateParams{
+					actualPods:         []corev1.Pod{removedNodeSetPod},
+					actualStatefulSets: es_sset.StatefulSetList{ssetData4Replicas},
+					notMembers:         tt.notMembers,
+				},
+			)
+			require.Equal(t, tt.wantErr, err != nil)
+			// the cluster is only checked when a removal asks for it, and only once
+			require.Zero(t, esClient.GetClusterHealthCalledCount)
+			removalsAllowed := func() bool { return got.nonMemberRemovalsAllowed != nil && got.nonMemberRemovalsAllowed() }
+			require.Equal(t, tt.wantRemovalsAllowed, removalsAllowed())
+			require.Equal(t, tt.wantRemovalsAllowed, removalsAllowed())
+			require.Equal(t, tt.wantHealthRequests, esClient.GetClusterHealthCalledCount)
+			require.Equal(t, tt.wantState.nonMembers, got.nonMembers)
+			require.Equal(t, tt.wantState.partialNodes, got.partialNodes)
 		})
 	}
 }
@@ -277,12 +394,12 @@ func Test_checkDownscaleInvariants(t *testing.T) {
 	// 1, the budget does not allow any removal
 	terminatingDrainingPod := dataPod(3, false)
 	terminatingDrainingPod.DeletionTimestamp = &metav1.Time{Time: time.Now()}
-	terminatingDrainingDataState := newDownscaleState(
+	terminatingDrainingDataState := newTestDownscaleState(
+		t,
 		[]corev1.Pod{dataPod(0, true), dataPod(1, true), dataPod(2, false), terminatingDrainingPod},
 		es_sset.StatefulSetList{ssetData4Replicas},
 		esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Count: 3}}}},
 		sets.New(terminatingDrainingPod.Name),
-		nil,
 	)
 	masterPod := func(ordinal int32, ready bool) corev1.Pod {
 		return sset.TestPod{
@@ -294,21 +411,21 @@ func Test_checkDownscaleInvariants(t *testing.T) {
 	// the budget allows the removal
 	terminatingMasterPod := masterPod(1, true)
 	terminatingMasterPod.DeletionTimestamp = &metav1.Time{Time: time.Now()}
-	drainingMasterWithTerminatingMasterState := newDownscaleState(
+	drainingMasterWithTerminatingMasterState := newTestDownscaleState(
+		t,
 		[]corev1.Pod{masterPod(0, false), terminatingMasterPod, masterPod(2, false)},
 		es_sset.StatefulSetList{ssetMaster3Replicas},
 		esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Count: 1}}}},
 		sets.New(sset.PodName(ssetMaster3Replicas.Name, 2)),
-		nil,
 	)
 	// the last master is draining and the Pod of another master is missing: with 2 desired nodes and maxUnavailable 1, the
 	// budget does not allow the removal
-	drainingMasterWithMissingMasterState := newDownscaleState(
+	drainingMasterWithMissingMasterState := newTestDownscaleState(
+		t,
 		[]corev1.Pod{masterPod(0, true), masterPod(2, false)},
 		es_sset.StatefulSetList{ssetMaster3Replicas},
 		esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Count: 2}}}},
 		sets.New(sset.PodName(ssetMaster3Replicas.Name, 2)),
-		nil,
 	)
 	// the StatefulSet "changed" already has a data-only template, but its Pods still run as masters, and its last one is
 	// draining: with 3 desired nodes and maxUnavailable 1, the budget does not allow any removal
@@ -321,12 +438,12 @@ func Test_checkDownscaleInvariants(t *testing.T) {
 				StatefulSetName: statefulSet.Name, ClusterName: clusterName, Master: true, Data: true, Ready: ready,
 			}.Build()
 		}
-		return newDownscaleState(
+		return newTestDownscaleState(
+			t,
 			[]corev1.Pod{pod(ssetChangedToData, 0, true), pod(ssetChangedToData, 1, false), pod(ssetOtherMaster, 0, otherMasterReady)},
 			es_sset.StatefulSetList{ssetChangedToData, ssetOtherMaster},
 			esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Name: "changed", Count: 1}, {Name: "other", Count: 2}}}},
 			sets.New("changed-1"),
-			nil,
 		)
 	}
 
@@ -340,12 +457,12 @@ func Test_checkDownscaleInvariants(t *testing.T) {
 		}.Build()
 	}
 	drainingMasterInAnotherStatefulSetState := func() *downscaleState {
-		return newDownscaleState(
+		return newTestDownscaleState(
+			t,
 			[]corev1.Pod{mastersPod(ssetMastersA, 0, true), mastersPod(ssetMastersA, 1, true), mastersPod(ssetMastersB, 0, true), mastersPod(ssetMastersB, 1, false)},
 			es_sset.StatefulSetList{ssetMastersA, ssetMastersB},
 			esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Name: "a", Count: 1}, {Name: "b", Count: 1}}}},
 			sets.New("b-1"),
-			nil,
 		)
 	}
 
@@ -557,21 +674,82 @@ func Test_checkDownscaleInvariants(t *testing.T) {
 		},
 		{
 			name:             "should not allow removing a data node that is not a member of the cluster",
-			state:            &downscaleState{runningMasters: 1, removalsAllowed: new(int32(1)), notMembers: sets.New(sset.PodName(ssetData4Replicas.Name, 3))},
+			state:            &downscaleState{runningMasters: 1, removalsAllowed: new(int32(1)), nonMembers: map[string]nonMember{sset.PodName(ssetData4Replicas.Name, 3): {}}},
 			statefulSet:      ssetData4Replicas,
 			wantCanDownscale: false,
 			wantReason:       NodeNotInClusterInvariant + ": " + sset.PodName(ssetData4Replicas.Name, 3),
 		},
 		{
 			name:             "should say that a node that is not a member of the cluster may not have answered if the nodes response is partial",
-			state:            &downscaleState{runningMasters: 1, removalsAllowed: new(int32(1)), notMembers: sets.New(sset.PodName(ssetData4Replicas.Name, 3)), partialNodes: true},
+			state:            &downscaleState{runningMasters: 1, removalsAllowed: new(int32(1)), nonMembers: map[string]nonMember{sset.PodName(ssetData4Replicas.Name, 3): {}}, partialNodes: true},
 			statefulSet:      ssetData4Replicas,
 			wantCanDownscale: false,
 			wantReason:       NodeNotInClusterPartialInvariant + ": " + sset.PodName(ssetData4Replicas.Name, 3),
 		},
 		{
+			name:             "should hold a node of a removed NodeSet that is not a member of the cluster until the cluster is settled",
+			state:            &downscaleState{runningMasters: 1, removalsAllowed: new(int32(1)), nonMembers: map[string]nonMember{sset.PodName(ssetData4Replicas.Name, 3): {cannotJoin: true}}},
+			statefulSet:      ssetData4Replicas,
+			wantCanDownscale: false,
+			wantReason:       NodeNotInClusterNotSettledInvariant + ": " + sset.PodName(ssetData4Replicas.Name, 3),
+		},
+		{
+			name:             "should say that a node of a removed NodeSet may not have answered rather than wait for the cluster if the response is partial",
+			state:            &downscaleState{runningMasters: 1, removalsAllowed: new(int32(1)), nonMembers: map[string]nonMember{sset.PodName(ssetData4Replicas.Name, 3): {cannotJoin: true}}, partialNodes: true},
+			statefulSet:      ssetData4Replicas,
+			wantCanDownscale: false,
+			wantReason:       NodeNotInClusterPartialInvariant + ": " + sset.PodName(ssetData4Replicas.Name, 3),
+		},
+		{
+			name: "should allow removing a node of a removed NodeSet that is not a member of the cluster without consuming the budget",
+			state: &downscaleState{
+				runningMasters: 1, removalsAllowed: new(int32(0)),
+				nonMembers:               map[string]nonMember{sset.PodName(ssetData4Replicas.Name, 3): {cannotJoin: true}},
+				nonMemberRemovalsAllowed: func() bool { return true },
+			},
+			statefulSet:      ssetData4Replicas,
+			wantCanDownscale: true,
+		},
+		{
+			// a ready Pod is available, for example with a readiness probe that does not check membership
+			name: "should hold a removable node that is not a member of the cluster but is ready when the budget does not allow it",
+			state: &downscaleState{
+				runningMasters: 1, removalsAllowed: new(int32(0)),
+				readyPods:                sets.New(sset.PodName(ssetData4Replicas.Name, 3)),
+				nonMembers:               map[string]nonMember{sset.PodName(ssetData4Replicas.Name, 3): {cannotJoin: true}},
+				nonMemberRemovalsAllowed: func() bool { return true },
+			},
+			statefulSet:      ssetData4Replicas,
+			wantCanDownscale: false,
+			wantReason:       RespectMaxUnavailableInvariant,
+		},
+		{
+			name: "should allow removing a removable node that is not a member of the cluster but is ready when the budget allows it",
+			state: &downscaleState{
+				runningMasters: 1, removalsAllowed: new(int32(1)),
+				readyPods:                sets.New(sset.PodName(ssetData4Replicas.Name, 3)),
+				nonMembers:               map[string]nonMember{sset.PodName(ssetData4Replicas.Name, 3): {cannotJoin: true}},
+				nonMemberRemovalsAllowed: func() bool { return true },
+			},
+			statefulSet:      ssetData4Replicas,
+			wantCanDownscale: true,
+		},
+		{
+			// the node with the highest ordinal is removable, the next one needs budget, which is used up
+			name: "should hold the nodes after a removable node that is not a member of the cluster when the budget does not allow them",
+			state: &downscaleState{
+				runningMasters: 1, removalsAllowed: new(int32(0)),
+				nonMembers:               map[string]nonMember{sset.PodName(ssetData4Replicas.Name, 3): {cannotJoin: true}},
+				nonMemberRemovalsAllowed: func() bool { return true },
+			},
+			statefulSet:      ssetData4Replicas,
+			requestedDeletes: 2,
+			wantCanDownscale: true,
+			wantReason:       RespectMaxUnavailableInvariant,
+		},
+		{
 			name:             "should report the node that is not a member of the cluster when it holds the removal of the other data nodes",
-			state:            &downscaleState{runningMasters: 1, removalsAllowed: new(int32(3)), notMembers: sets.New(sset.PodName(ssetData4Replicas.Name, 2))},
+			state:            &downscaleState{runningMasters: 1, removalsAllowed: new(int32(3)), nonMembers: map[string]nonMember{sset.PodName(ssetData4Replicas.Name, 2): {}}},
 			statefulSet:      ssetData4Replicas,
 			requestedDeletes: 3,
 			wantCanDownscale: true,
@@ -579,13 +757,13 @@ func Test_checkDownscaleInvariants(t *testing.T) {
 		},
 		{
 			name:             "should not hold the removal of the data nodes with a higher ordinal than a node that is not a member of the cluster",
-			state:            &downscaleState{runningMasters: 1, removalsAllowed: new(int32(1)), notMembers: sets.New(sset.PodName(ssetData4Replicas.Name, 2))},
+			state:            &downscaleState{runningMasters: 1, removalsAllowed: new(int32(1)), nonMembers: map[string]nonMember{sset.PodName(ssetData4Replicas.Name, 2): {}}},
 			statefulSet:      ssetData4Replicas,
 			wantCanDownscale: true,
 		},
 		{
 			name:             "should not allow removing a master that is not a member of the cluster",
-			state:            &downscaleState{runningMasters: 2, removalsAllowed: new(int32(1)), notMembers: sets.New(sset.PodName(ssetMaster3Replicas.Name, 2))},
+			state:            &downscaleState{runningMasters: 2, removalsAllowed: new(int32(1)), nonMembers: map[string]nonMember{sset.PodName(ssetMaster3Replicas.Name, 2): {}}},
 			statefulSet:      ssetMaster3Replicas,
 			wantCanDownscale: false,
 			wantReason:       NodeNotInClusterInvariant + ": " + sset.PodName(ssetMaster3Replicas.Name, 2),

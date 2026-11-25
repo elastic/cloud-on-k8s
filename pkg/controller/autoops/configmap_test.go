@@ -295,7 +295,7 @@ func mkReconciler(t *testing.T, objects ...client.Object) *AgentPolicyReconciler
 	c := k8s.NewFakeClient(objects...)
 	return &AgentPolicyReconciler{
 		Client:         c,
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches("testCtr"),
 		recorder:       toolsevents.NewFakeRecorder(10),
 	}
 }

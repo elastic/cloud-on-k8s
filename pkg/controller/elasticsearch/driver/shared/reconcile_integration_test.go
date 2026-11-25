@@ -724,7 +724,7 @@ func mustBuildExpectedConfigMaps(t *testing.T, es *esv1.Elasticsearch, resourceV
 	labels[commonv1.RestrictWatchedResourcesLabelName] = commonv1.RestrictWatchedResourcesLabelValue
 	ownerReferences := newOwnerReference(es)
 
-	fsScript, err := initcontainer.RenderPrepareFsScript(es.DownwardNodeLabels())
+	fsScript, err := initcontainer.RenderPrepareFsScript(es.DownwardNodeLabels(), es.HasPlugins())
 	require.NoError(t, err, "error rendering FS script")
 	preStopScript, err := nodespec.RenderPreStopHookScript(services.InternalServiceURL(*es))
 	require.NoError(t, err, "error rendering preStop script")
@@ -990,7 +990,7 @@ func (s *staticPasswordHasher) ReuseOrGenerateHash(password, _ []byte) ([]byte, 
 
 func mustBuildParams(t *testing.T, listeningServer *httptest.Server, ver string, defaultURL string, numRemoteCAs int, initK8sObjects ...client.Object) driver.Parameters {
 	t.Helper()
-	watches := commonwatches.NewDynamicWatches()
+	watches := commonwatches.NewDynamicWatches("testCtr")
 	operatorParams := operator.Parameters{
 		PasswordGenerator: &staticPasswordGenerator{},
 		PasswordHasher:    &staticPasswordHasher{},

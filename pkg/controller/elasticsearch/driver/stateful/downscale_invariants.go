@@ -7,12 +7,12 @@ package stateful
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 
-	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	sset "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/statefulset"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/reconcile"
@@ -24,9 +24,14 @@ const (
 	OneMasterAtATimeInvariant        = "A master node is already in the process of being removed"
 	AtLeastOneRunningMasterInvariant = "Cannot remove the last running master node"
 	RespectMaxUnavailableInvariant   = "Not removing node to respect maxUnavailable setting"
-	NodeNotInClusterInvariant        = "Not removing node that is not a member of the cluster"
+	// NodeNotInClusterInvariant is used for a node that is not a member of the cluster and may join it.
+	NodeNotInClusterInvariant = "Not removing node that is not a member of the cluster until it joins it; if it keeps " +
+		"failing, check why its Pod does not start"
 	// NodeNotInClusterPartialInvariant is used instead of NodeNotInClusterInvariant if the nodes response is partial.
 	NodeNotInClusterPartialInvariant = "Not removing node that is not a member of the cluster, or that did not answer the nodes request"
+	// NodeNotInClusterNotSettledInvariant is used for a node that is not a member of the cluster and cannot join it
+	// while clusterIsSettled is false.
+	NodeNotInClusterNotSettledInvariant = "Not removing node that is not a member of the cluster and cannot join it until the cluster is confirmed green with no shard activity"
 )
 
 // checkDownscaleInvariants returns the removals of nodes that the given state allows when downscaling the given
@@ -47,13 +52,11 @@ func checkDownscaleInvariants(state downscaleState, statefulSet appsv1.StatefulS
 	removals := state.getMaxNodesToRemove(statefulSet, requestedDeletes)
 
 	if removals.count < requestedDeletes {
-		// the removals stop at the next Pod: it may be a node that is not a member of the cluster
-		if next := sset.PodName(statefulSet.Name, sset.GetReplicas(statefulSet)-removals.count-1); state.notMembers.Has(next) {
-			reason := NodeNotInClusterInvariant
-			if state.partialNodes {
-				reason = NodeNotInClusterPartialInvariant
-			}
-			return removals, fmt.Sprintf("%s: %s", reason, next)
+		// the removals stop at the next Pod: it may be a node that is not a member of the cluster, unless it is removable,
+		// as then the budget holds it
+		next := sset.PodName(statefulSet.Name, sset.GetReplicas(statefulSet)-removals.count-1)
+		if state.isNotMember(next) && !state.isRemovableNonMember(next) {
+			return removals, state.nonMemberHeldReason(next)
 		}
 	}
 
@@ -112,23 +115,104 @@ type downscaleState struct {
 	// drainingMasters are the draining master Pods that are the next to be removed from their StatefulSet: their removal
 	// is in progress, even if they are ready or terminating, as their shutdown is kept.
 	drainingMasters sets.Set[string]
-	// notMembers are the Pods that are not members of the cluster, for example because they never joined it. They cannot
-	// be shut down and may still hold data: their removal is held until they join the cluster.
-	notMembers sets.Set[string]
+	// readyPods are the ready Pods, which the budget counts as available. A Pod that is not a member of the cluster is
+	// usually not ready, but may be, for example with a readiness probe that does not check membership.
+	readyPods sets.Set[string]
+	// nonMemberState holds what the downscale knows about the leaving Pods that are not members of the cluster.
+	nonMemberState
+}
+
+// nonMemberState is the state of the leaving Pods that are not members of the cluster. Its zero value means that every
+// leaving Pod is a member.
+type nonMemberState struct {
+	// nonMembers are the leaving Pods that are not members of the cluster, by name, see classifyNonMembers.
+	nonMembers map[string]nonMember
+	// nonMemberRemovalsAllowed returns true if the Pods that cannot join the cluster can be removed, nil meaning they cannot.
+	// It may request Elasticsearch, so it is only called when such a Pod is the next to be removed.
+	nonMemberRemovalsAllowed func() bool
 	// partialNodes is true if the nodes response is partial: a Pod that is not a member may be a member that did not
 	// answer, which the reason why its removal is held says.
 	partialNodes bool
 }
 
-// newDownscaleState creates a new downscaleState. nodesWithShutdown are the desired leaving nodes that have a remove-type
-// shutdown registered, and notMembers the ones that are not members of the cluster.
-func newDownscaleState(
-	actualPods []corev1.Pod,
-	actualStatefulSets es_sset.StatefulSetList,
-	es esv1.Elasticsearch,
-	nodesWithShutdown sets.Set[string],
-	notMembers sets.Set[string],
-) *downscaleState {
+// nonMemberRemovedReason is why a node that is not a member of the cluster and cannot join it is removed without a
+// shutdown.
+const nonMemberRemovedReason = "it is not a member of the cluster and cannot join it, and the cluster is green with no shard activity: its storage holds no shard copy that the cluster lacks"
+
+// nonMember is a leaving node that is not a member of the cluster.
+type nonMember struct {
+	// cannotJoin is true if nothing will repair the node, see classifyNonMembers, which is not a guarantee that it never
+	// joins: it is removed without a shutdown once the cluster is settled, see nonMemberState.nonMemberRemovalsAllowed,
+	// and may lose a shard if it joins before the StatefulSet update. Otherwise, it is held until it joins.
+	cannotJoin bool
+}
+
+// heldReason returns why the removal of the given Pod, which is this node, is held, unless the nodes response is
+// partial.
+func (n nonMember) heldReason(podName string) string {
+	reason := NodeNotInClusterInvariant
+	if n.cannotJoin {
+		reason = NodeNotInClusterNotSettledInvariant
+	}
+	return fmt.Sprintf("%s: %s", reason, podName)
+}
+
+// isNotMember returns true if the given Pod is not a member of the cluster.
+func (s nonMemberState) isNotMember(podName string) bool {
+	_, ok := s.nonMembers[podName]
+	return ok
+}
+
+// isRemovableNonMember returns true if the given Pod is not a member of the cluster and its removal is allowed without
+// a shutdown.
+func (s nonMemberState) isRemovableNonMember(podName string) bool {
+	nonMember, ok := s.nonMembers[podName]
+	return ok && nonMember.cannotJoin && s.nonMemberRemovalsAllowed != nil && s.nonMemberRemovalsAllowed()
+}
+
+// removableNonMembersAmong returns the given Pods that are removable non-members, or nil if there are none.
+func (s nonMemberState) removableNonMembersAmong(podNames []string) sets.Set[string] {
+	var removable sets.Set[string]
+	for _, podName := range podNames {
+		if !s.isRemovableNonMember(podName) {
+			continue
+		}
+		if removable == nil {
+			removable = sets.New[string]()
+		}
+		removable.Insert(podName)
+	}
+	return removable
+}
+
+// nonMemberHeldReason returns why the removal of the given Pod, which is not a member of the cluster, is held.
+func (s nonMemberState) nonMemberHeldReason(podName string) string {
+	if s.partialNodes {
+		return fmt.Sprintf("%s: %s", NodeNotInClusterPartialInvariant, podName)
+	}
+	return s.nonMembers[podName].heldReason(podName)
+}
+
+// downscaleStateParams are the observed resources a downscaleState is computed from.
+type downscaleStateParams struct {
+	actualPods           []corev1.Pod
+	expectedStatefulSets es_sset.StatefulSetList
+	actualStatefulSets   es_sset.StatefulSetList
+	// nodesWithShutdown are the desired leaving nodes that have a remove-type shutdown registered.
+	nodesWithShutdown sets.Set[string]
+	// notMembers are the desired leaving nodes that are not members of the cluster.
+	notMembers sets.Set[string]
+}
+
+// newDownscaleState creates a new downscaleState, retrieving the state of the nodes that are not members of the cluster
+// through the downscale context and the leaving nodes.
+func newDownscaleState(downscaleCtx downscaleContext, leaving *leavingNodes, params downscaleStateParams) (*downscaleState, error) {
+	es := downscaleCtx.es
+	actualPods, actualStatefulSets, nodesWithShutdown := params.actualPods, params.actualStatefulSets, params.nodesWithShutdown
+	nonMembers, err := newNonMemberState(downscaleCtx, leaving, params)
+	if err != nil {
+		return nil, err
+	}
 	// retrieve the masters that are not running: a ready but terminating master may be stopping
 	masters := label.FilterMasterNodePods(actualPods)
 	unavailableMasters := unavailablePods(masters)
@@ -151,8 +235,34 @@ func newDownscaleState(
 		unavailableMasters:      unavailableMasters,
 		drainingRemovalsAllowed: calculateDrainingRemovalsAllowed(maxUnavailable),
 		drainingMasters:         drainingMasterNodes(actualStatefulSets, nodesWithShutdown),
-		notMembers:              notMembers,
+		readyPods:               sets.New(k8s.PodNames(nodesReady)...),
+		nonMemberState:          nonMembers,
+	}, nil
+}
+
+// newNonMemberState returns the state of the given leaving nodes that are not members of the cluster, which is the zero
+// value if there are none.
+func newNonMemberState(downscaleCtx downscaleContext, leaving *leavingNodes, params downscaleStateParams) (nonMemberState, error) {
+	if params.notMembers.Len() == 0 {
+		return nonMemberState{}, nil
 	}
+	// a node that is not a member may be a member that did not answer, the reason why it is held says so
+	partial, err := leaving.esState.NodesResponsePartial()
+	if err != nil {
+		return nonMemberState{}, err
+	}
+	state := nonMemberState{
+		nonMembers:   classifyNonMembers(params.notMembers, params.expectedStatefulSets, params.actualStatefulSets, params.actualPods),
+		partialNodes: partial,
+	}
+	// a node that cannot join is only removed from a settled cluster, which is checked at most once, and only when
+	// such a node is the next to be removed
+	if !partial {
+		state.nonMemberRemovalsAllowed = sync.OnceValue(func() bool {
+			return clusterIsSettled(downscaleCtx.parentCtx, downscaleCtx.esClient, leaving.esState)
+		})
+	}
+	return state, nil
 }
 
 // drainingMasterNodes returns the names of the Pods with the highest ordinal of the given master StatefulSets that are
@@ -262,7 +372,8 @@ type nodeRemovals struct {
 }
 
 // getMaxNodesToRemove returns the removals, up to the given number, of the Pods with the highest ordinals of the given
-// StatefulSet that the budget and the draining removals allow.
+// StatefulSet that the budget and the draining removals allow. They stop at a node that is not a member of the cluster,
+// unless it is removable, which only consumes the budget if its Pod is ready.
 func (s *downscaleState) getMaxNodesToRemove(statefulSet appsv1.StatefulSet, noMoreThan int32) nodeRemovals {
 	replicas := sset.GetReplicas(statefulSet)
 	var removals nodeRemovals
@@ -270,13 +381,19 @@ func (s *downscaleState) getMaxNodesToRemove(statefulSet appsv1.StatefulSet, noM
 		// consider the next Pod with the highest ordinal
 		next := removals
 		next.count++
-		if s.notMembers.Has(sset.PodName(statefulSet.Name, replicas-next.count)) {
+		podName := sset.PodName(statefulSet.Name, replicas-next.count)
+		switch {
+		case s.isRemovableNonMember(podName):
+			// the node has no shutdown to wait for: it only consumes the budget if its Pod is ready, as it is available then
+			if s.readyPods.Has(podName) {
+				next.cost++
+			}
+		case s.isNotMember(podName):
 			// the node cannot be shut down, and the ones with a lower ordinal are removed after it
-			break
-		}
-		if s.isDrainingRemoval(sset.PodName(statefulSet.Name, replicas-next.count)) {
+			return removals
+		case s.isDrainingRemoval(podName):
 			next.drainingRemovals++
-		} else {
+		default:
 			next.cost++
 		}
 		if !withinLimit(next.cost, s.removalsAllowed) || !withinLimit(next.drainingRemovals, s.drainingRemovalsAllowed) {

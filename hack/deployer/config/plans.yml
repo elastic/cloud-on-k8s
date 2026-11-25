@@ -92,7 +92,7 @@ plans:
   operation: create
   clusterName: ci
   provider: aks
-  kubernetesVersion: 1.34.1
+  kubernetesVersion: 1.36
   machineType: Standard_D8s_v3
   serviceAccount: true
   enforceSecurityPolicies: true
@@ -106,7 +106,7 @@ plans:
   operation: create
   clusterName: dev
   provider: aks
-  kubernetesVersion: 1.34.1
+  kubernetesVersion: 1.36
   machineType: Standard_D8s_v3
   serviceAccount: false
   enforceSecurityPolicies: true
@@ -117,7 +117,7 @@ plans:
 - id: ocp-ci
   operation: create
   clusterName: ci
-  clientVersion: 4.22.2
+  clientVersion: 5.0.2
   provider: ocp
   machineType: e2-standard-8
   serviceAccount: true
@@ -128,7 +128,7 @@ plans:
 - id: ocp-dev
   operation: create
   clusterName: dev
-  clientVersion: 4.22.2
+  clientVersion: 5.0.2
   provider: ocp
   machineType: e2-standard-8
   serviceAccount: true
@@ -143,7 +143,7 @@ plans:
   machineType: c5d.2xlarge
   serviceAccount: false
   enforceSecurityPolicies: true
-  kubernetesVersion: 1.34
+  kubernetesVersion: 1.36
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
     region: ap-northeast-1
@@ -156,7 +156,7 @@ plans:
   machineType: m6gd.2xlarge
   serviceAccount: false
   enforceSecurityPolicies: true
-  kubernetesVersion: 1.34
+  kubernetesVersion: 1.36
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   eks:
     region: eu-west-1
@@ -168,7 +168,7 @@ plans:
   provider: eks
   machineType: c5d.2xlarge
   serviceAccount: false
-  kubernetesVersion: 1.34
+  kubernetesVersion: 1.36
   diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
   enforceSecurityPolicies: true
   eks:

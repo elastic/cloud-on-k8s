@@ -56,8 +56,8 @@ func SkipUnsupportedStackVariantVersions(t *testing.T, versions ...string) {
 // All stack components publish a -wolfi image variant starting with 8.16.0. However, Logstash lacks the
 // openssl binary needed by ECK to inject TLS certificates until 8.16.4, 8.17.2, and 8.18+; without it
 // the operator cannot bring up a Logstash instance in a TLS-enabled cluster (see https://github.com/elastic/logstash/issues/16965).
-// APM does not offer a shell in any Wolfi variant version, but this affects only secure settings functionality;
-// the respective tests are skipped individually.
+// APM does not offer a shell in any Wolfi variant version, this affects only secure settings functionality for versions
+// that do not support populating the keystore with `keystore add --from-dir`; the respective tests are skipped individually.
 func isVersionSupportedForWolfi(ver version.Version) (bool, string) {
 	switch {
 	case ver.Major == 7:

@@ -159,7 +159,7 @@ func TestParseConfigRef(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeRecorder := toolsevents.NewFakeRecorder(10)
-			w := watches.NewDynamicWatches()
+			w := watches.NewDynamicWatches("testCtr")
 			for _, existingWatch := range tt.existingWatches {
 				require.NoError(t, w.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{Name: existingWatch}))
 			}
@@ -383,7 +383,7 @@ func TestParseConfigMapOrSecretRefToConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeRecorder := toolsevents.NewFakeRecorder(10)
-			w := watches.NewDynamicWatches()
+			w := watches.NewDynamicWatches("testCtr")
 			for _, name := range tt.existingSecretWatch {
 				require.NoError(t, w.Secrets.AddHandler(watches.NamedWatch[*corev1.Secret]{Name: name}))
 			}

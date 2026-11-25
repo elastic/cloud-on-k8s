@@ -80,7 +80,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 		licenseChecker: license.NewLicenseChecker(client, params.OperatorNamespace),
 		esObservers:    observer.NewManager(params.ElasticsearchObservationInterval, params.Tracer),
 
-		dynamicWatches: watches.NewDynamicWatches(),
+		dynamicWatches: watches.NewDynamicWatches(name),
 		expectations:   expectations.NewClustersExpectations(client, &appsv1.StatefulSet{}),
 
 		Parameters: params,

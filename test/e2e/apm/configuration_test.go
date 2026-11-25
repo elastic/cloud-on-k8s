@@ -11,18 +11,17 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pkg/errors"
-	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/rand"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
+	apmcontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/container"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/services"
-	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/apmserver"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
@@ -35,29 +34,30 @@ const (
 
 var APMKeystoreCmd = []string{APMKeystoreBin, APMKeystoreOption}
 
-type PartialApmConfiguration struct {
-	Output struct {
-		Elasticsearch struct {
-			Hosts            []string `yaml:"hosts"`
-			CompressionLevel int      `yaml:"compression_level"`
-		} `yaml:"elasticsearch"`
-	} `yaml:"output"`
-}
+const (
+	// secureSettingKey is the keystore entry referenced in the APM Server configuration
+	secureSettingKey = "E2E_RESPONSE_HEADER"
+	// secureSettingResponseHeader is the HTTP response header APM Server sets to the value of secureSettingKey
+	secureSettingResponseHeader = "X-E2E-Secure-Setting"
+)
 
 func TestUpdateConfiguration(t *testing.T) {
-	if test.Ctx().ContainerSuffix == container.WolfiSuffix {
-		// TODO: revert when https://github.com/elastic/apm-server/issues/21863 is implemented
+	if test.Ctx().ContainerSuffix == container.WolfiSuffix &&
+		!apmcontroller.SupportsKeystoreAddFromDir(version.MustParse(test.Ctx().ElasticStackVersion)) {
+		// the APM Server Wolfi image has no shell to run the keystore script, which is only needed by versions
+		// that do not support populating the keystore with `keystore add --from-dir`
 		t.SkipNow()
 	}
 	// user-provided secure settings secret
 	secureSettingsSecretName := "secure-settings-secret"
+	secureSettingValue := rand.String(16)
 	secureSettings := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secureSettingsSecretName,
 			Namespace: test.Ctx().ManagedNamespace(0),
 		},
 		Data: map[string][]byte{
-			"logging.verbose": []byte("true"),
+			secureSettingKey: []byte(secureSettingValue),
 		},
 	}
 
@@ -95,24 +95,8 @@ func TestUpdateConfiguration(t *testing.T) {
 	var previousPodUID *types.UID
 	stepsFn := func(k *test.K8sClient) test.StepList {
 		return test.StepList{
-			{
-				Name: "Check the value of a parameter in the configuration",
-				Test: test.Eventually(func() error {
-					config, err := partialAPMConfiguration(k, namespace, apmName)
-					if err != nil {
-						return err
-					}
-
-					esHost := services.ExternalServiceURL(esBuilder.Elasticsearch)
-					if config.Output.Elasticsearch.Hosts[0] != esHost {
-						return fmt.Errorf("expected es host %s but got %s", esHost, config.Output.Elasticsearch.Hosts[0])
-					}
-					if config.Output.Elasticsearch.CompressionLevel != 0 { // CompressionLevel is not set by default
-						return fmt.Errorf("expected compression level 0 but got %d", config.Output.Elasticsearch.CompressionLevel)
-					}
-					return nil
-				}),
-			},
+			// the response header is not configured by default
+			checkResponseHeader(t, k, apmNamespacedName, ""),
 			test.Step{
 				Name: "Add a Keystore to the APM server",
 				Test: test.Eventually(func() error {
@@ -154,7 +138,7 @@ func TestUpdateConfiguration(t *testing.T) {
 				}),
 			},
 
-			test.CheckKeystoreEntries(k, APMKeystoreCmd, []string{"logging.verbose"}, apmPodListOpts...),
+			test.CheckKeystoreEntries(k, APMKeystoreCmd, []string{secureSettingKey}, apmPodListOpts...),
 
 			test.Step{
 				Name: "Customize configuration of the APM server",
@@ -170,14 +154,17 @@ func TestUpdateConfiguration(t *testing.T) {
 					previousPodUID = &pods[0].UID
 
 					var apm apmv1.ApmServer
-					if err := k.Client.Get(context.Background(), apmNamespacedName, &apm); err != nil {
+					if err := k.Client.Get(t.Context(), apmNamespacedName, &apm); err != nil {
 						return err
 					}
-					customConfig := commonv1.Config{
-						Data: map[string]interface{}{"output.elasticsearch.compression_level": 1},
+					if apm.Spec.Config == nil {
+						apm.Spec.Config = &commonv1.Config{Data: map[string]any{}}
 					}
-					apm.Spec.Config = &customConfig
-					return k.Client.Update(context.Background(), &apm)
+					// resolved by APM Server from the keystore, it fails to start if the keystore entry is missing
+					apm.Spec.Config.Data["apm-server.response_headers"] = map[string]any{
+						secureSettingResponseHeader: []any{fmt.Sprintf("${%s}", secureSettingKey)},
+					}
+					return k.Client.Update(t.Context(), &apm)
 				}),
 			},
 			test.Step{
@@ -198,19 +185,8 @@ func TestUpdateConfiguration(t *testing.T) {
 				}),
 			},
 
-			test.Step{
-				Name: "Check the value of a parameter in the configuration",
-				Test: test.Eventually(func() error {
-					config, err := partialAPMConfiguration(k, namespace, apmName)
-					if err != nil {
-						return err
-					}
-					if config.Output.Elasticsearch.CompressionLevel != 1 { // value should be updated to 1
-						return fmt.Errorf("expected compression level 1 but got %d", config.Output.Elasticsearch.CompressionLevel)
-					}
-					return nil
-				}),
-			},
+			// the response header is set to the secure setting value
+			checkResponseHeader(t, k, apmNamespacedName, secureSettingValue),
 
 			// cleanup extra resources
 			test.Step{
@@ -229,26 +205,28 @@ func TestUpdateConfiguration(t *testing.T) {
 	test.Sequence(initStepsFn, stepsFn, esBuilder, apmBuilder).RunSequential(t)
 }
 
-func partialAPMConfiguration(k *test.K8sClient, namespace, name string) (PartialApmConfiguration, error) {
-	var config PartialApmConfiguration
-	// get current pods
-	pods, err := k.GetPods(test.ApmServerPodListOptions(namespace, name)...)
-	if err != nil {
-		return config, err
+// checkResponseHeader checks that the APM Server HTTP responses carry the secure setting response header with the
+// expected value, an empty value meaning the header is not set.
+func checkResponseHeader(t *testing.T, k *test.K8sClient, apmNamespacedName types.NamespacedName, expected string) test.Step {
+	return test.Step{
+		Name: fmt.Sprintf("APM Server responses should carry the %s header with value %q", secureSettingResponseHeader, expected),
+		Test: test.Eventually(func() error {
+			var apm apmv1.ApmServer
+			if err := k.Client.Get(t.Context(), apmNamespacedName, &apm); err != nil {
+				return err
+			}
+			apmClient, err := apmserver.NewApmServerClient(apm, k)
+			if err != nil {
+				return err
+			}
+			headers, err := apmClient.ResponseHeaders(t.Context())
+			if err != nil {
+				return err
+			}
+			if got := headers.Get(secureSettingResponseHeader); got != expected {
+				return fmt.Errorf("expected header %s to be %q but got %q", secureSettingResponseHeader, expected, got)
+			}
+			return nil
+		}),
 	}
-	if len(pods) == 0 {
-		return config, errors.New("no pods found")
-	}
-
-	// exec into the pod to list keystore entries
-	stdout, stderr, err := k.Exec(k8s.ExtractNamespacedName(&pods[0]),
-		[]string{"cat", "/usr/share/apm-server/config/config-secret/apm-server.yml"})
-	if err != nil {
-		return config, errors.Wrap(err, fmt.Sprintf("stdout:\n%s\nstderr:\n%s", stdout, stderr))
-	}
-	err = yaml.Unmarshal([]byte(stdout), &config)
-	if err != nil {
-		return config, err
-	}
-	return config, nil
 }

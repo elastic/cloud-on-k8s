@@ -7,6 +7,7 @@ package certificates
 import (
 	"bytes"
 	"encoding/pem"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,26 +27,33 @@ func TestReconcileAdditionalCAs(t *testing.T) {
 	caPEM := EncodePEMCert(testCA.Cert.Raw)
 	keyPEM := []byte(testPemPrivateKey)
 	invalidCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("garbage")})
+	leafPEM := EncodePEMCert(cert)
 
 	tests := []struct {
 		name             string
 		ref              commonv1.ConfigMapRef
 		configMapMissing bool
 		data             map[string]string
+		caOnly           bool
 		want             []byte
 		wantErr          string
+		wantInvalid      bool
 	}{
 		{name: "no reference"},
 		{name: "missing config map", ref: definedRef, configMapMissing: true,
 			wantErr: `could not retrieve config map ns/my-trust specified in spec.some.field: configmaps "my-trust" not found`},
-		{name: "missing ca.crt", ref: definedRef, wantErr: "config map ns/my-trust specified in spec.some.field must contain ca.crt file"},
+		{name: "missing ca.crt", ref: definedRef, wantErr: "config map ns/my-trust specified in spec.some.field must contain ca.crt file", wantInvalid: true},
 		{name: "valid certificate", ref: definedRef, data: map[string]string{CAFileName: string(caPEM)}, want: caPEM},
 		{name: "missing trailing newline", ref: definedRef, data: map[string]string{CAFileName: string(bytes.TrimSuffix(caPEM, []byte("\n")))}, want: caPEM},
 		{name: "private keys are filtered", ref: definedRef, data: map[string]string{CAFileName: string(keyPEM) + string(caPEM) + string(keyPEM)}, want: caPEM},
-		{name: "private key only", ref: definedRef, data: map[string]string{CAFileName: string(keyPEM)}, wantErr: "no certificate found in ca.crt"},
-		{name: "empty bundle", ref: definedRef, data: map[string]string{CAFileName: ""}, wantErr: "no certificate found in ca.crt"},
-		{name: "invalid certificate", ref: definedRef, data: map[string]string{CAFileName: string(invalidCert)}, wantErr: "contains invalid certificates"},
-		{name: "invalid certificate after valid one", ref: definedRef, data: map[string]string{CAFileName: string(caPEM) + string(invalidCert)}, wantErr: "contains invalid certificates"},
+		{name: "private key only", ref: definedRef, data: map[string]string{CAFileName: string(keyPEM)}, wantErr: "no certificate found in ca.crt", wantInvalid: true},
+		{name: "empty bundle", ref: definedRef, data: map[string]string{CAFileName: ""}, wantErr: "no certificate found in ca.crt", wantInvalid: true},
+		{name: "invalid certificate", ref: definedRef, data: map[string]string{CAFileName: string(invalidCert)}, wantErr: "contains invalid certificates", wantInvalid: true},
+		{name: "invalid certificate after valid one", ref: definedRef, data: map[string]string{CAFileName: string(caPEM) + string(invalidCert)}, wantErr: "contains invalid certificates", wantInvalid: true},
+		{name: "non-CA certificate is accepted by default", ref: definedRef, data: map[string]string{CAFileName: string(caPEM) + string(leafPEM)}, want: EncodePEMCert(testCA.Cert.Raw, cert)},
+		{name: "CA certificate with CA only", ref: definedRef, data: map[string]string{CAFileName: string(caPEM)}, caOnly: true, want: caPEM},
+		{name: "non-CA certificate with CA only", ref: definedRef, data: map[string]string{CAFileName: string(caPEM) + string(leafPEM)}, caOnly: true,
+			wantErr: "is not a CA certificate, it must have the BasicConstraints extension set to CA:TRUE", wantInvalid: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -53,9 +61,9 @@ func TestReconcileAdditionalCAs(t *testing.T) {
 			if !tt.configMapMissing {
 				require.NoError(t, c.Create(t.Context(), &corev1.ConfigMap{Namespace: owner.Namespace, Name: "my-trust", Data: tt.data}))
 			}
-			dw := watches.NewDynamicWatches()
+			dw := watches.NewDynamicWatches("testCtr")
 			got, err := ReconcileAdditionalCAs(t.Context(), c, dw, AdditionalCAsOptions{
-				Owner: owner, Ref: tt.ref, WatchKey: "my-watch", FieldPath: fieldPath,
+				Owner: owner, Ref: tt.ref, WatchKey: "my-watch", FieldPath: fieldPath, CAOnly: tt.caOnly,
 			})
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
@@ -64,6 +72,9 @@ func TestReconcileAdditionalCAs(t *testing.T) {
 				require.NoError(t, err)
 			}
 			assert.Equal(t, tt.want, got)
+			// only invalid content is reported as an InvalidCAsError, not a config map which could not be read
+			_, invalid := errors.AsType[*InvalidCAsError](err)
+			assert.Equal(t, tt.wantInvalid, invalid)
 
 			// the watch is registered before the ConfigMap is loaded, whatever the outcome
 			expectedRegistrations := 1
@@ -81,7 +92,7 @@ func TestReconcileAdditionalCAs_ReleasesWatch(t *testing.T) {
 		Namespace: owner.Namespace, Name: "my-trust",
 		Data: map[string]string{CAFileName: string(EncodePEMCert(testCA.Cert.Raw))},
 	})
-	dw := watches.NewDynamicWatches()
+	dw := watches.NewDynamicWatches("testCtr")
 	opts := AdditionalCAsOptions{Owner: owner, Ref: commonv1.ConfigMapRef{ConfigMapName: "my-trust"}, WatchKey: "my-watch", FieldPath: "spec.some.field"}
 
 	_, err := ReconcileAdditionalCAs(t.Context(), c, dw, opts)

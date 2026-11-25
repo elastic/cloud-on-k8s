@@ -391,7 +391,7 @@ func Test_buildAnnotations(t *testing.T) {
 					es := newEsSampleBuilder().addEsAnnotations(map[string]string{
 						"eck.k8s.elastic.co/downward-node-labels": "topology.kubernetes.io/zone,topology.kubernetes.io/region",
 					}).build()
-					script, err := initcontainer.RenderPrepareFsScript(es.DownwardNodeLabels())
+					script, err := initcontainer.RenderPrepareFsScript(es.DownwardNodeLabels(), es.HasPlugins())
 					if err != nil {
 						panic(err)
 					}
@@ -553,7 +553,7 @@ func Test_buildAnnotations(t *testing.T) {
 			require.NoError(t, err)
 			cfg, err := settings.NewMergedESConfig(es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config, nil, false, false, es.Spec.NodeSets[0].ZoneAwareness != nil, false, false)
 			require.NoError(t, err)
-			got := buildAnnotations(es, cfg, tt.args.keystoreResources, tt.args.scriptsContent, tt.args.policyAnnotations, tt.args.podsRestartTriggerAnnotation)
+			got := buildAnnotations(es, cfg, tt.args.keystoreResources, tt.args.scriptsContent, nil, tt.args.policyAnnotations, tt.args.podsRestartTriggerAnnotation)
 
 			for expectedAnnotation, expectedValue := range tt.expectedAnnotations {
 				actualValue, exists := got[expectedAnnotation]
@@ -581,17 +581,82 @@ func Test_buildAnnotations_KeystorePasswordSecretHash_changesConfigHash(t *testi
 	gotA := buildAnnotations(es, cfg, &keystore.Resources{
 		Hash:                       baseKeystore.Hash,
 		KeystorePasswordSecretHash: "100",
-	}, scriptsContent, nil, "")
+	}, scriptsContent, nil, nil, "")
 	gotB := buildAnnotations(es, cfg, &keystore.Resources{
 		Hash:                       baseKeystore.Hash,
 		KeystorePasswordSecretHash: "101",
-	}, scriptsContent, nil, "")
+	}, scriptsContent, nil, nil, "")
 
 	hashA := gotA[ConfigHashAnnotationName]
 	hashB := gotB[ConfigHashAnnotationName]
 	require.NotEmpty(t, hashA)
 	require.NotEmpty(t, hashB)
 	require.NotEqual(t, hashA, hashB, "config hash must change when keystore password secret data hash changes")
+}
+
+func Test_buildAnnotations_Plugins_configHash(t *testing.T) {
+	es := newEsSampleBuilder().build()
+	ver, err := version.Parse(sampleES.Spec.Version)
+	require.NoError(t, err)
+	cfg, err := settings.NewMergedESConfig(es.Name, ver, corev1.IPv4Protocol, es.Spec.HTTP, *es.Spec.NodeSets[0].Config, nil, false, false, es.Spec.NodeSets[0].ZoneAwareness != nil, false, false)
+	require.NoError(t, err)
+
+	hashFor := func(plugins *esv1.PluginsSpec) string {
+		withPlugins := *es.DeepCopy()
+		withPlugins.Spec.Plugins = plugins
+		pluginsConfig, err := settings.RenderPluginsConfig(withPlugins)
+		require.NoError(t, err)
+		return buildAnnotations(withPlugins, cfg, nil, "scripts content", pluginsConfig, nil, "")[ConfigHashAnnotationName]
+	}
+	noPlugins := hashFor(nil)
+	icu := hashFor(&esv1.PluginsSpec{Items: []esv1.Plugin{{ID: "analysis-icu"}}})
+
+	tests := []struct {
+		name    string
+		plugins *esv1.PluginsSpec
+		// exactly one of sameAs and differsFrom is set
+		sameAs      string
+		differsFrom string
+	}{
+		{
+			name:    "empty plugins do not change the hash",
+			plugins: &esv1.PluginsSpec{},
+			sameAs:  noPlugins,
+		},
+		{
+			name:    "same plugins produce the same hash",
+			plugins: &esv1.PluginsSpec{Items: []esv1.Plugin{{ID: "analysis-icu"}}},
+			sameAs:  icu,
+		},
+		{
+			name:        "plugins change the hash",
+			plugins:     &esv1.PluginsSpec{Items: []esv1.Plugin{{ID: "analysis-icu"}}},
+			differsFrom: noPlugins,
+		},
+		{
+			name:        "another plugin changes the hash",
+			plugins:     &esv1.PluginsSpec{Items: []esv1.Plugin{{ID: "analysis-icu"}, {ID: "analysis-kuromoji"}}},
+			differsFrom: icu,
+		},
+		{
+			name:        "a location changes the hash",
+			plugins:     &esv1.PluginsSpec{Items: []esv1.Plugin{{ID: "analysis-icu", Location: "https://repo.corp/analysis-icu.zip"}}},
+			differsFrom: icu,
+		},
+		{
+			name:        "a proxy changes the hash",
+			plugins:     &esv1.PluginsSpec{Items: []esv1.Plugin{{ID: "analysis-icu"}}, Proxy: "proxy.corp:3128"},
+			differsFrom: icu,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := hashFor(tt.plugins)
+			require.NotEmpty(t, got)
+			require.Equal(t, tt.sameAs != "", got == tt.sameAs, "hash must equal sameAs when set")
+			require.NotEqual(t, tt.differsFrom, got)
+		})
+	}
 }
 
 func TestElasticsearch_DownwardNodeLabelsHashInput(t *testing.T) {
