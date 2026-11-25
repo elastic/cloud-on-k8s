@@ -6,10 +6,11 @@ package watches
 
 import (
 	"context"
+	"maps"
+	"slices"
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
 
 	"k8s.io/client-go/util/workqueue"
@@ -117,7 +118,7 @@ func (d *DynamicEnqueueRequest[T]) AddHandler(handler HandlerRegistration[T]) er
 	if exists {
 		log.V(1).Info("Replacing existing handler registration", "key", handler.Key())
 	} else {
-		log.V(1).Info("Adding new handler registration", "key", handler.Key(), "current_registrations_keys", maps.Keys(d.registrations))
+		log.V(1).Info("Adding new handler registration", "key", handler.Key(), "current_registrations_keys", slices.Collect(maps.Keys(d.registrations)))
 	}
 	d.registrations[handler.Key()] = handler
 	d.setDynamicWatchesValue()

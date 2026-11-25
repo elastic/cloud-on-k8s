@@ -16,11 +16,11 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"text/template"
 
-	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 )
 

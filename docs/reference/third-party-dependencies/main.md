@@ -56,7 +56,6 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [go.uber.org/automaxprocs](https://go.uber.org/automaxprocs) | v1.6.0 | MIT |
 | [go.uber.org/zap](https://go.uber.org/zap) | v1.28.0 | MIT |
 | [golang.org/x/crypto](https://golang.org/x/crypto) | v0.59.0 | BSD-3-Clause |
-| [golang.org/x/exp](https://golang.org/x/exp) | v0.0.0-20261124000051-d6646c509b6d | BSD-3-Clause |
 | [google.golang.org/api](https://google.golang.org/api) | v0.317.0 | BSD-3-Clause |
 | [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3) | v3.0.1 | MIT |
 | [k8s.io/api](https://github.com/kubernetes/api) | v0.37.2 | Apache-2.0 |
@@ -248,6 +247,7 @@ This page lists the third-party dependencies used to build {{eck}} from the main
 | [go.uber.org/multierr](https://go.uber.org/multierr) | v1.11.0 | MIT |
 | [go.yaml.in/yaml/v2](https://go.yaml.in/yaml/v2) | v2.4.5 | Apache-2.0 |
 | [go.yaml.in/yaml/v3](https://go.yaml.in/yaml/v3) | v3.0.5 | MIT |
+| [golang.org/x/exp](https://golang.org/x/exp) | v0.0.0-20261124000051-d6646c509b6d | BSD-3-Clause |
 | [golang.org/x/mod](https://golang.org/x/mod) | v0.43.0 | BSD-3-Clause |
 | [golang.org/x/net](https://golang.org/x/net) | v0.63.0 | BSD-3-Clause |
 | [golang.org/x/oauth2](https://golang.org/x/oauth2) | v0.38.0 | BSD-3-Clause |
