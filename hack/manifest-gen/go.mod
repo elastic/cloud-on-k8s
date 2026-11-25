@@ -1,6 +1,6 @@
 module github.com/elastic/cloud-on-k8s/v3/hack/manifest-gen
 
-go 1.26.0
+go 1.27.0
 
 toolchain go1.27.4
 
