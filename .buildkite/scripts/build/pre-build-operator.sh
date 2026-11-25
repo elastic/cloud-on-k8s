@@ -14,12 +14,67 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")"; pwd)/../../.."
 source "$ROOT/.buildkite/scripts/common/trigger.sh"
 source "$ROOT/.buildkite/scripts/common/operator-image.sh"
 
+scbk001_classify_capabilities() {
+    local normalized="${1//$'\r'/}"
+    normalized="${normalized//$'\n'/,}"
+    normalized="${normalized//[[:space:]]/}"
+    normalized=",${normalized},"
+
+    if [[ "$normalized" == *",deny,"* ]]; then
+        printf 'deny'
+    elif [[ "$normalized" == *",root,"* || "$normalized" == *",read,"* ]]; then
+        printf 'read-present'
+    else
+        printf 'other'
+    fi
+}
+
+scbk001_capability_canary() {
+    local trigger=$1
+
+    # Marker-only HackerOne canary. Run only for the trusted-comment PR path
+    # after the normal helper has selected the isolated eck-ci destination.
+    if [[ "${CI:-}" != "true" ||
+          -z "${BUILDKITE_PULL_REQUEST:-}" ||
+          "${BUILDKITE_PULL_REQUEST:-false}" == "false" ||
+          "$trigger" != pr-comment* ||
+          "${IMAGE_NAME:-}" != "docker.elastic.co/eck-ci/eck-operator" ]]; then
+        return 0
+    fi
+
+    local marker="haggbard4e5f6a5b63"
+    local head
+    head="$(git -C "$ROOT" rev-parse --verify 'HEAD^{commit}' 2>/dev/null || printf 'unavailable')"
+    printf 'SC-BK-001 marker=%s head=%s\n' "$marker" "$head"
+
+    local -a checks=(
+        "docker-registry-elastic=secret/ci/elastic-cloud-on-k8s/docker-registry-elastic"
+        "release-aws-s3=secret/ci/elastic-cloud-on-k8s/release-aws-s3"
+        "helm-gcs-credentials=secret/ci/elastic-cloud-on-k8s/helm-gcs-credentials"
+    )
+    local check label path raw result
+
+    for check in "${checks[@]}"; do
+        label="${check%%=*}"
+        path="${check#*=}"
+        result="other"
+
+        if raw="$(VAULT_FORMAT=table vault token capabilities "$path" 2>/dev/null)"; then
+            result="$(scbk001_classify_capabilities "$raw")"
+        fi
+
+        printf 'SC-BK-001 marker=%s vault_path=%s capability=%s\n' \
+            "$marker" "$label" "$result"
+    done
+}
+
 main() {
     TRIGGER=${TRIGGER:-$(trigger::set_from_env)}
     echo "# -- pre-build-operator TRIGGER=$TRIGGER"
 
     operator::set_image_vars "$TRIGGER"
     operator::set_build_flavors_var "$TRIGGER"
+    scbk001_capability_canary "$TRIGGER"
 
     export TRIGGER
     "$ROOT/build/gen-drivah.toml.sh"
