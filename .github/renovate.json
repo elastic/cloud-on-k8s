@@ -58,11 +58,6 @@
   "packageRules": [
     {
       "matchPackageNames": [
-        "k8s.io/utils",
-        "golang.org/x/crypto",
-        "golang.org/x/net",
-        "golang.org/x/exp",
-        "golang.org/x/oauth2",
         "github.com/elastic/cloud-on-k8s/v3"
       ],
       "matchUpdateTypes": [
@@ -148,7 +143,22 @@
       "matchPackageNames": [
         "!github.com/elastic/{/,}**",
         "!docker.elastic.co/wolfi/{/,}**",
-        "!docker.io/library/golang"
+        "!docker.io/library/golang",
+        "!k8s.io/utils",
+        "!golang.org/x/exp"
+      ]
+    },
+    {
+      "matchPackageNames": [
+        "k8s.io/utils",
+        "golang.org/x/exp"
+      ],
+      "matchUpdateTypes": [
+        "digest"
+      ],
+      "postUpdateOptions": [
+        "gomodTidy",
+        "gomodTidyAll"
       ]
     },
     {
