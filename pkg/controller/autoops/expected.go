@@ -40,6 +40,13 @@ const (
 	configVolumePath         = "/mnt/config"
 	configHashAnnotationName = "autoops.k8s.elastic.co/config-hash"
 	readinessProbePort       = 13133
+	// goMemLimitEnvVar is the soft memory limit of the Go runtime. Without it, the garbage collector
+	// is not aware of the container memory limit and the agent can be OOMKilled while most of its heap
+	// is reclaimable.
+	goMemLimitEnvVar = "GOMEMLIMIT"
+	// goMemLimitPercent is the share of the container memory given to the Go heap. The rest is left
+	// for what the Go runtime does not account for (goroutine stacks, cgo, runtime overhead).
+	goMemLimitPercent = 80
 )
 
 var (
@@ -138,6 +145,14 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 			// RunAsNonRoot:           new(true),
 		})
 
+	// Must come after the resources are resolved, as the value is derived from them.
+	// WithEnv does not override a GOMEMLIMIT set by the user in the pod template.
+	if main := builder.MainContainer(); main != nil {
+		if goMemLimit, ok := goMemLimitFor(main.Resources); ok {
+			builder = builder.WithEnv(corev1.EnvVar{Name: goMemLimitEnvVar, Value: goMemLimit})
+		}
+	}
+
 	if r.params.SetDefaultSecurityContext {
 		builder = builder.WithPodSecurityContext(corev1.PodSecurityContext{
 			SeccompProfile: &corev1.SeccompProfile{
@@ -157,6 +172,27 @@ func (r *AgentPolicyReconciler) buildDeployment(configHash string, policy autoop
 		Replicas:             new(int32(1)),
 		RevisionHistoryLimit: policy.Spec.RevisionHistoryLimit,
 	}), nil
+}
+
+// goMemLimitFor returns the GOMEMLIMIT value for the given container resources: goMemLimitPercent of
+// the memory limit, or of the memory request when there is no limit, in MiB (for example "320MiB"
+// for 400Mi). It returns false when there is neither a memory limit nor a memory request, in which
+// case the Go runtime default (no limit) is kept.
+func goMemLimitFor(resources corev1.ResourceRequirements) (string, bool) {
+	memory, ok := resources.Limits[corev1.ResourceMemory]
+	if !ok || memory.IsZero() {
+		memory, ok = resources.Requests[corev1.ResourceMemory]
+	}
+	if !ok || memory.IsZero() {
+		return "", false
+	}
+	const mebibyte = int64(1024 * 1024)
+	// Divide first: memory.Value() can be large enough for the multiplication to overflow.
+	mebibytes := memory.Value() / 100 * goMemLimitPercent / mebibyte
+	if mebibytes < 1 {
+		return "", false
+	}
+	return fmt.Sprintf("%dMiB", mebibytes), true
 }
 
 func caCertVolumeName(es esv1.Elasticsearch) string {

@@ -358,6 +358,11 @@ func expectedDeployment(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elast
 										},
 									},
 								},
+								{
+									// 80% of the 400Mi default memory limit
+									Name:  "GOMEMLIMIT",
+									Value: "320MiB",
+								},
 							},
 							SecurityContext: &corev1.SecurityContext{
 								AllowPrivilegeEscalation: new(false),
