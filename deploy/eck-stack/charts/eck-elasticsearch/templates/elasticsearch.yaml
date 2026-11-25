@@ -51,11 +51,22 @@ spec:
     {{- end }}
     {{- toYaml . | nindent 4 }}
   {{- end }}
-  {{- if eq (len .Values.nodeSets) 0 }}
+  {{- $nodeSets := .Values.nodeSets }}
+  {{- if kindIs "map" .Values.nodeSets }}
+  {{- $nodeSets = list }}
+  {{- range $name, $nodeSet := .Values.nodeSets }}
+  {{- if not (kindIs "invalid" $nodeSet) }}
+  {{- $nodeSets = append $nodeSets (mergeOverwrite (dict "name" $name) $nodeSet) }}
+  {{- end }}
+  {{- end }}
+  {{- else if not (kindIs "slice" .Values.nodeSets) }}
+  {{- fail (printf "nodeSets must be a list or map, got: %s" (kindOf .Values.nodeSets)) }}
+  {{- end }}
+  {{- if eq (len $nodeSets) 0 }}
   {{ fail "At least one nodeSet is required" }}
   {{- end }}
   nodeSets:
-    {{ toYaml .Values.nodeSets | nindent 4 }}
+    {{ toYaml $nodeSets | nindent 4 }}
   {{- with .Values.image }}
   image: {{ . }}
   {{- end }}
