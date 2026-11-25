@@ -301,15 +301,17 @@ func (d *OCPDriver) ensureClientImage() error {
 }
 
 func (d *OCPDriver) ensurePullSecret() error {
+	// install-config embeds it in a single-quoted YAML scalar; a trailing newline breaks it
+	d.plan.Ocp.PullSecret = strings.TrimSpace(d.plan.Ocp.PullSecret)
+
 	if d.plan.Ocp.PullSecret == "" {
 		s, err := vault.Get(d.vaultClient, OCPVaultPath, OCPPullSecretFieldName)
 		if err != nil {
 			return err
 		}
-		d.plan.Ocp.PullSecret = s
+		d.plan.Ocp.PullSecret = strings.TrimSpace(s)
 	}
-	// install-config embeds it in a single-quoted YAML scalar; a trailing newline breaks it
-	d.plan.Ocp.PullSecret = strings.TrimSpace(d.plan.Ocp.PullSecret)
+
 	return nil
 }
 

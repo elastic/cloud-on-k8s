@@ -58,10 +58,11 @@ func TestOCPDriver_ensurePullSecret(t *testing.T) {
 			wantVaultPaths: []string{vaultPath},
 		},
 		{
-			name:           "whitespace-only pull secret in plan is not replaced by vault",
+			name:           "whitespace-only pull secret in plan is replaced by vault",
 			planPullSecret: " \n",
 			vaultData:      map[string]any{OCPPullSecretFieldName: pullSecret},
-			want:           "",
+			want:           pullSecret,
+			wantVaultPaths: []string{vaultPath},
 		},
 		{
 			name:           "error when field is missing in vault",
