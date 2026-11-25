@@ -1,6 +1,6 @@
 # ---------------------------------------------
 # Build the operator binary
-FROM docker.io/library/golang:1.27.4@sha256:5e8afd493a7124a8586e134d9b532731161d4b9becf9dee5a5956b107426f93d AS builder
+FROM docker.io/library/golang:1.27.4@sha256:5f1b98fa02fe396ebce2a0227a0e08309e11792915b9dd2e1f71053d7e7e6666 AS builder
 
 ARG VERSION
 ARG SHA1
@@ -31,7 +31,7 @@ RUN --mount=type=cache,mode=0755,target=/go/pkg/mod \
 
 # ---------------------------------------------
 # static - Default image for static binary
-FROM docker.elastic.co/wolfi/static:latest@sha256:fc42af33e643f20d08baf03cddcc1c02ba57052dfb02edb0d79f3fc47bcea8d9 AS static
+FROM docker.elastic.co/wolfi/static:latest@sha256:599c3cd7597b84aa149c4282beecc8c6d4e1cb5c95dc8d982e70cd0a2a9147a2 AS static
 
 ARG VERSION
 
