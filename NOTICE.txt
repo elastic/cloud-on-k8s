@@ -2115,11 +2115,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/googlecloudplatform/compute-class-api
-Version : v0.0.0-20261117153711-c5fc739bcec8
-Time    : 2026-11-17T15:37:11Z
+Version : v0.0.0-20251208134148-ae2e7936c1f8
+Time    : 2025-12-08T13:41:48Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/googlecloudplatform/compute-class-api@v0.0.0-20261117153711-c5fc739bcec8/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/googlecloudplatform/compute-class-api@v0.0.0-20251208134148-ae2e7936c1f8/LICENSE:
+
 
 
                                  Apache License
@@ -5185,11 +5186,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/exp
-Version : v0.0.0-20261124000051-d6646c509b6d
-Time    : 2026-11-24T00:00:51Z
+Version : v0.0.0-20260813180055-c1d0aacb2297
+Time    : 2026-08-13T18:00:55Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/exp@v0.0.0-20261124000051-d6646c509b6d/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/exp@v0.0.0-20260813180055-c1d0aacb2297/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -6156,11 +6157,11 @@ third-party archives.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/utils
-Version : v0.0.0-20261023123148-ca04ba58ecab
-Time    : 2026-10-23T12:31:48Z
+Version : v0.0.0-20260626114624-be93311217bd
+Time    : 2026-06-26T11:46:24Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20261023123148-ca04ba58ecab/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/utils@v0.0.0-20260626114624-be93311217bd/LICENSE:
 
 
                                  Apache License
@@ -14951,11 +14952,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/fxamacker/cbor/v2
-Version : v2.9.2
-Time    : 2026-05-04T01:03:34Z
+Version : v2.9.1
+Time    : 2026-03-30T13:23:16Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/fxamacker/cbor/v2@v2.9.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/fxamacker/cbor/v2@v2.9.1/LICENSE:
 
 MIT License
 
@@ -32346,11 +32347,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/net
-Version : v0.63.0
-Time    : 2026-11-17T18:09:36Z
+Version : v0.62.0
+Time    : 2026-10-27T19:00:16Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.63.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/net@v0.62.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
@@ -32605,11 +32606,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/tools
-Version : v0.53.0
-Time    : 2026-11-17T19:04:59Z
+Version : v0.52.0
+Time    : 2026-10-10T19:29:17Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/tools@v0.53.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/tools@v0.52.0/LICENSE:
 
 Copyright 2009 The Go Authors.
 
