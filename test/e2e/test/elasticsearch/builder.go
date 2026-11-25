@@ -28,7 +28,9 @@ import (
 )
 
 // defaultMutationToleratedFailures is the number of continuous health checks failures tolerated during a mutation.
-const defaultMutationToleratedFailures = 15
+// With checks running every test.DefaultRetryDelay (3s), this allows ~60s of cumulative unhealthy time to account
+// for new shards being allocated to a restarting node (see https://github.com/elastic/cloud-on-k8s/issues/8267).
+const defaultMutationToleratedFailures = 20
 
 func ESPodTemplate(resources corev1.ResourceRequirements) corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{
