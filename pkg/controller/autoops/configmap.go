@@ -6,9 +6,12 @@ package autoops
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"slices"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -22,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/maps"
 )
@@ -42,6 +46,30 @@ exporters:
       enabled: true
       queue_size: 52428800
       sizer: bytes
+`
+
+// cgroupRuntimeExtension is the ID of the collector extension that sets the Go runtime limits
+// from the container cgroup.
+const cgroupRuntimeExtension = "cgroup_runtime"
+
+// cgroupRuntimeMinVersion is the first agent version that ships the cgroup_runtime extension.
+// An older agent does not start with a configuration that references it.
+var cgroupRuntimeMinVersion = version.From(9, 4, 0)
+
+// autoOpsCgroupRuntimeConfig makes the agent set GOMEMLIMIT from its cgroup memory limit. Without
+// it the Go garbage collector is not aware of the container memory limit, and the agent can be
+// OOMKilled while most of its heap is reclaimable. The extension does nothing when the container
+// has no memory limit or when GOMEMLIMIT is set in the environment.
+// GOMAXPROCS is left to the Go runtime, which already derives it from the cgroup CPU limit.
+// Like the baseline, these are user-tunable defaults.
+const autoOpsCgroupRuntimeConfig = `
+extensions:
+  cgroup_runtime:
+    gomaxprocs:
+      enabled: false
+    gomemlimit:
+      enabled: true
+      ratio: 0.8
 `
 
 // autoOpsMandatoryConfig is merged last so its values always take precedence over the
@@ -240,8 +268,67 @@ func autoopsModules(raw map[string]any) []any {
 	return modules
 }
 
+// supportsCgroupRuntime reports whether the agent version of the policy ships the cgroup_runtime
+// extension. Pre-release builds of the minimum version (e.g. 9.4.0-SNAPSHOT) are included.
+// An invalid version returns false: it is reported when building the Deployment.
+func supportsCgroupRuntime(policy autoopsv1alpha1.AutoOpsAgentPolicy) bool {
+	v, err := version.Parse(policy.Spec.Version)
+	if err != nil {
+		return false
+	}
+	return version.WithoutPre(v).GTE(cgroupRuntimeMinVersion)
+}
+
+// hasUserCgroupRuntimeExtension reports whether any of the supplied configs defines the cgroup
+// runtime extension under an ID other than the one the operator uses: a named instance
+// (cgroup_runtime/<name>) or the deprecated cgroupruntime type. The operator then does not add its
+// own, so two instances do not both set the Go runtime limits.
+// A user config that only tunes extensions.cgroup_runtime returns false: it is merged over the
+// operator defaults.
+func hasUserCgroupRuntimeExtension(cfgs ...*settings.CanonicalConfig) bool {
+	for _, cfg := range cfgs {
+		if cfg == nil {
+			continue
+		}
+		var raw map[string]any
+		if err := cfg.Unpack(&raw); err != nil {
+			continue
+		}
+		extensions, _ := raw["extensions"].(map[string]any)
+		for id := range extensions {
+			if id == cgroupRuntimeExtension {
+				continue
+			}
+			extensionType, _, _ := strings.Cut(id, "/")
+			if extensionType == cgroupRuntimeExtension || extensionType == "cgroupruntime" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// withServiceExtension returns the config with the given extension listed in service.extensions,
+// adding it only if it is not already there.
+func withServiceExtension(cfg *settings.CanonicalConfig, extension string) (*settings.CanonicalConfig, error) {
+	var raw map[string]any
+	if err := cfg.Unpack(&raw); err != nil {
+		return nil, fmt.Errorf("while unpacking config: %w", err)
+	}
+	service, ok := raw["service"].(map[string]any)
+	if !ok {
+		return nil, errors.New("service section is missing")
+	}
+	enabled, _ := service["extensions"].([]any)
+	if slices.Contains(enabled, any(extension)) {
+		return cfg, nil
+	}
+	service["extensions"] = append(enabled, extension)
+	return settings.NewCanonicalConfigFrom(raw)
+}
+
 // buildAutoOpsESConfigMap builds the expected ConfigMap for autoops configuration.
-// Merge order: baseline → userCfg → userSecretCfg → defaultModules → mandatory.
+// Merge order: baseline → cgroupRuntime (agent 9.4.0+) → userCfg → userSecretCfg → defaultModules → mandatory.
 // The mandatory config is applied last so operator-owned scalars always take precedence.
 // SSL and hosts are injected into every autoops_es module post-merge.
 func buildAutoOpsESConfigMap(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.Elasticsearch, userCfg, userSecretCfg *settings.CanonicalConfig) (corev1.ConfigMap, error) {
@@ -292,10 +379,22 @@ func buildAutoOpsESConfigMap(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.
 		}
 	}
 
-	// Merge order: baseline → user → userSecret → defaultModules → mandatory.
-	// User config can override anything in the baseline (e.g. sending_queue tuning).
+	// Enable the cgroup_runtime extension when the agent ships it, unless the user already
+	// configures that extension under another ID, in which case theirs is left alone.
+	enableCgroupRuntime := supportsCgroupRuntime(policy) && !hasUserCgroupRuntimeExtension(userCfg, userSecretCfg)
+	var cgroupRuntimeCfg *settings.CanonicalConfig
+	if enableCgroupRuntime {
+		cgroupRuntimeCfg, err = settings.ParseConfig([]byte(autoOpsCgroupRuntimeConfig))
+		if err != nil {
+			return corev1.ConfigMap{}, fmt.Errorf("while parsing cgroup runtime config: %w", err)
+		}
+	}
+
+	// Merge order: baseline → cgroupRuntime → user → userSecret → defaultModules → mandatory.
+	// User config can override anything in the baseline (e.g. sending_queue tuning) and in the
+	// cgroup runtime defaults (e.g. the GOMEMLIMIT ratio).
 	// Mandatory config is rendered last so all operator-owned fields always win.
-	if err := baselineCfg.MergeWith(userCfg, userSecretCfg, defaultModulesCfg, mandatoryCfg); err != nil {
+	if err := baselineCfg.MergeWith(cgroupRuntimeCfg, userCfg, userSecretCfg, defaultModulesCfg, mandatoryCfg); err != nil {
 		return corev1.ConfigMap{}, fmt.Errorf("while merging config: %w", err)
 	}
 
@@ -305,6 +404,15 @@ func buildAutoOpsESConfigMap(policy autoopsv1alpha1.AutoOpsAgentPolicy, es esv1.
 	finalCfg, err := injectModuleConnectionSettings(baselineCfg, sslEnabled, caCertPath, clientCertPath, clientKeyPath)
 	if err != nil {
 		return corev1.ConfigMap{}, fmt.Errorf("while injecting module connection settings: %w", err)
+	}
+
+	// Done post-merge, and not through a list in the merged config, because lists are appended:
+	// a user who already lists the extension would end up with it twice.
+	if enableCgroupRuntime {
+		finalCfg, err = withServiceExtension(finalCfg, cgroupRuntimeExtension)
+		if err != nil {
+			return corev1.ConfigMap{}, fmt.Errorf("while enabling the %s extension: %w", cgroupRuntimeExtension, err)
+		}
 	}
 
 	rendered, err := finalCfg.Render()
