@@ -44,6 +44,7 @@ The operator pod now has startup, readiness, and liveness probes. The readiness 
 
 ### Features and enhancements [elastic-cloud-kubernetes-360-features-and-enhancements]
 
+- Build client trust bundles from server-owned trust sources [#9855](https://github.com/elastic/cloud-on-k8s/pull/9855)
 - autoops: drop autoops-token, authenticate with CCM API key [#9849](https://github.com/elastic/cloud-on-k8s/pull/9849)
 - Kibana Background Tasks license gate [#9821](https://github.com/elastic/cloud-on-k8s/pull/9821)
 - Validate SCP secure settings entries [#9801](https://github.com/elastic/cloud-on-k8s/pull/9801)
@@ -73,6 +74,7 @@ The operator pod now has startup, readiness, and liveness probes. The readiness 
 - Apply watched label to internal HTTP cert secret when custom cert data is unchanged [#9742](https://github.com/elastic/cloud-on-k8s/pull/9742) (issue: [#9740](https://github.com/elastic/cloud-on-k8s/issues/9740))
 - fix transitive ES RBAC check for Agent-FleetServer associations and perform all association secrets cleanup on unbind [#9725](https://github.com/elastic/cloud-on-k8s/pull/9725) (issue: [#9683](https://github.com/elastic/cloud-on-k8s/issues/9683))
 - Fix cross-namespace naming and GC for fleet-managed agent additional secrets [#9703](https://github.com/elastic/cloud-on-k8s/pull/9703) (issue: [#9681](https://github.com/elastic/cloud-on-k8s/issues/9681))
+- Keep AutoOps certificate volume names within 63 characters [#9698](https://github.com/elastic/cloud-on-k8s/pull/9698)
 - Restrict fleet-server CA secret copy to ca.crt only [#9686](https://github.com/elastic/cloud-on-k8s/pull/9686) (issue: [#9684](https://github.com/elastic/cloud-on-k8s/issues/9684))
 - Fix duplicate volume mounts for fleet-managed and fleet-enabled agents [#9685](https://github.com/elastic/cloud-on-k8s/pull/9685) (issue: [#9682](https://github.com/elastic/cloud-on-k8s/issues/9682))
 - fix --container-suffix=-wolfi behavior for AutoOps, EPR, and Enterprise Search [#9663](https://github.com/elastic/cloud-on-k8s/pull/9663) (issue: [#9647](https://github.com/elastic/cloud-on-k8s/issues/9647))

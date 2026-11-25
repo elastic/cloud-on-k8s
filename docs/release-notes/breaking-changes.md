@@ -40,6 +40,18 @@ For Elastic Agent resources that run in Fleet mode, the pod spec changes in two 
 For more information, check [PR #9685](https://github.com/elastic/cloud-on-k8s/pull/9685), [PR #9686](https://github.com/elastic/cloud-on-k8s/pull/9686), [PR #9703](https://github.com/elastic/cloud-on-k8s/pull/9703), and [PR #9743](https://github.com/elastic/cloud-on-k8s/pull/9743).
 ::::
 
+::::{dropdown} Rolling restart of Fleet Server pods that require client authentication, and temporary mutual TLS failures during operator upgrade
+ECK 3.6.0 changes how it builds the trust bundle of client certificates for {{es}} and Fleet Server resources that require client authentication. ECK now stores the public certificate of each client in a trust source Secret in the namespace of the server, and builds the trust bundle of the server from these Secrets.
+
+After the operator upgrade, the trust bundle of a server contains only the certificate of the operator until the association of each client reconciles and publishes its trust source. Then ECK rebuilds the trust bundle with the same content as before the upgrade. The hash of the trust bundle is part of the Fleet Server pod template, so each change of the trust bundle restarts the Fleet Server pods. {{es}} pods do not restart because of this change.
+
+**Impact**<br> Fleet Server pods that require client authentication can be restarted more than once as part of the operator upgrade. Until ECK rebuilds the trust bundle, clients that present a client certificate to {{es}} or to Fleet Server can fail the TLS handshake. This includes fleet-managed Elastic Agents that connect to a Fleet Server that requires client authentication. {{es}} and Fleet Server resources that do not require client authentication are not affected.
+
+**Action**<br> No action required. Connections recover without intervention when ECK has rebuilt the trust bundle. Be aware that these pods can restart more than once and that clients can temporarily fail to connect during the upgrade.
+
+For more information, check [PR #9855](https://github.com/elastic/cloud-on-k8s/pull/9855).
+::::
+
 ::::{dropdown} RBAC enforcement for fleet-managed Elastic Agents that reach {{es}} through a Fleet Server in another namespace
 ECK 3.6.0 fixes the RBAC check for the transitive path from a fleet-managed Elastic Agent to the {{es}} cluster that its Fleet Server references. Earlier versions copied the {{es}} CA and client certificates into the namespace of the Elastic Agent without this check. When the `--enforce-rbac-on-refs` operator flag is enabled, ECK now checks that the `ServiceAccount` of the Elastic Agent (`spec.serviceAccountName`, or `default` if not set) can access the {{es}} resource before it copies any Secret.
 
