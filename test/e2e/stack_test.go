@@ -104,7 +104,8 @@ func TestVersionUpgradeOrdering(t *testing.T) {
 }
 
 func TestVersionUpgradeOrderingWithLogstash(t *testing.T) {
-	initialVersion := "8.12.0"
+	// Logstash < 8.15.4 bundles JRuby < 9.4.9.0, whose getsockopt(TCP_INFO) overflows on kernel >= 6.18 and breaks the Logstash API.
+	initialVersion := "8.15.4"
 	initialBuilders, updatedBuilders, stackVersions := initialBuildersToUpgrade(t, initialVersion)
 
 	ls := logstash.NewBuilder("ls").WithVersion(initialVersion).
