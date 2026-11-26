@@ -123,7 +123,6 @@ func (li LicensingInfo) toMap() map[string]string {
 
 func (li LicensingInfo) ReportAsMetrics() {
 	labels := prometheus.Labels{metrics.LicenseLevelLabel: li.EckLicenseLevel}
-	li.reportExpiryMetric(labels)
 	metrics.LicensingTotalMemoryGauge.With(labels).Set(li.totalMemory.inGiB())
 	metrics.LicensingESMemoryGauge.With(labels).Set(li.appUsage[elasticsearchKey].inGiB())
 	metrics.LicensingKBMemoryGauge.With(labels).Set(li.appUsage[kibanaKey].inGiB())
@@ -133,44 +132,61 @@ func (li LicensingInfo) ReportAsMetrics() {
 	metrics.LicensingFleetServerMemoryGauge.With(labels).Set(li.appUsage[fleetServerKey].inGiB())
 	metrics.LicensingTotalERUGauge.With(labels).Set(float64(li.EnterpriseResourceUnits))
 
+	// Current series are set before stale series are deleted, so scrapes do not observe a gap for
+	// the current license level when the license level changes.
+	if li.EckLicenseExpiryDate != nil {
+		metrics.LicensingExpiryTimestampGauge.With(labels).Set(float64(li.EckLicenseExpiryDate.Unix()))
+	} else {
+		metrics.LicensingExpiryTimestampGauge.Delete(labels)
+	}
+
 	if li.MaxEnterpriseResourceUnits > 0 {
 		metrics.LicensingMaxERUGauge.With(labels).Set(float64(li.MaxEnterpriseResourceUnits))
+	} else {
+		metrics.LicensingMaxERUGauge.Delete(labels)
 	}
+
+	deleteStaleLicenseMetrics(li.EckLicenseLevel)
 }
 
-// expiryMetricState tracks the currently published expiry metric series so that stale series can
-// be removed without resetting the whole gauge on every report.
-var expiryMetricState struct {
+// lastReportedLicenseLevel tracks the license level published by the previous report so that
+// metrics labelled with an outdated license level can be removed.
+var lastReportedLicenseLevel struct {
 	sync.Mutex
-	licenseLevel string
-	published    bool
+	level string
 }
 
-// reportExpiryMetric publishes the license expiry timestamp as a metric. The series is kept in place
-// across reports for the same license level to avoid gaps between scrapes, and is only removed when
-// the license level changes or when the current license has no expiry date anymore.
-func (li LicensingInfo) reportExpiryMetric(labels prometheus.Labels) {
-	expiryMetricState.Lock()
-	defer expiryMetricState.Unlock()
+// licensingGaugeVecs contains all the gauges that are labelled with the license level.
+var licensingGaugeVecs = []*prometheus.GaugeVec{
+	metrics.LicensingTotalMemoryGauge,
+	metrics.LicensingESMemoryGauge,
+	metrics.LicensingKBMemoryGauge,
+	metrics.LicensingAPMMemoryGauge,
+	metrics.LicensingEntSearchMemoryGauge,
+	metrics.LicensingLogstashMemoryGauge,
+	metrics.LicensingFleetServerMemoryGauge,
+	metrics.LicensingTotalERUGauge,
+	metrics.LicensingMaxERUGauge,
+	metrics.LicensingExpiryTimestampGauge,
+}
 
-	if expiryMetricState.published && expiryMetricState.licenseLevel != li.EckLicenseLevel {
-		metrics.LicensingExpiryTimestampGauge.Delete(prometheus.Labels{
-			metrics.LicenseLevelLabel: expiryMetricState.licenseLevel,
-		})
-		expiryMetricState.published = false
-	}
+// deleteStaleLicenseMetrics removes the series labelled with a previous license level from all the
+// licensing gauges. The series for the current license level are left untouched to avoid gaps
+// between Prometheus scrapes when reporting the same license level repeatedly.
+func deleteStaleLicenseMetrics(currentLicenseLevel string) {
+	lastReportedLicenseLevel.Lock()
+	defer lastReportedLicenseLevel.Unlock()
 
-	if li.EckLicenseExpiryDate == nil {
-		if expiryMetricState.published {
-			metrics.LicensingExpiryTimestampGauge.Delete(labels)
-			expiryMetricState.published = false
-		}
+	previousLicenseLevel := lastReportedLicenseLevel.level
+	lastReportedLicenseLevel.level = currentLicenseLevel
+	if previousLicenseLevel == "" || previousLicenseLevel == currentLicenseLevel {
 		return
 	}
 
-	metrics.LicensingExpiryTimestampGauge.With(labels).Set(float64(li.EckLicenseExpiryDate.Unix()))
-	expiryMetricState.licenseLevel = li.EckLicenseLevel
-	expiryMetricState.published = true
+	labels := prometheus.Labels{metrics.LicenseLevelLabel: previousLicenseLevel}
+	for _, gauge := range licensingGaugeVecs {
+		gauge.Delete(labels)
+	}
 }
 
 // LicensingResolver resolves the licensing information of the operator
