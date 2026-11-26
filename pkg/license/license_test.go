@@ -6,6 +6,7 @@ package license
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -147,17 +148,7 @@ func TestReportAsMetrics(t *testing.T) {
 
 	t.Run("removes all licensing series when the license level changes", func(t *testing.T) {
 		resetLicenseMetricsForTest()
-		// Use an explicit list instead of licensingGaugeVecs so that omitting a gauge from the
-		// cleanup list is caught by the assertions below.
-		memoryGauges := []*prometheus.GaugeVec{
-			metrics.LicensingTotalMemoryGauge,
-			metrics.LicensingESMemoryGauge,
-			metrics.LicensingKBMemoryGauge,
-			metrics.LicensingAPMMemoryGauge,
-			metrics.LicensingEntSearchMemoryGauge,
-			metrics.LicensingLogstashMemoryGauge,
-			metrics.LicensingFleetServerMemoryGauge,
-		}
+		memoryGauges := licensingMemoryGauges()
 		expiry := time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC)
 		LicensingInfo{
 			memoryUsage:                newMemoryUsage(),
@@ -168,11 +159,11 @@ func TestReportAsMetrics(t *testing.T) {
 		}.ReportAsMetrics()
 
 		for _, gauge := range memoryGauges {
-			require.Equal(t, 1, testutil.CollectAndCount(gauge))
+			requireLicenseLevelSeries(t, gauge, "enterprise")
 		}
-		require.Equal(t, 1, testutil.CollectAndCount(metrics.LicensingTotalERUGauge))
-		require.Equal(t, 1, testutil.CollectAndCount(metrics.LicensingMaxERUGauge))
-		require.Equal(t, 1, testutil.CollectAndCount(metrics.LicensingExpiryTimestampGauge))
+		requireLicenseLevelSeries(t, metrics.LicensingTotalERUGauge, "enterprise")
+		requireLicenseLevelSeries(t, metrics.LicensingMaxERUGauge, "enterprise")
+		requireLicenseLevelSeries(t, metrics.LicensingExpiryTimestampGauge, "enterprise")
 
 		LicensingInfo{
 			memoryUsage:     newMemoryUsage(),
@@ -182,9 +173,9 @@ func TestReportAsMetrics(t *testing.T) {
 		// These gauges are also reported for the basic license, so only the stale enterprise series
 		// must have been removed.
 		for _, gauge := range memoryGauges {
-			assert.Equal(t, 1, testutil.CollectAndCount(gauge))
+			requireLicenseLevelSeries(t, gauge, defaultOperatorLicenseLevel)
 		}
-		assert.Equal(t, 1, testutil.CollectAndCount(metrics.LicensingTotalERUGauge))
+		requireLicenseLevelSeries(t, metrics.LicensingTotalERUGauge, defaultOperatorLicenseLevel)
 		// A basic license has neither a maximum ERU nor an expiry date.
 		assert.Equal(t, 0, testutil.CollectAndCount(metrics.LicensingMaxERUGauge))
 		assert.Equal(t, 0, testutil.CollectAndCount(metrics.LicensingExpiryTimestampGauge))
@@ -248,6 +239,127 @@ func TestReportAsMetrics(t *testing.T) {
 		assert.Equal(t, 1, testutil.CollectAndCount(metrics.LicensingExpiryTimestampGauge))
 		assert.Equal(t, float64(secondExpiry.Unix()), testutil.ToFloat64(gauge))
 	})
+
+	t.Run("concurrent reports leave a complete set of metrics for the surviving license level", func(t *testing.T) {
+		resetLicenseMetricsForTest()
+		defer resetLicenseMetricsForTest()
+
+		expiry := time.Date(2027, 11, 3, 0, 0, 0, 0, time.UTC)
+		enterprise := LicensingInfo{
+			memoryUsage:                testMemoryUsage(64, 32),
+			EckLicenseLevel:            "enterprise",
+			EckLicenseExpiryDate:       &expiry,
+			EnterpriseResourceUnits:    5,
+			MaxEnterpriseResourceUnits: 10,
+		}
+		basic := LicensingInfo{
+			memoryUsage:     testMemoryUsage(32, 16),
+			EckLicenseLevel: defaultOperatorLicenseLevel,
+		}
+
+		// Publish and clean up at the same time: if the lock only covered cleanup, one report could
+		// delete the series another report has just published for its license level.
+		const reportsPerLevel = 100
+		start := make(chan struct{})
+		var wg sync.WaitGroup
+		for range reportsPerLevel {
+			for _, info := range []LicensingInfo{enterprise, basic} {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					<-start
+					info.ReportAsMetrics()
+				}()
+			}
+		}
+		close(start)
+		wg.Wait()
+
+		levels := map[string]struct{}{}
+		for _, gauge := range licensingGaugeVecs {
+			for _, labels := range gaugeLabelSets(t, gauge) {
+				levels[labels[metrics.LicenseLevelLabel]] = struct{}{}
+			}
+		}
+		require.Len(t, levels, 1, "concurrent reports did not leave a single license level: %v", levels)
+		var survivingLevel string
+		for level := range levels {
+			survivingLevel = level
+		}
+
+		// Every always-reported gauge must expose exactly one series, for the surviving level.
+		for _, gauge := range licensingMemoryGauges() {
+			requireLicenseLevelSeries(t, gauge, survivingLevel)
+		}
+		requireLicenseLevelSeries(t, metrics.LicensingTotalERUGauge, survivingLevel)
+
+		expectedTotalMemory, expectedESMemory, expectedERUs := 64.0, 32.0, 5.0
+		expectedMaxERUs, expectedExpiry := 10.0, float64(expiry.Unix())
+		if survivingLevel == defaultOperatorLicenseLevel {
+			expectedTotalMemory, expectedESMemory, expectedERUs = 32.0, 16.0, 0
+		}
+		assert.Equal(t, expectedTotalMemory, testutil.ToFloat64(metrics.LicensingTotalMemoryGauge.WithLabelValues(survivingLevel)))
+		assert.Equal(t, expectedESMemory, testutil.ToFloat64(metrics.LicensingESMemoryGauge.WithLabelValues(survivingLevel)))
+		assert.Equal(t, expectedERUs, testutil.ToFloat64(metrics.LicensingTotalERUGauge.WithLabelValues(survivingLevel)))
+
+		if survivingLevel == "enterprise" {
+			assert.Equal(t, expectedMaxERUs, testutil.ToFloat64(metrics.LicensingMaxERUGauge.WithLabelValues(survivingLevel)))
+			assert.Equal(t, expectedExpiry, testutil.ToFloat64(metrics.LicensingExpiryTimestampGauge.WithLabelValues(survivingLevel)))
+		} else {
+			// A basic license has neither a maximum ERU nor an expiry date.
+			assert.Equal(t, 0, testutil.CollectAndCount(metrics.LicensingMaxERUGauge))
+			assert.Equal(t, 0, testutil.CollectAndCount(metrics.LicensingExpiryTimestampGauge))
+		}
+	})
+}
+
+// licensingMemoryGauges returns the per-component memory gauges. This is an explicit list instead of
+// licensingGaugeVecs so that a gauge missing from the stale series cleanup is caught by the tests.
+func licensingMemoryGauges() []*prometheus.GaugeVec {
+	return []*prometheus.GaugeVec{
+		metrics.LicensingTotalMemoryGauge,
+		metrics.LicensingESMemoryGauge,
+		metrics.LicensingKBMemoryGauge,
+		metrics.LicensingAPMMemoryGauge,
+		metrics.LicensingEntSearchMemoryGauge,
+		metrics.LicensingLogstashMemoryGauge,
+		metrics.LicensingFleetServerMemoryGauge,
+	}
+}
+
+// testMemoryUsage returns a memory usage with the given total and Elasticsearch memory in GiB.
+func testMemoryUsage(totalGiB, elasticsearchGiB int64) memoryUsage {
+	mu := newMemoryUsage()
+	mu.totalMemory = newManagedMemory(totalGiB*GiB, totalKey)
+	mu.appUsage[elasticsearchKey] = newManagedMemory(elasticsearchGiB*GiB, elasticsearchKey)
+	return mu
+}
+
+// gaugeLabelSets returns the label sets of the series currently published by gauge.
+func gaugeLabelSets(t *testing.T, gauge *prometheus.GaugeVec) []map[string]string {
+	t.Helper()
+	registry := prometheus.NewPedanticRegistry()
+	require.NoError(t, registry.Register(gauge))
+	families, err := registry.Gather()
+	require.NoError(t, err)
+
+	var labelSets []map[string]string
+	for _, family := range families {
+		for _, metric := range family.GetMetric() {
+			labels := make(map[string]string, len(metric.GetLabel()))
+			for _, label := range metric.GetLabel() {
+				labels[label.GetName()] = label.GetValue()
+			}
+			labelSets = append(labelSets, labels)
+		}
+	}
+	return labelSets
+}
+
+// requireLicenseLevelSeries asserts that gauge publishes exactly one series with the given license level.
+func requireLicenseLevelSeries(t *testing.T, gauge *prometheus.GaugeVec, level string) {
+	t.Helper()
+	require.Equal(t, []map[string]string{{metrics.LicenseLevelLabel: level}}, gaugeLabelSets(t, gauge))
 }
 
 func resetLicenseMetricsForTest() {
