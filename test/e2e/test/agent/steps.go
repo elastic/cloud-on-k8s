@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"net"
 	"reflect"
 	"testing"
 	"time"
@@ -23,8 +24,11 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	agentcontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/pointer"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/set"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/v3/test/e2e/test/elasticsearch"
@@ -143,7 +147,140 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 					return nil
 				}, test.IsRetryableError, k8sRequestRetryTimeout),
 			},
+			b.fleetServerServingStep(k),
 		})
+}
+
+const (
+	// fleetServerStartupGracePeriod is how long a Fleet Server container must have been running before a closed
+	// port means it is stuck rather than still starting.
+	fleetServerStartupGracePeriod = 2 * time.Minute
+	// fleetServerMaxStuckRestarts caps the restart attempts, so that other causes of a closed port still fail the test.
+	fleetServerMaxStuckRestarts = 2
+)
+
+// fleetServerServingStep works around a Fleet Server bug fixed in 8.9.0 (https://github.com/elastic/fleet-server/pull/2697):
+// a 401 from an Elasticsearch node that has not loaded the service account token yet can stop Fleet Server from
+// listening while it still reports healthy. Once all the nodes have loaded the token this cannot happen anymore, so a
+// Fleet Server that is still not listening is restarted by deleting its Pod.
+func (b Builder) fleetServerServingStep(k *test.K8sClient) test.Step {
+	return test.Step{
+		Name: "Fleet Server should be serving (workaround for fleet-server#2697)",
+		Test: func(t *testing.T) {
+			t.Helper()
+			ctx := t.Context()
+			esRef := b.Agent.Spec.ElasticsearchRefs[0].WithDefaultNamespace(b.Agent.Namespace).NamespacedName()
+			restarts := 0
+			test.Eventually(func() error {
+				if err := fleetServerTokensLoaded(ctx, k, esRef); err != nil {
+					return err
+				}
+				respErr := fleetServerResponding(ctx, k8s.ExtractNamespacedName(&b.Agent))
+				if respErr == nil {
+					return nil
+				}
+				if restarts >= fleetServerMaxStuckRestarts {
+					return fmt.Errorf("fleet server is not serving after %d restarts: %w", restarts, respErr)
+				}
+				pods, err := k.GetPods(test.AgentPodListOptions(b.Agent.Namespace, b.Agent.Name)...)
+				if err != nil {
+					return err
+				}
+				restarted := false
+				for _, pod := range pods {
+					// skip Pods already being deleted so that a single restart is not counted multiple times
+					if pod.DeletionTimestamp != nil ||
+						!containerRunningLongerThan(pod, agentcontroller.ContainerName, fleetServerStartupGracePeriod) {
+						continue
+					}
+					t.Logf("Deleting stuck Fleet Server Pod %s/%s: %v", pod.Namespace, pod.Name, respErr)
+					if err := k.Client.Delete(ctx, &pod); err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					restarted = true
+				}
+				if restarted {
+					restarts++
+				}
+				return fmt.Errorf("fleet server is not serving yet: %w", respErr)
+			})(t)
+		},
+		Skip: func() bool {
+			return !b.Agent.Spec.FleetServerEnabled ||
+				len(b.Agent.Spec.ElasticsearchRefs) == 0 ||
+				b.Agent.Spec.ElasticsearchRefs[0].IsExternal() ||
+				version.MustParse(b.Agent.Spec.Version).GTE(version.MinFor(8, 9, 0))
+		},
+	}
+}
+
+// fleetServerTokensLoaded returns an error unless every Fleet Server service account token is loaded by all the
+// nodes of the given Elasticsearch cluster.
+func fleetServerTokensLoaded(ctx context.Context, k *test.K8sClient, esRef types.NamespacedName) error {
+	var es esv1.Elasticsearch
+	if err := k.Client.Get(ctx, esRef, &es); err != nil {
+		return err
+	}
+	esPods, err := k.GetPods(test.ESPodListOptions(es.Namespace, es.Name)...)
+	if err != nil {
+		return err
+	}
+	esClient, err := elasticsearch.NewElasticsearchClient(es, k)
+	if err != nil {
+		return err
+	}
+	defer esClient.Close()
+	credentials, err := esClient.GetServiceAccountCredentials(ctx, "elastic/fleet-server")
+	if err != nil {
+		return err
+	}
+	if len(credentials.NodesCredentials.FileTokens) == 0 {
+		return errors.New("no Fleet Server service account token loaded yet")
+	}
+	for tokenName, fileToken := range credentials.NodesCredentials.FileTokens {
+		loadedBy := set.Make(fileToken.Nodes...)
+		for _, pod := range esPods {
+			if !loadedBy.Has(pod.Name) {
+				return fmt.Errorf("service account token %s not loaded yet by Elasticsearch node %s", tokenName, pod.Name)
+			}
+		}
+	}
+	return nil
+}
+
+// fleetServerResponding returns an error if the Fleet Server HTTP service does not answer a plain HTTP request.
+// Any answer is enough, including the 400 sent by a TLS-enabled Fleet Server. Connecting alone is not, because the
+// port-forwarder used in local test runs accepts connections even when nothing listens in the Pod.
+func fleetServerResponding(ctx context.Context, fleetServer types.NamespacedName) error {
+	dial := (&net.Dialer{Timeout: 5 * time.Second}).DialContext
+	if test.Ctx().AutoPortForwarding {
+		dial = portforward.NewForwardingDialer().DialContext
+	}
+	// add .svc suffix so that requests work when using the port-forwarder during local test runs
+	addr := fmt.Sprintf("%s.%s.svc:%d", agentcontroller.HTTPServiceName(fleetServer.Name), fleetServer.Namespace, agentcontroller.FleetServerPort)
+	conn, err := dial(ctx, "tcp", addr)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	if err := conn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		return err
+	}
+	if _, err := conn.Write([]byte("GET / HTTP/1.0\r\n\r\n")); err != nil {
+		return err
+	}
+	_, err = conn.Read(make([]byte, 1))
+	return err
+}
+
+// containerRunningLongerThan returns true if the given container of the Pod has been running for longer than d.
+func containerRunningLongerThan(pod corev1.Pod, containerName string, d time.Duration) bool {
+	for _, status := range pod.Status.ContainerStatuses {
+		if status.Name == containerName && status.State.Running != nil {
+			return time.Since(status.State.Running.StartedAt.Time) > d
+		}
+	}
+	return false
 }
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
