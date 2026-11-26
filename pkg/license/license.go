@@ -11,6 +11,7 @@ import (
 	"math"
 	"reflect"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -122,9 +123,7 @@ func (li LicensingInfo) toMap() map[string]string {
 
 func (li LicensingInfo) ReportAsMetrics() {
 	labels := prometheus.Labels{metrics.LicenseLevelLabel: li.EckLicenseLevel}
-	// Reset the expiry gauge to avoid keeping a stale series when the license level changes or
-	// when the current license has no expiry date anymore.
-	metrics.LicensingExpiryTimestampGauge.Reset()
+	li.reportExpiryMetric(labels)
 	metrics.LicensingTotalMemoryGauge.With(labels).Set(li.totalMemory.inGiB())
 	metrics.LicensingESMemoryGauge.With(labels).Set(li.appUsage[elasticsearchKey].inGiB())
 	metrics.LicensingKBMemoryGauge.With(labels).Set(li.appUsage[kibanaKey].inGiB())
@@ -134,13 +133,44 @@ func (li LicensingInfo) ReportAsMetrics() {
 	metrics.LicensingFleetServerMemoryGauge.With(labels).Set(li.appUsage[fleetServerKey].inGiB())
 	metrics.LicensingTotalERUGauge.With(labels).Set(float64(li.EnterpriseResourceUnits))
 
-	if li.EckLicenseExpiryDate != nil {
-		metrics.LicensingExpiryTimestampGauge.With(labels).Set(float64(li.EckLicenseExpiryDate.Unix()))
-	}
-
 	if li.MaxEnterpriseResourceUnits > 0 {
 		metrics.LicensingMaxERUGauge.With(labels).Set(float64(li.MaxEnterpriseResourceUnits))
 	}
+}
+
+// expiryMetricState tracks the currently published expiry metric series so that stale series can
+// be removed without resetting the whole gauge on every report.
+var expiryMetricState struct {
+	sync.Mutex
+	licenseLevel string
+	published    bool
+}
+
+// reportExpiryMetric publishes the license expiry timestamp as a metric. The series is kept in place
+// across reports for the same license level to avoid gaps between scrapes, and is only removed when
+// the license level changes or when the current license has no expiry date anymore.
+func (li LicensingInfo) reportExpiryMetric(labels prometheus.Labels) {
+	expiryMetricState.Lock()
+	defer expiryMetricState.Unlock()
+
+	if expiryMetricState.published && expiryMetricState.licenseLevel != li.EckLicenseLevel {
+		metrics.LicensingExpiryTimestampGauge.Delete(prometheus.Labels{
+			metrics.LicenseLevelLabel: expiryMetricState.licenseLevel,
+		})
+		expiryMetricState.published = false
+	}
+
+	if li.EckLicenseExpiryDate == nil {
+		if expiryMetricState.published {
+			metrics.LicensingExpiryTimestampGauge.Delete(labels)
+			expiryMetricState.published = false
+		}
+		return
+	}
+
+	metrics.LicensingExpiryTimestampGauge.With(labels).Set(float64(li.EckLicenseExpiryDate.Unix()))
+	expiryMetricState.licenseLevel = li.EckLicenseLevel
+	expiryMetricState.published = true
 }
 
 // LicensingResolver resolves the licensing information of the operator

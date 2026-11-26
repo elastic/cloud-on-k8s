@@ -80,10 +80,12 @@ func TestToMap(t *testing.T) {
 
 func TestReportAsMetrics(t *testing.T) {
 	// The gauges are registered in a global registry shared by all tests, reset the expiry gauge
-	// to avoid leaking series to other tests.
-	defer metrics.LicensingExpiryTimestampGauge.Reset()
+	// and its state to avoid leaking series to other tests.
+	resetExpiryMetricForTest()
+	defer resetExpiryMetricForTest()
 
 	t.Run("sets the expiry timestamp when the license has an expiry date", func(t *testing.T) {
+		resetExpiryMetricForTest()
 		expiry := time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC)
 		info := LicensingInfo{
 			memoryUsage:          newMemoryUsage(),
@@ -100,6 +102,7 @@ func TestReportAsMetrics(t *testing.T) {
 	})
 
 	t.Run("does not set the expiry timestamp when the license has no expiry date", func(t *testing.T) {
+		resetExpiryMetricForTest()
 		// Report an expiring license first to ensure its series is removed.
 		expiry := time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC)
 		LicensingInfo{
@@ -118,6 +121,7 @@ func TestReportAsMetrics(t *testing.T) {
 	})
 
 	t.Run("removes the previous series when the license level changes", func(t *testing.T) {
+		resetExpiryMetricForTest()
 		trialExpiry := time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC)
 		LicensingInfo{
 			memoryUsage:          newMemoryUsage(),
@@ -139,6 +143,38 @@ func TestReportAsMetrics(t *testing.T) {
 			testutil.ToFloat64(metrics.LicensingExpiryTimestampGauge.WithLabelValues("enterprise")),
 		)
 	})
+
+	t.Run("keeps the series when reporting the same license level", func(t *testing.T) {
+		resetExpiryMetricForTest()
+		firstExpiry := time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC)
+		LicensingInfo{
+			memoryUsage:          newMemoryUsage(),
+			EckLicenseLevel:      "enterprise",
+			EckLicenseExpiryDate: &firstExpiry,
+		}.ReportAsMetrics()
+		require.Equal(t, 1, testutil.CollectAndCount(metrics.LicensingExpiryTimestampGauge))
+
+		secondExpiry := time.Date(2027, 11, 3, 0, 0, 0, 0, time.UTC)
+		LicensingInfo{
+			memoryUsage:          newMemoryUsage(),
+			EckLicenseLevel:      "enterprise",
+			EckLicenseExpiryDate: &secondExpiry,
+		}.ReportAsMetrics()
+
+		assert.Equal(t, 1, testutil.CollectAndCount(metrics.LicensingExpiryTimestampGauge))
+		assert.Equal(t,
+			float64(secondExpiry.Unix()),
+			testutil.ToFloat64(metrics.LicensingExpiryTimestampGauge.WithLabelValues("enterprise")),
+		)
+	})
+}
+
+func resetExpiryMetricForTest() {
+	expiryMetricState.Lock()
+	defer expiryMetricState.Unlock()
+	metrics.LicensingExpiryTimestampGauge.Reset()
+	expiryMetricState.licenseLevel = ""
+	expiryMetricState.published = false
 }
 
 func TestLicensingResolver_Save(t *testing.T) {
