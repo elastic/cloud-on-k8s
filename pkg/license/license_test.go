@@ -80,7 +80,7 @@ func TestToMap(t *testing.T) {
 
 func TestReportAsMetrics(t *testing.T) {
 	// The gauges are registered in a global registry shared by all tests, reset the expiry gauge
-	// to avoid leaking series between the subtests below.
+	// to avoid leaking series to other tests.
 	defer metrics.LicensingExpiryTimestampGauge.Reset()
 
 	t.Run("sets the expiry timestamp when the license has an expiry date", func(t *testing.T) {
@@ -100,15 +100,44 @@ func TestReportAsMetrics(t *testing.T) {
 	})
 
 	t.Run("does not set the expiry timestamp when the license has no expiry date", func(t *testing.T) {
-		metrics.LicensingExpiryTimestampGauge.Reset()
-		info := LicensingInfo{
+		// Report an expiring license first to ensure its series is removed.
+		expiry := time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC)
+		LicensingInfo{
+			memoryUsage:          newMemoryUsage(),
+			EckLicenseLevel:      "enterprise-trial",
+			EckLicenseExpiryDate: &expiry,
+		}.ReportAsMetrics()
+		require.Equal(t, 1, testutil.CollectAndCount(metrics.LicensingExpiryTimestampGauge))
+
+		LicensingInfo{
 			memoryUsage:     newMemoryUsage(),
 			EckLicenseLevel: defaultOperatorLicenseLevel,
-		}
-
-		info.ReportAsMetrics()
+		}.ReportAsMetrics()
 
 		assert.Equal(t, 0, testutil.CollectAndCount(metrics.LicensingExpiryTimestampGauge))
+	})
+
+	t.Run("removes the previous series when the license level changes", func(t *testing.T) {
+		trialExpiry := time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC)
+		LicensingInfo{
+			memoryUsage:          newMemoryUsage(),
+			EckLicenseLevel:      "enterprise-trial",
+			EckLicenseExpiryDate: &trialExpiry,
+		}.ReportAsMetrics()
+		require.Equal(t, 1, testutil.CollectAndCount(metrics.LicensingExpiryTimestampGauge))
+
+		enterpriseExpiry := time.Date(2027, 11, 3, 0, 0, 0, 0, time.UTC)
+		LicensingInfo{
+			memoryUsage:          newMemoryUsage(),
+			EckLicenseLevel:      "enterprise",
+			EckLicenseExpiryDate: &enterpriseExpiry,
+		}.ReportAsMetrics()
+
+		assert.Equal(t, 1, testutil.CollectAndCount(metrics.LicensingExpiryTimestampGauge))
+		assert.Equal(t,
+			float64(enterpriseExpiry.Unix()),
+			testutil.ToFloat64(metrics.LicensingExpiryTimestampGauge.WithLabelValues("enterprise")),
+		)
 	})
 }
 

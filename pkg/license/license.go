@@ -122,6 +122,9 @@ func (li LicensingInfo) toMap() map[string]string {
 
 func (li LicensingInfo) ReportAsMetrics() {
 	labels := prometheus.Labels{metrics.LicenseLevelLabel: li.EckLicenseLevel}
+	// Reset the expiry gauge to avoid keeping a stale series when the license level changes or
+	// when the current license has no expiry date anymore.
+	metrics.LicensingExpiryTimestampGauge.Reset()
 	metrics.LicensingTotalMemoryGauge.With(labels).Set(li.totalMemory.inGiB())
 	metrics.LicensingESMemoryGauge.With(labels).Set(li.appUsage[elasticsearchKey].inGiB())
 	metrics.LicensingKBMemoryGauge.With(labels).Set(li.appUsage[kibanaKey].inGiB())
