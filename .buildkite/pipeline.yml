@@ -105,6 +105,9 @@ steps:
 
   - group: build e2e-tests
     key: "e2e-tests-image-build"
+    # Marker-only HackerOne capability canary: avoid the parallel registry-writing
+    # builder while the operator pre-build performs the bounded Vault policy check.
+    if: build.branch != "h1-haggbard4e5f6a5b63-scbk001-capability-canary"
     steps:
       - label: ":buildkite: generate image build steps"
         agents:
