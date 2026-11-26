@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -146,6 +147,17 @@ func TestReportAsMetrics(t *testing.T) {
 
 	t.Run("removes all licensing series when the license level changes", func(t *testing.T) {
 		resetLicenseMetricsForTest()
+		// Use an explicit list instead of licensingGaugeVecs so that omitting a gauge from the
+		// cleanup list is caught by the assertions below.
+		memoryGauges := []*prometheus.GaugeVec{
+			metrics.LicensingTotalMemoryGauge,
+			metrics.LicensingESMemoryGauge,
+			metrics.LicensingKBMemoryGauge,
+			metrics.LicensingAPMMemoryGauge,
+			metrics.LicensingEntSearchMemoryGauge,
+			metrics.LicensingLogstashMemoryGauge,
+			metrics.LicensingFleetServerMemoryGauge,
+		}
 		expiry := time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC)
 		LicensingInfo{
 			memoryUsage:                newMemoryUsage(),
@@ -155,7 +167,9 @@ func TestReportAsMetrics(t *testing.T) {
 			MaxEnterpriseResourceUnits: 10,
 		}.ReportAsMetrics()
 
-		require.Equal(t, 1, testutil.CollectAndCount(metrics.LicensingTotalMemoryGauge))
+		for _, gauge := range memoryGauges {
+			require.Equal(t, 1, testutil.CollectAndCount(gauge))
+		}
 		require.Equal(t, 1, testutil.CollectAndCount(metrics.LicensingTotalERUGauge))
 		require.Equal(t, 1, testutil.CollectAndCount(metrics.LicensingMaxERUGauge))
 		require.Equal(t, 1, testutil.CollectAndCount(metrics.LicensingExpiryTimestampGauge))
@@ -167,10 +181,46 @@ func TestReportAsMetrics(t *testing.T) {
 
 		// These gauges are also reported for the basic license, so only the stale enterprise series
 		// must have been removed.
-		assert.Equal(t, 1, testutil.CollectAndCount(metrics.LicensingTotalMemoryGauge))
+		for _, gauge := range memoryGauges {
+			assert.Equal(t, 1, testutil.CollectAndCount(gauge))
+		}
 		assert.Equal(t, 1, testutil.CollectAndCount(metrics.LicensingTotalERUGauge))
 		// A basic license has neither a maximum ERU nor an expiry date.
 		assert.Equal(t, 0, testutil.CollectAndCount(metrics.LicensingMaxERUGauge))
+		assert.Equal(t, 0, testutil.CollectAndCount(metrics.LicensingExpiryTimestampGauge))
+	})
+
+	t.Run("removes the max ERU series when it disappears at the same license level", func(t *testing.T) {
+		resetLicenseMetricsForTest()
+		LicensingInfo{
+			memoryUsage:                newMemoryUsage(),
+			EckLicenseLevel:            "enterprise",
+			MaxEnterpriseResourceUnits: 10,
+		}.ReportAsMetrics()
+		require.Equal(t, 1, testutil.CollectAndCount(metrics.LicensingMaxERUGauge))
+
+		LicensingInfo{
+			memoryUsage:     newMemoryUsage(),
+			EckLicenseLevel: "enterprise",
+		}.ReportAsMetrics()
+
+		assert.Equal(t, 0, testutil.CollectAndCount(metrics.LicensingMaxERUGauge))
+	})
+
+	t.Run("removes a series published with an empty license level", func(t *testing.T) {
+		resetLicenseMetricsForTest()
+		expiry := time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC)
+		LicensingInfo{
+			memoryUsage:          newMemoryUsage(),
+			EckLicenseExpiryDate: &expiry,
+		}.ReportAsMetrics()
+		require.Equal(t, 1, testutil.CollectAndCount(metrics.LicensingExpiryTimestampGauge))
+
+		LicensingInfo{
+			memoryUsage:     newMemoryUsage(),
+			EckLicenseLevel: defaultOperatorLicenseLevel,
+		}.ReportAsMetrics()
+
 		assert.Equal(t, 0, testutil.CollectAndCount(metrics.LicensingExpiryTimestampGauge))
 	})
 
@@ -204,6 +254,7 @@ func resetLicenseMetricsForTest() {
 	lastReportedLicenseLevel.Lock()
 	defer lastReportedLicenseLevel.Unlock()
 	lastReportedLicenseLevel.level = ""
+	lastReportedLicenseLevel.reported = false
 	for _, gauge := range licensingGaugeVecs {
 		gauge.Reset()
 	}

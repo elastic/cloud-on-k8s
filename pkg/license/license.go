@@ -122,6 +122,11 @@ func (li LicensingInfo) toMap() map[string]string {
 }
 
 func (li LicensingInfo) ReportAsMetrics() {
+	// Hold the lock across publication and stale series cleanup so that concurrent reports cannot
+	// delete each other's series.
+	lastReportedLicenseLevel.Lock()
+	defer lastReportedLicenseLevel.Unlock()
+
 	labels := prometheus.Labels{metrics.LicenseLevelLabel: li.EckLicenseLevel}
 	metrics.LicensingTotalMemoryGauge.With(labels).Set(li.totalMemory.inGiB())
 	metrics.LicensingESMemoryGauge.With(labels).Set(li.appUsage[elasticsearchKey].inGiB())
@@ -146,14 +151,22 @@ func (li LicensingInfo) ReportAsMetrics() {
 		metrics.LicensingMaxERUGauge.Delete(labels)
 	}
 
-	deleteStaleLicenseMetrics(li.EckLicenseLevel)
+	if lastReportedLicenseLevel.reported && lastReportedLicenseLevel.level != li.EckLicenseLevel {
+		staleLabels := prometheus.Labels{metrics.LicenseLevelLabel: lastReportedLicenseLevel.level}
+		for _, gauge := range licensingGaugeVecs {
+			gauge.Delete(staleLabels)
+		}
+	}
+	lastReportedLicenseLevel.level = li.EckLicenseLevel
+	lastReportedLicenseLevel.reported = true
 }
 
 // lastReportedLicenseLevel tracks the license level published by the previous report so that
 // metrics labelled with an outdated license level can be removed.
 var lastReportedLicenseLevel struct {
 	sync.Mutex
-	level string
+	level    string
+	reported bool
 }
 
 // licensingGaugeVecs contains all the gauges that are labelled with the license level.
@@ -168,25 +181,6 @@ var licensingGaugeVecs = []*prometheus.GaugeVec{
 	metrics.LicensingTotalERUGauge,
 	metrics.LicensingMaxERUGauge,
 	metrics.LicensingExpiryTimestampGauge,
-}
-
-// deleteStaleLicenseMetrics removes the series labelled with a previous license level from all the
-// licensing gauges. The series for the current license level are left untouched to avoid gaps
-// between Prometheus scrapes when reporting the same license level repeatedly.
-func deleteStaleLicenseMetrics(currentLicenseLevel string) {
-	lastReportedLicenseLevel.Lock()
-	defer lastReportedLicenseLevel.Unlock()
-
-	previousLicenseLevel := lastReportedLicenseLevel.level
-	lastReportedLicenseLevel.level = currentLicenseLevel
-	if previousLicenseLevel == "" || previousLicenseLevel == currentLicenseLevel {
-		return
-	}
-
-	labels := prometheus.Labels{metrics.LicenseLevelLabel: previousLicenseLevel}
-	for _, gauge := range licensingGaugeVecs {
-		gauge.Delete(labels)
-	}
 }
 
 // LicensingResolver resolves the licensing information of the operator
