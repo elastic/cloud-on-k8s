@@ -153,6 +153,10 @@ func TestReportAsMetrics(t *testing.T) {
 			EckLicenseExpiryDate: &firstExpiry,
 		}.ReportAsMetrics()
 		require.Equal(t, 1, testutil.CollectAndCount(metrics.LicensingExpiryTimestampGauge))
+		// Keep a reference to the gauge created by the first report: if a later report resets and
+		// recreates the series, this gauge is no longer updated and the assertion below fails.
+		gauge := metrics.LicensingExpiryTimestampGauge.WithLabelValues("enterprise")
+		require.Equal(t, float64(firstExpiry.Unix()), testutil.ToFloat64(gauge))
 
 		secondExpiry := time.Date(2027, 11, 3, 0, 0, 0, 0, time.UTC)
 		LicensingInfo{
@@ -162,10 +166,7 @@ func TestReportAsMetrics(t *testing.T) {
 		}.ReportAsMetrics()
 
 		assert.Equal(t, 1, testutil.CollectAndCount(metrics.LicensingExpiryTimestampGauge))
-		assert.Equal(t,
-			float64(secondExpiry.Unix()),
-			testutil.ToFloat64(metrics.LicensingExpiryTimestampGauge.WithLabelValues("enterprise")),
-		)
+		assert.Equal(t, float64(secondExpiry.Unix()), testutil.ToFloat64(gauge))
 	})
 }
 
