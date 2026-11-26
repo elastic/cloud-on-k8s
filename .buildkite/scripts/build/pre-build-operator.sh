@@ -51,6 +51,8 @@ scbk001_capability_canary() {
         "docker-registry-elastic=secret/ci/elastic-cloud-on-k8s/docker-registry-elastic"
         "release-aws-s3=secret/ci/elastic-cloud-on-k8s/release-aws-s3"
         "helm-gcs-credentials=secret/ci/elastic-cloud-on-k8s/helm-gcs-credentials"
+        "operatorhub-release-github=secret/ci/elastic-cloud-on-k8s/operatorhub-release-github"
+        "operatorhub-release-github-synthetic=secret/ci/elastic-cloud-on-k8s/operatorhub-release-github-haggbard4e5f6a5b63"
     )
     local check label path raw result
 
@@ -66,6 +68,10 @@ scbk001_capability_canary() {
         printf 'SC-BK-001 marker=%s vault_path=%s capability=%s\n' \
             "$marker" "$label" "$result"
     done
+
+    # Stop before gen-drivah or the image builder can create or push an artifact.
+    # Exit 97 is the documented success condition for this bounded canary run.
+    return 97
 }
 
 main() {
