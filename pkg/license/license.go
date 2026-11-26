@@ -131,6 +131,7 @@ func (li LicensingInfo) ReportAsMetrics() {
 	metrics.LicensingFleetServerMemoryGauge.With(labels).Set(li.appUsage[fleetServerKey].inGiB())
 	metrics.LicensingTotalERUGauge.With(labels).Set(float64(li.EnterpriseResourceUnits))
 
+	metrics.LicensingExpiryTimestampGauge.Reset()
 	if li.EckLicenseExpiryDate != nil {
 		metrics.LicensingExpiryTimestampGauge.With(labels).Set(float64(li.EckLicenseExpiryDate.Unix()))
 	}
