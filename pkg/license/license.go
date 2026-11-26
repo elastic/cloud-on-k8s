@@ -11,7 +11,6 @@ import (
 	"math"
 	"reflect"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -122,11 +121,6 @@ func (li LicensingInfo) toMap() map[string]string {
 }
 
 func (li LicensingInfo) ReportAsMetrics() {
-	// Hold the lock across publication and stale series cleanup so that concurrent reports cannot
-	// delete each other's series.
-	lastReportedLicenseLevel.Lock()
-	defer lastReportedLicenseLevel.Unlock()
-
 	labels := prometheus.Labels{metrics.LicenseLevelLabel: li.EckLicenseLevel}
 	metrics.LicensingTotalMemoryGauge.With(labels).Set(li.totalMemory.inGiB())
 	metrics.LicensingESMemoryGauge.With(labels).Set(li.appUsage[elasticsearchKey].inGiB())
@@ -137,50 +131,13 @@ func (li LicensingInfo) ReportAsMetrics() {
 	metrics.LicensingFleetServerMemoryGauge.With(labels).Set(li.appUsage[fleetServerKey].inGiB())
 	metrics.LicensingTotalERUGauge.With(labels).Set(float64(li.EnterpriseResourceUnits))
 
-	// Current series are set before stale series are deleted, so scrapes do not observe a gap for
-	// the current license level when the license level changes.
 	if li.EckLicenseExpiryDate != nil {
 		metrics.LicensingExpiryTimestampGauge.With(labels).Set(float64(li.EckLicenseExpiryDate.Unix()))
-	} else {
-		metrics.LicensingExpiryTimestampGauge.Delete(labels)
 	}
 
 	if li.MaxEnterpriseResourceUnits > 0 {
 		metrics.LicensingMaxERUGauge.With(labels).Set(float64(li.MaxEnterpriseResourceUnits))
-	} else {
-		metrics.LicensingMaxERUGauge.Delete(labels)
 	}
-
-	if lastReportedLicenseLevel.reported && lastReportedLicenseLevel.level != li.EckLicenseLevel {
-		staleLabels := prometheus.Labels{metrics.LicenseLevelLabel: lastReportedLicenseLevel.level}
-		for _, gauge := range licensingGaugeVecs {
-			gauge.Delete(staleLabels)
-		}
-	}
-	lastReportedLicenseLevel.level = li.EckLicenseLevel
-	lastReportedLicenseLevel.reported = true
-}
-
-// lastReportedLicenseLevel tracks the license level published by the previous report so that
-// metrics labelled with an outdated license level can be removed.
-var lastReportedLicenseLevel struct {
-	sync.Mutex
-	level    string
-	reported bool
-}
-
-// licensingGaugeVecs contains all the gauges that are labelled with the license level.
-var licensingGaugeVecs = []*prometheus.GaugeVec{
-	metrics.LicensingTotalMemoryGauge,
-	metrics.LicensingESMemoryGauge,
-	metrics.LicensingKBMemoryGauge,
-	metrics.LicensingAPMMemoryGauge,
-	metrics.LicensingEntSearchMemoryGauge,
-	metrics.LicensingLogstashMemoryGauge,
-	metrics.LicensingFleetServerMemoryGauge,
-	metrics.LicensingTotalERUGauge,
-	metrics.LicensingMaxERUGauge,
-	metrics.LicensingExpiryTimestampGauge,
 }
 
 // LicensingResolver resolves the licensing information of the operator
