@@ -27,11 +27,19 @@ SNAPSHOT=true
 GO_TAGS=${GO_TAGS-release}
 LICENSE_PUBKEY=license.key
 
+# Prints the moving alias tag for the current build, or nothing if the build has none.
+# - merge-xyz: "<branch>-latest" (e.g. "3.6-latest") when the branch is a version branch "<major>.<minor>"
+# - tag-bc:    no alias tag, the version branch alias already tracks the BC commit
+# - others:    "latest"
 latest_stable_tag() {
     case "${TRIGGER:-}" in
-        merge-xyz) echo next-release-latest ;;
-        tag-bc)    echo bc-latest ;;
-        *)         echo latest ;;
+        merge-xyz)
+            if [[ "${BUILDKITE_BRANCH:-}" =~ ^[0-9]+\.[0-9]+$ ]]; then
+                echo "${BUILDKITE_BRANCH}-latest"
+            fi
+        ;;
+        tag-bc) ;;
+        *) echo latest ;;
     esac
 }
 
@@ -44,11 +52,15 @@ generate_drivah_config() {
     local image_target=$6
 
     # add 'stable' tag without sha1 for snapshots
+    additional_tags=""
     if [[ "$tag" =~ "SNAPSHOT" ]]; then
         snapshot_stable_tag="${tag/-$SHA1/}"
-        additional_tags=",\"${snapshot_stable_tag}-${ARCH}\",\"$(latest_stable_tag)-${ARCH}\""
-    else
-        additional_tags=",\"$(latest_stable_tag)-${ARCH}\""
+        additional_tags+=",\"${snapshot_stable_tag}-${ARCH}\""
+    fi
+    # add the moving alias tag if the build has one
+    alias_tag=$(latest_stable_tag)
+    if [[ -n "$alias_tag" ]]; then
+        additional_tags+=",\"${alias_tag}-${ARCH}\""
     fi
 
 cat <<END
@@ -123,9 +135,10 @@ main() {
             make_build_recipe='go-build-fips'
         fi
 
-        # write the image name with the latest stable tag (except the 'dev' flavor) for CVE scan
-        if [[ ! "$flavor" =~ -dev ]]; then
-            echo "$name:$(latest_stable_tag)" >> images-to-scan.txt
+        # write the image name with the alias tag (except the 'dev' flavor) for CVE scan
+        alias_tag=$(latest_stable_tag)
+        if [[ ! "$flavor" =~ -dev && -n "$alias_tag" ]]; then
+            echo "$name:$alias_tag" >> images-to-scan.txt
         fi
 
         # write the image name for signing (using the multi-arch manifest)
