@@ -181,7 +181,7 @@ func ReconcileServiceAccounts(
 	serviceAccount commonv1.ServiceAccountName,
 	application client.Object,
 ) error {
-	tokenName := tokenName(applicationSecretName.Namespace, application.GetName(), application.GetUID())
+	tokenName := TokenName(applicationSecretName.Namespace, application.GetName(), application.GetUID())
 	token, err := reconcileApplicationSecret(ctx, client, es, applicationSecretName, meta, tokenName, serviceAccount, application)
 	if err != nil {
 		return err
@@ -260,7 +260,8 @@ func newApplicationToken(serviceAccountName commonv1.ServiceAccountName, tokenNa
 	}, nil
 }
 
-func tokenName(
+// TokenName returns the name of the service account token created for the given application.
+func TokenName(
 	applicationNamespace, applicationName string,
 	applicationUID types.UID,
 ) string {
