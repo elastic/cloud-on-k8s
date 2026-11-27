@@ -144,14 +144,12 @@
         "!github.com/elastic/{/,}**",
         "!docker.elastic.co/wolfi/{/,}**",
         "!docker.io/library/golang",
-        "!k8s.io/utils",
-        "!golang.org/x/exp"
+        "!k8s.io/utils"
       ]
     },
     {
       "matchPackageNames": [
-        "k8s.io/utils",
-        "golang.org/x/exp"
+        "k8s.io/utils"
       ],
       "matchUpdateTypes": [
         "digest"
