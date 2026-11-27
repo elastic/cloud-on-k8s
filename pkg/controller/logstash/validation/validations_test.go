@@ -655,7 +655,8 @@ func Test_servicesTLSWarnings(t *testing.T) {
 				{Name: "api", TLS: customCert},
 			},
 			wantWarnings: []string{
-				"spec.services[0].tls.selfSignedCertificate.subjectAltNames is ignored if the Secret set in the TLS options of the `api` Service contains a certificate",
+				"spec.services[0].tls.selfSignedCertificate.subjectAltNames is used only if the `tls.certificate` Secret of the `api` Service contains a CA (`ca.crt`, `ca.key`). " +
+					"It is ignored if this Secret contains a certificate (`tls.crt`, `tls.key`)",
 			},
 		},
 		{
@@ -713,7 +714,7 @@ func Test_servicesTLSWarnings(t *testing.T) {
 			wantWarnings: []string{
 				"spec.services[1].tls.certificate is ignored",
 				"spec.services[1].tls.certificateAuthorities is ignored",
-				"spec.services[1].tls.selfSignedCertificate.subjectAltNames is ignored",
+				"spec.services[1].tls.selfSignedCertificate.subjectAltNames is used only if",
 			},
 		},
 	}
@@ -725,6 +726,8 @@ func Test_servicesTLSWarnings(t *testing.T) {
 			if assert.Len(t, got, len(tt.wantWarnings)) {
 				for i, want := range tt.wantWarnings {
 					assert.Contains(t, got[i], want)
+					// the API server may truncate a warning to 256 characters, leave room for a larger Service index
+					assert.Less(t, len(got[i]), 250)
 				}
 			}
 		})

@@ -196,8 +196,9 @@ func servicesTLSWarnings(l *lsv1alpha1.Logstash) []string {
 			))
 		case apiCustomCert:
 			warnings = append(warnings, fmt.Sprintf(
-				"%s is ignored if the Secret set in the TLS options of the `%s` Service contains a certificate (`tls.crt` and `tls.key`), "+
-					"to which subject alternative names cannot be added. It is used if this Secret only contains a CA (`ca.crt` and `ca.key`)",
+				// kept under 256 characters, the length at which the API server may truncate a warning
+				"%s is used only if the `tls.certificate` Secret of the `%s` Service contains a CA (`ca.crt`, `ca.key`). "+
+					"It is ignored if this Secret contains a certificate (`tls.crt`, `tls.key`)",
 				sansPath, apiServiceName,
 			))
 		}
