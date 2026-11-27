@@ -64,9 +64,6 @@ receivers:
         - hosts: ${env:AUTOOPS_ES_URL}
           metricsets:
             - cat_shards
-            - cluster_health
-            - cluster_settings
-            - license
             - node_stats
             - tasks_management
           module: autoops_es
@@ -75,9 +72,18 @@ receivers:
             verification_mode: none
         - hosts: ${env:AUTOOPS_ES_URL}
           metricsets:
+            - cluster_health
+            - cluster_settings
+          module: autoops_es
+          period: 1m
+          ssl:
+            verification_mode: none
+        - hosts: ${env:AUTOOPS_ES_URL}
+          metricsets:
             - cat_template
             - component_template
             - index_template
+            - license
           module: autoops_es
           period: 24h
           ssl:
@@ -138,9 +144,6 @@ receivers:
         - hosts: ${env:AUTOOPS_ES_URL}
           metricsets:
             - cat_shards
-            - cluster_health
-            - cluster_settings
-            - license
             - node_stats
             - tasks_management
           module: autoops_es
@@ -151,9 +154,20 @@ receivers:
             verification_mode: certificate
         - hosts: ${env:AUTOOPS_ES_URL}
           metricsets:
+            - cluster_health
+            - cluster_settings
+          module: autoops_es
+          period: 1m
+          ssl:
+            certificate_authorities:
+              - /mnt/elastic-internal/es-ca/default-test-es/ca.crt
+            verification_mode: certificate
+        - hosts: ${env:AUTOOPS_ES_URL}
+          metricsets:
             - cat_template
             - component_template
             - index_template
+            - license
           module: autoops_es
           period: 24h
           ssl:
@@ -216,9 +230,6 @@ receivers:
         - hosts: ${env:AUTOOPS_ES_URL}
           metricsets:
             - cat_shards
-            - cluster_health
-            - cluster_settings
-            - license
             - node_stats
             - tasks_management
           module: autoops_es
@@ -231,9 +242,22 @@ receivers:
             verification_mode: certificate
         - hosts: ${env:AUTOOPS_ES_URL}
           metricsets:
+            - cluster_health
+            - cluster_settings
+          module: autoops_es
+          period: 1m
+          ssl:
+            certificate: /mnt/elastic-internal/es-client-cert/default-test-es/tls.crt
+            certificate_authorities:
+              - /mnt/elastic-internal/es-ca/default-test-es/ca.crt
+            key: /mnt/elastic-internal/es-client-cert/default-test-es/tls.key
+            verification_mode: certificate
+        - hosts: ${env:AUTOOPS_ES_URL}
+          metricsets:
             - cat_template
             - component_template
             - index_template
+            - license
           module: autoops_es
           period: 24h
           ssl:
@@ -541,7 +565,7 @@ service:
 		},
 		{
 			// AppendValues appends to existing lists. The user's module comes first (from the
-			// user config layer), and the operator's two autoops_es modules are appended after.
+			// user config layer), and the operator's default autoops_es modules are appended after.
 			name: "user adds non-autoops_es module - appended after operator modules",
 			specConfigYAML: []byte(`
 receivers:
@@ -572,8 +596,9 @@ receivers:
 		},
 		{
 			// When the user provides an autoops_es module the operator skips injecting its own
-			// default modules (Metrics + Templates), giving the user full control over which
-			// autoops_es data is collected. The operator still injects connection settings
+			// default modules (Metrics, Less Frequent Metrics, Templates and License Details),
+			// giving the user full control over which autoops_es data is collected. The operator
+			// still injects connection settings
 			// (hosts, ssl) into all autoops_es modules and always merges mandatory fields last.
 			// Non-module user additions (exporters, pipelines) are present alongside the
 			// operator's mandatory ones.
