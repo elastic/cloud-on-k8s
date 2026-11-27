@@ -26,7 +26,7 @@ With `true`, the operator checks RBAC on all cross-namespace associations. It re
 
 **Impact**<br> The values `true` and `legacy` continue to work in 3.6.0. When `true` becomes an alias for `all`, cross-namespace associations of any type whose `ServiceAccount` cannot access the referenced resource will be removed.
 
-**Action**<br> Replace `legacy` with `true` or `all`. Review the `Warning` events that the operator emits for cross-namespace associations and update the RBAC rules, so that your setup is ready when `true` becomes an alias for `all`. For more details, refer to the [cross-namespace associations documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/restrict-cross-namespace-resource-associations.md#k8s-restrict-cross-namespace-enforcement-modes).
+**Action**<br> Replace `legacy` with `true`, which keeps the current behavior. Review the `Warning` events that the operator emits for cross-namespace associations and update the RBAC rules, so that your setup is ready when `true` becomes an alias for `all`. Switch to `all` only after you have updated the RBAC rules, because `all` immediately removes every association that fails the check. For more details, refer to the [cross-namespace associations documentation](docs-content://deploy-manage/deploy/cloud-on-k8s/restrict-cross-namespace-resource-associations.md#k8s-restrict-cross-namespace-enforcement-modes).
 
 For more information, check [PR #9756](https://github.com/elastic/cloud-on-k8s/pull/9756).
 ::::
