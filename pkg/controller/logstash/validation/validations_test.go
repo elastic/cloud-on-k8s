@@ -654,7 +654,9 @@ func Test_servicesTLSWarnings(t *testing.T) {
 				}},
 				{Name: "api", TLS: customCert},
 			},
-			wantWarnings: []string{"spec.services[0].tls.selfSignedCertificate.subjectAltNames is ignored"},
+			wantWarnings: []string{
+				"spec.services[0].tls.selfSignedCertificate.subjectAltNames is ignored if the Secret set in the TLS options of the `api` Service contains a certificate",
+			},
 		},
 		{
 			name: "custom service without TLS options or without SAN, with a custom certificate on the API service: no warning",
@@ -688,7 +690,7 @@ func Test_servicesTLSWarnings(t *testing.T) {
 					SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: true, SubjectAlternativeNames: sans},
 				}},
 			},
-			wantWarnings: []string{"spec.services[1].tls.selfSignedCertificate.subjectAltNames is ignored"},
+			wantWarnings: []string{"spec.services[1].tls.selfSignedCertificate.subjectAltNames is ignored: the self-signed certificate is disabled"},
 		},
 		{
 			name: "SANs on the API service with a disabled self-signed certificate: no warning",

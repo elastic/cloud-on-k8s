@@ -160,7 +160,9 @@ func checkServicesSubjectAltNames(l *lsv1alpha1.Logstash) field.ErrorList {
 
 // servicesTLSWarnings returns warnings for the TLS options of the Services which have no effect.
 // Logstash uses a single certificate, issued according to the TLS options of the API Service. The other Services
-// can only add subject alternative names to it, and only if this certificate is self-signed.
+// can only add subject alternative names to it, and only if this certificate is issued by the operator: either
+// self-signed, or signed by a custom CA when the certificate Secret of the API Service only contains a CA.
+// The content of this Secret is not known here, so the warning for a custom certificate covers both cases.
 func servicesTLSWarnings(l *lsv1alpha1.Logstash) []string {
 	var warnings []string
 	apiCustomCert := l.APIServerTLSOptions().Certificate.SecretName != ""
@@ -194,7 +196,8 @@ func servicesTLSWarnings(l *lsv1alpha1.Logstash) []string {
 			))
 		case apiCustomCert:
 			warnings = append(warnings, fmt.Sprintf(
-				"%s is ignored: the `%s` Service uses a custom certificate, to which subject alternative names cannot be added",
+				"%s is ignored if the Secret set in the TLS options of the `%s` Service contains a certificate (`tls.crt` and `tls.key`), "+
+					"to which subject alternative names cannot be added. It is used if this Secret only contains a CA (`ca.crt` and `ca.key`)",
 				sansPath, apiServiceName,
 			))
 		}
