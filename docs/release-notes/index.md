@@ -78,7 +78,7 @@ The operator pod now has startup, readiness, and liveness probes. The readiness 
 - Restrict fleet-server CA secret copy to ca.crt only [#9686](https://github.com/elastic/cloud-on-k8s/pull/9686) (issue: [#9684](https://github.com/elastic/cloud-on-k8s/issues/9684))
 - Fix duplicate volume mounts for fleet-managed and fleet-enabled agents [#9685](https://github.com/elastic/cloud-on-k8s/pull/9685) (issue: [#9682](https://github.com/elastic/cloud-on-k8s/issues/9682))
 - Fix `--container-suffix=-wolfi` behavior for AutoOps, Elastic Package Registry, and Enterprise Search [#9663](https://github.com/elastic/cloud-on-k8s/pull/9663) (issue: [#9647](https://github.com/elastic/cloud-on-k8s/issues/9647))
-- [OLM]: move cluster-scoped RBAC rules to clusterPermissions [#9660](https://github.com/elastic/cloud-on-k8s/pull/9660) (issue: [#9654](https://github.com/elastic/cloud-on-k8s/issues/9654))
+- Move OLM cluster-scoped RBAC rules to `clusterPermissions` [#9660](https://github.com/elastic/cloud-on-k8s/pull/9660) (issue: [#9654](https://github.com/elastic/cloud-on-k8s/issues/9654))
 
 
 
