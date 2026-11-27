@@ -38,6 +38,14 @@ var (
 		Help:      "Number of registered dynamic watch handlers, by controller and watched resource kind",
 	}, []string{ControllerNameLabel, HandlerKindLabel}))
 
+	// LicensingExpiryTimestampGauge reports the expiry date of the operator license as a Unix timestamp in seconds.
+	LicensingExpiryTimestampGauge = registerGauge(prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: namespace,
+		Subsystem: licensingSubsystem,
+		Name:      "expiry_timestamp_seconds",
+		Help:      "Expiry date of the operator license as Unix timestamp in seconds",
+	}, []string{LicenseLevelLabel}))
+
 	// LicensingMaxERUGauge reports the maximum allowed enterprise resource units for licensing purposes.
 	LicensingMaxERUGauge = registerGauge(prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,

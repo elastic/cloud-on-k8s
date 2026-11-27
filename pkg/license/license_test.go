@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -17,6 +18,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	commonlicense "github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/metrics"
 )
 
 func TestToMap(t *testing.T) {
@@ -73,6 +75,40 @@ func TestToMap(t *testing.T) {
 			"max_enterprise_resource_units":  "10",
 		}
 		assert.Equal(t, want, have)
+	})
+}
+
+func TestReportAsMetrics(t *testing.T) {
+	// The gauges are registered in a global registry shared by all tests, reset the expiry gauge
+	// to avoid leaking series between the subtests below.
+	defer metrics.LicensingExpiryTimestampGauge.Reset()
+
+	t.Run("sets the expiry timestamp when the license has an expiry date", func(t *testing.T) {
+		expiry := time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC)
+		info := LicensingInfo{
+			memoryUsage:          newMemoryUsage(),
+			EckLicenseLevel:      "enterprise",
+			EckLicenseExpiryDate: &expiry,
+		}
+
+		info.ReportAsMetrics()
+
+		assert.Equal(t,
+			float64(expiry.Unix()),
+			testutil.ToFloat64(metrics.LicensingExpiryTimestampGauge.WithLabelValues("enterprise")),
+		)
+	})
+
+	t.Run("does not set the expiry timestamp when the license has no expiry date", func(t *testing.T) {
+		metrics.LicensingExpiryTimestampGauge.Reset()
+		info := LicensingInfo{
+			memoryUsage:     newMemoryUsage(),
+			EckLicenseLevel: defaultOperatorLicenseLevel,
+		}
+
+		info.ReportAsMetrics()
+
+		assert.Equal(t, 0, testutil.CollectAndCount(metrics.LicensingExpiryTimestampGauge))
 	})
 }
 
