@@ -558,6 +558,26 @@ func Test_checkServicesSubjectAltNames(t *testing.T) {
 				}}},
 			},
 		},
+		{
+			name: "invalid IP SAN in a disabled self-signed certificate of the API service with a certificate Secret: NOK",
+			services: []lsv1alpha1.LogstashService{
+				{Name: "api", TLS: commonv1.TLSOptions{
+					Certificate: commonv1.SecretRef{SecretName: "my-ca"},
+					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+						Disabled:                true,
+						SubjectAlternativeNames: []commonv1.SubjectAlternativeName{{IP: "invalid"}},
+					},
+				}},
+				{Name: "beats", TLS: commonv1.TLSOptions{
+					Certificate: commonv1.SecretRef{SecretName: "my-cert"},
+					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+						Disabled:                true,
+						SubjectAlternativeNames: []commonv1.SubjectAlternativeName{{IP: "invalid"}},
+					},
+				}},
+			},
+			wantFields: []string{"spec.services[0].tls.selfSignedCertificate.subjectAltNames[0].ip"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

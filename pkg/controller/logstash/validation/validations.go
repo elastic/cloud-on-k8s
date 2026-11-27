@@ -133,12 +133,16 @@ func checkPipelinesRefSource(a *lsv1alpha1.Logstash) field.ErrorList {
 // checkServicesSubjectAltNames ensures that the IP addresses set in the subject alternative names of the Services
 // are valid. Services for which the self-signed certificate is disabled are skipped: their subject alternative names
 // are not added to the certificate, so an invalid IP address must not prevent the reconciliation of an existing
-// resource. servicesTLSWarnings reports them as ignored instead.
+// resource. The exception is the API Service with a custom certificate Secret: if this Secret only contains a CA,
+// a certificate which includes the subject alternative names of the API Service is still issued from it.
 func checkServicesSubjectAltNames(l *lsv1alpha1.Logstash) field.ErrorList {
 	var errs field.ErrorList
 	for i, service := range l.Spec.Services {
 		selfSigned := service.TLS.SelfSignedCertificate
-		if selfSigned == nil || selfSigned.Disabled {
+		if selfSigned == nil {
+			continue
+		}
+		if selfSigned.Disabled && (!l.IsAPIService(service) || service.TLS.Certificate.SecretName == "") {
 			continue
 		}
 		for j, san := range selfSigned.SubjectAlternativeNames {
