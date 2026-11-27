@@ -24,7 +24,9 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
 	agentcontroller "github.com/elastic/cloud-on-k8s/v3/pkg/controller/agent"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/version"
+	esclient "github.com/elastic/cloud-on-k8s/v3/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/pointer"
@@ -170,12 +172,36 @@ func (b Builder) fleetServerServingStep(k *test.K8sClient) test.Step {
 			t.Helper()
 			ctx := t.Context()
 			esRef := b.Agent.Spec.ElasticsearchRefs[0].WithDefaultNamespace(b.Agent.Namespace).NamespacedName()
+			fleetServer := k8s.ExtractNamespacedName(&b.Agent)
+			// the dialer and the Elasticsearch client are reused across retries, as the port-forwarders they start in
+			// local test runs are never stopped
+			dial := (&net.Dialer{Timeout: 5 * time.Second}).DialContext
+			if test.Ctx().AutoPortForwarding {
+				dial = portforward.NewForwardingDialer().DialContext
+			}
+			var esClient esclient.Client
+			defer func() {
+				if esClient != nil {
+					esClient.Close()
+				}
+			}()
 			restarts := 0
 			test.Eventually(func() error {
-				if err := fleetServerTokensLoaded(ctx, k, esRef); err != nil {
+				if esClient == nil {
+					var es esv1.Elasticsearch
+					if err := k.Client.Get(ctx, esRef, &es); err != nil {
+						return err
+					}
+					c, err := elasticsearch.NewElasticsearchClient(es, k)
+					if err != nil {
+						return err
+					}
+					esClient = c
+				}
+				if err := fleetServerTokenLoaded(ctx, k, esClient, esRef, fleetServer); err != nil {
 					return err
 				}
-				respErr := fleetServerResponding(ctx, k8s.ExtractNamespacedName(&b.Agent))
+				respErr := fleetServerResponding(ctx, dial, fleetServer)
 				if respErr == nil {
 					return nil
 				}
@@ -186,7 +212,6 @@ func (b Builder) fleetServerServingStep(k *test.K8sClient) test.Step {
 				if err != nil {
 					return err
 				}
-				restarted := false
 				for _, pod := range pods {
 					// skip Pods already being deleted so that a single restart is not counted multiple times
 					if pod.DeletionTimestamp != nil ||
@@ -197,9 +222,6 @@ func (b Builder) fleetServerServingStep(k *test.K8sClient) test.Step {
 					if err := k.Client.Delete(ctx, &pod); err != nil && !apierrors.IsNotFound(err) {
 						return err
 					}
-					restarted = true
-				}
-				if restarted {
 					restarts++
 				}
 				return fmt.Errorf("fleet server is not serving yet: %w", respErr)
@@ -207,6 +229,8 @@ func (b Builder) fleetServerServingStep(k *test.K8sClient) test.Step {
 		},
 		Skip: func() bool {
 			return !b.Agent.Spec.FleetServerEnabled ||
+				// probing the Service cannot tell which of several Fleet Server Pods is stuck
+				b.Count() != 1 ||
 				len(b.Agent.Spec.ElasticsearchRefs) == 0 ||
 				b.Agent.Spec.ElasticsearchRefs[0].IsExternal() ||
 				version.MustParse(b.Agent.Spec.Version).GTE(version.MinFor(8, 9, 0))
@@ -214,35 +238,35 @@ func (b Builder) fleetServerServingStep(k *test.K8sClient) test.Step {
 	}
 }
 
-// fleetServerTokensLoaded returns an error unless every Fleet Server service account token is loaded by all the
-// nodes of the given Elasticsearch cluster.
-func fleetServerTokensLoaded(ctx context.Context, k *test.K8sClient, esRef types.NamespacedName) error {
-	var es esv1.Elasticsearch
-	if err := k.Client.Get(ctx, esRef, &es); err != nil {
+// fleetServerTokenLoaded returns an error unless the service account token of the given Fleet Server is loaded by all
+// the nodes of the given Elasticsearch cluster.
+func fleetServerTokenLoaded(
+	ctx context.Context,
+	k *test.K8sClient,
+	esClient esclient.Client,
+	esRef, fleetServer types.NamespacedName,
+) error {
+	var agent agentv1alpha1.Agent
+	if err := k.Client.Get(ctx, fleetServer, &agent); err != nil {
 		return err
 	}
-	esPods, err := k.GetPods(test.ESPodListOptions(es.Namespace, es.Name)...)
+	tokenName := association.TokenName(agent.Namespace, agent.Name, agent.UID)
+	esPods, err := k.GetPods(test.ESPodListOptions(esRef.Namespace, esRef.Name)...)
 	if err != nil {
 		return err
 	}
-	esClient, err := elasticsearch.NewElasticsearchClient(es, k)
-	if err != nil {
-		return err
-	}
-	defer esClient.Close()
 	credentials, err := esClient.GetServiceAccountCredentials(ctx, "elastic/fleet-server")
 	if err != nil {
 		return err
 	}
-	if len(credentials.NodesCredentials.FileTokens) == 0 {
-		return errors.New("no Fleet Server service account token loaded yet")
+	fileToken, ok := credentials.NodesCredentials.FileTokens[tokenName]
+	if !ok {
+		return fmt.Errorf("service account token %s not loaded yet by any Elasticsearch node", tokenName)
 	}
-	for tokenName, fileToken := range credentials.NodesCredentials.FileTokens {
-		loadedBy := set.Make(fileToken.Nodes...)
-		for _, pod := range esPods {
-			if !loadedBy.Has(pod.Name) {
-				return fmt.Errorf("service account token %s not loaded yet by Elasticsearch node %s", tokenName, pod.Name)
-			}
+	loadedBy := set.Make(fileToken.Nodes...)
+	for _, pod := range esPods {
+		if !loadedBy.Has(pod.Name) {
+			return fmt.Errorf("service account token %s not loaded yet by Elasticsearch node %s", tokenName, pod.Name)
 		}
 	}
 	return nil
@@ -251,11 +275,11 @@ func fleetServerTokensLoaded(ctx context.Context, k *test.K8sClient, esRef types
 // fleetServerResponding returns an error if the Fleet Server HTTP service does not answer a plain HTTP request.
 // Any answer is enough, including the 400 sent by a TLS-enabled Fleet Server. Connecting alone is not, because the
 // port-forwarder used in local test runs accepts connections even when nothing listens in the Pod.
-func fleetServerResponding(ctx context.Context, fleetServer types.NamespacedName) error {
-	dial := (&net.Dialer{Timeout: 5 * time.Second}).DialContext
-	if test.Ctx().AutoPortForwarding {
-		dial = portforward.NewForwardingDialer().DialContext
-	}
+func fleetServerResponding(
+	ctx context.Context,
+	dial func(ctx context.Context, network, addr string) (net.Conn, error),
+	fleetServer types.NamespacedName,
+) error {
 	// add .svc suffix so that requests work when using the port-forwarder during local test runs
 	addr := fmt.Sprintf("%s.%s.svc:%d", agentcontroller.HTTPServiceName(fleetServer.Name), fleetServer.Namespace, agentcontroller.FleetServerPort)
 	conn, err := dial(ctx, "tcp", addr)
