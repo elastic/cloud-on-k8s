@@ -31,7 +31,8 @@ func TestLogstashEsAssociation_AssociationConfAnnotationName(t *testing.T) {
 			cluster: ElasticsearchCluster{
 				ElasticsearchSelector: commonv1.ElasticsearchSelector{ObjectSelector: commonv1.ObjectSelector{
 					Namespace: "longnamespacelongnamespacelongnamespacelongnamespacelongnamespa",
-					Name:      "elasticsearch1elasticsearch1elastics"}},
+					Name:      "elasticsearch1elasticsearch1elastics",
+				}},
 				ClusterName: "test",
 			},
 			want: "association.k8s.elastic.co/es-conf-3419573237",
@@ -73,7 +74,8 @@ func TestLogstashMonitoringAssociation_AssociationConfAnnotationName(t *testing.
 			name: "max length namespace and name (63 and 36 respectively)",
 			ref: commonv1.ObjectSelector{
 				Namespace: "longnamespacelongnamespacelongnamespacelongnamespacelongnamespa",
-				Name:      "elasticsearch1elasticsearch1elastics"},
+				Name:      "elasticsearch1elasticsearch1elastics",
+			},
 			want: "association.k8s.elastic.co/es-conf-3419573237-sm",
 		},
 		{
@@ -155,4 +157,115 @@ func TestLogstash_APIServerTLSOptions(t *testing.T) {
 			require.Equal(t, tt.want, tt.logstash.APIServerTLSOptions().Enabled())
 		})
 	}
+}
+
+func TestLogstash_CertificateContributingServices(t *testing.T) {
+	selfSigned := func(disabled bool, sans ...commonv1.SubjectAlternativeName) commonv1.TLSOptions {
+		return commonv1.TLSOptions{
+			SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: disabled, SubjectAlternativeNames: sans},
+		}
+	}
+	for _, tt := range []struct {
+		name         string
+		services     []LogstashService
+		wantServices []string
+		wantSANs     []commonv1.SubjectAlternativeName
+	}{
+		{
+			name: "no service",
+		},
+		{
+			name: "service without TLS options contributes without SAN",
+			services: []LogstashService{
+				{Name: "beats"},
+			},
+			wantServices: []string{"beats"},
+		},
+		{
+			name: "service with a custom certificate only contributes, the custom certificate is ignored",
+			services: []LogstashService{
+				{Name: "beats", TLS: commonv1.TLSOptions{Certificate: commonv1.SecretRef{SecretName: "my-cert"}}},
+			},
+			wantServices: []string{"beats"},
+		},
+		{
+			name: "service with a custom certificate and a disabled self-signed certificate does not contribute",
+			services: []LogstashService{
+				{Name: "beats", TLS: commonv1.TLSOptions{
+					SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: true},
+					Certificate:           commonv1.SecretRef{SecretName: "my-cert"},
+				}},
+			},
+		},
+		{
+			name: "service with a disabled self-signed certificate does not contribute",
+			services: []LogstashService{
+				{Name: "beats", TLS: selfSigned(true, commonv1.SubjectAlternativeName{DNS: "beats.example.com"})},
+			},
+		},
+		{
+			name: "API service does not contribute",
+			services: []LogstashService{
+				{Name: "api", TLS: selfSigned(false, commonv1.SubjectAlternativeName{DNS: "api.example.com"})},
+			},
+		},
+		{
+			name: "service with an empty self-signed certificate contributes without SAN",
+			services: []LogstashService{
+				{Name: "beats", TLS: selfSigned(false)},
+			},
+			wantServices: []string{"beats"},
+		},
+		{
+			name: "SANs are returned in the order of the spec and without duplicates",
+			services: []LogstashService{
+				{Name: "tcp", TLS: selfSigned(false,
+					commonv1.SubjectAlternativeName{DNS: "tcp.example.com"},
+					commonv1.SubjectAlternativeName{IP: "1.2.3.4"},
+				)},
+				{Name: "api", TLS: selfSigned(false, commonv1.SubjectAlternativeName{DNS: "api.example.com"})},
+				{Name: "ignored", TLS: selfSigned(true, commonv1.SubjectAlternativeName{DNS: "ignored.example.com"})},
+				{Name: "no-tls"},
+				{Name: "beats", TLS: selfSigned(false,
+					commonv1.SubjectAlternativeName{DNS: "beats.example.com"},
+					commonv1.SubjectAlternativeName{DNS: "tcp.example.com"},
+					commonv1.SubjectAlternativeName{IP: "1.2.3.4"},
+					commonv1.SubjectAlternativeName{DNS: "beats.example.com"},
+				)},
+			},
+			wantServices: []string{"tcp", "no-tls", "beats"},
+			wantSANs: []commonv1.SubjectAlternativeName{
+				{DNS: "tcp.example.com"},
+				{IP: "1.2.3.4"},
+				{DNS: "beats.example.com"},
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			logstash := Logstash{
+				Spec: LogstashSpec{Services: tt.services},
+				Name: "ls",
+			}
+
+			svc := logstash.CertificateContributingServices()
+			gotServices := make([]string, 0, len(svc))
+			for _, service := range svc {
+				gotServices = append(gotServices, service.Name)
+			}
+			if tt.wantServices == nil {
+				tt.wantServices = []string{}
+			}
+			require.Equal(t, tt.wantServices, gotServices)
+			require.Equal(t, tt.wantSANs, logstash.ExtraCertificateSANs())
+		})
+	}
+}
+
+func TestLogstash_IsAPIService(t *testing.T) {
+	logstash := Logstash{
+		Name: "ls",
+	}
+	require.True(t, logstash.IsAPIService(LogstashService{Name: "api"}))
+	require.False(t, logstash.IsAPIService(LogstashService{Name: "beats"}))
+	require.False(t, logstash.IsAPIService(LogstashService{}))
 }

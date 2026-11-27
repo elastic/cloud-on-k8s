@@ -256,9 +256,7 @@ func Test_BuildVolumesAndMounts(t *testing.T) {
 			assert.True(t, contains(volumeMounts, "logstash-data", "/usr/share/logstash/data"))
 			assert.True(t, contains(volumeMounts, "logstash-logs", "/usr/share/logstash/logs"))
 			assert.True(t, contains(volumeMounts, "config", "/usr/share/logstash/config"))
-			if tc.useTLS {
-				assert.True(t, contains(volumeMounts, "elastic-internal-http-certificates", "/mnt/elastic-internal/http-certs"))
-			}
+			assert.Equal(t, tc.useTLS, contains(volumeMounts, "elastic-internal-http-certificates", "/mnt/elastic-internal/http-certs"))
 		})
 	}
 }
