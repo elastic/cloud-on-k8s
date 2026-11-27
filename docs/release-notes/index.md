@@ -45,7 +45,7 @@ The operator pod now has startup, readiness, and liveness probes. The readiness 
 ### Features and enhancements [elastic-cloud-kubernetes-360-features-and-enhancements]
 
 - Build client trust bundles from server-owned trust sources [#9855](https://github.com/elastic/cloud-on-k8s/pull/9855)
-- autoops: drop autoops-token, authenticate with CCM API key [#9849](https://github.com/elastic/cloud-on-k8s/pull/9849)
+- AutoOps: drop autoops-token and authenticate with the CCM API key [#9849](https://github.com/elastic/cloud-on-k8s/pull/9849)
 - Kibana Background Tasks license gate [#9821](https://github.com/elastic/cloud-on-k8s/pull/9821)
 - Validate SCP secure settings entries [#9801](https://github.com/elastic/cloud-on-k8s/pull/9801)
 - Sign Helm OCI charts with unified-release container image signing [#9796](https://github.com/elastic/cloud-on-k8s/pull/9796) (issue: [#9603](https://github.com/elastic/cloud-on-k8s/issues/9603))
