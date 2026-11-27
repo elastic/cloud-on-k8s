@@ -546,14 +546,17 @@ func Test_checkServicesSubjectAltNames(t *testing.T) {
 			},
 		},
 		{
-			name: "invalid IP SAN in a disabled self-signed certificate: NOK",
+			name: "invalid IP SANs in disabled self-signed certificates are ignored: OK",
 			services: []lsv1alpha1.LogstashService{
+				{Name: "api", TLS: commonv1.TLSOptions{SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+					Disabled:                true,
+					SubjectAlternativeNames: []commonv1.SubjectAlternativeName{{IP: "invalid"}},
+				}}},
 				{Name: "beats", TLS: commonv1.TLSOptions{SelfSignedCertificate: &commonv1.SelfSignedCertificate{
 					Disabled:                true,
 					SubjectAlternativeNames: []commonv1.SubjectAlternativeName{{IP: "invalid"}},
 				}}},
 			},
-			wantFields: []string{"spec.services[0].tls.selfSignedCertificate.subjectAltNames[0].ip"},
 		},
 	}
 	for _, tt := range tests {
@@ -746,6 +749,20 @@ func TestValidateLogstash_servicesTLS(t *testing.T) {
 		if assert.Error(t, err) {
 			assert.Contains(t, err.Error(), "spec.services[0].tls.selfSignedCertificate.subjectAltNames[0].ip")
 			assert.Contains(t, err.Error(), invalidSanIPErrMsg)
+		}
+	})
+
+	t.Run("an invalid IP SAN on a service with a disabled self-signed certificate is a warning, not an error", func(t *testing.T) {
+		warnings, err := ValidateLogstash(newLogstash(lsv1alpha1.LogstashService{
+			Name: "beats",
+			TLS: commonv1.TLSOptions{SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+				Disabled:                true,
+				SubjectAlternativeNames: []commonv1.SubjectAlternativeName{{IP: "not-an-ip"}},
+			}},
+		}))
+		assert.NoError(t, err)
+		if assert.Len(t, warnings, 1) {
+			assert.Contains(t, warnings[0], "spec.services[0].tls.selfSignedCertificate.subjectAltNames is ignored")
 		}
 	})
 }
