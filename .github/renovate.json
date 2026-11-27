@@ -58,11 +58,6 @@
   "packageRules": [
     {
       "matchPackageNames": [
-        "k8s.io/utils",
-        "golang.org/x/crypto",
-        "golang.org/x/net",
-        "golang.org/x/exp",
-        "golang.org/x/oauth2",
         "github.com/elastic/cloud-on-k8s/v3"
       ],
       "matchUpdateTypes": [
@@ -105,9 +100,10 @@
       ]
     },
     {
-      "description": "ubi-micro is pinned to a <major>.<minor>-<build timestamp> tag (e.g. 9.8-1793580630); only consider tags of that form so Renovate doesn't compare it against bare timestamp or 9.x tags",
+      "description": "ubi-micro and ubi-minimal are pinned to a <major>.<minor>-<build timestamp> tag (e.g. 9.8-1793580630); only consider tags of that form so Renovate doesn't compare them against bare timestamp or 9.x tags",
       "matchPackageNames": [
-        "registry.access.redhat.com/ubi9/ubi-micro"
+        "registry.access.redhat.com/ubi9/ubi-micro",
+        "registry.access.redhat.com/ubi9/ubi-minimal"
       ],
       "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)-(?<patch>\\d{10})$"
     },
@@ -147,7 +143,20 @@
       "matchPackageNames": [
         "!github.com/elastic/{/,}**",
         "!docker.elastic.co/wolfi/{/,}**",
-        "!docker.io/library/golang"
+        "!docker.io/library/golang",
+        "!k8s.io/utils"
+      ]
+    },
+    {
+      "matchPackageNames": [
+        "k8s.io/utils"
+      ],
+      "matchUpdateTypes": [
+        "digest"
+      ],
+      "postUpdateOptions": [
+        "gomodTidy",
+        "gomodTidyAll"
       ]
     },
     {

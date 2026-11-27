@@ -18,8 +18,12 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	toolsevents "k8s.io/client-go/tools/events"
+	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/v3/pkg/apis/elasticsearch/v1"
@@ -28,6 +32,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/labels"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/v3/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/v3/pkg/utils/k8s"
 )
 
@@ -845,99 +850,82 @@ func TestClientCertTrustSources_ClientErrors(t *testing.T) {
 }
 
 func TestBuildTrustBundleFromSecrets(t *testing.T) {
-	t.Run("concatenates tls.crt from secrets", func(t *testing.T) {
-		secrets := []corev1.Secret{
-			{
-				Namespace: "ns1", Name: "secret1",
-				Data: map[string][]byte{CertFileName: []byte("CERT-1\n")},
-			},
-			{
-				Namespace: "ns2", Name: "secret2",
-				Data: map[string][]byte{CertFileName: []byte("CERT-2\n")},
-			},
+	secret := func(namespace, name, cert string) corev1.Secret {
+		return corev1.Secret{Namespace: namespace, Name: name, Data: map[string][]byte{CertFileName: []byte(cert)}}
+	}
+	// Trust source names are hashed, so sorting by them would not preserve the order of the originating
+	// client certificate secrets.
+	trustSourceFor := func(name, origNamespace, origName, cert string) corev1.Secret {
+		trustSource := secret("es-ns", name, cert)
+		trustSource.Annotations = map[string]string{
+			clientCertSourceNamespaceAnnotation: origNamespace,
+			clientCertSourceNameAnnotation:      origName,
 		}
+		return trustSource
+	}
 
-		bundle := buildTrustBundleFromSecrets(context.Background(), secrets)
-		require.Equal(t, "CERT-1\nCERT-2\n", string(bundle))
-	})
-
-	t.Run("skips secrets without tls.crt", func(t *testing.T) {
-		secrets := []corev1.Secret{
-			{
-				Namespace: "ns1", Name: "secret1",
-				Data: map[string][]byte{CertFileName: []byte("CERT\n")},
+	for _, tt := range []struct {
+		name    string
+		secrets []corev1.Secret
+		want    string
+	}{
+		{
+			name:    "concatenates tls.crt from secrets",
+			secrets: []corev1.Secret{secret("ns1", "secret1", "CERT-1\n"), secret("ns2", "secret2", "CERT-2\n")},
+			want:    "CERT-1\nCERT-2\n",
+		},
+		{
+			name: "skips secrets without tls.crt",
+			secrets: []corev1.Secret{
+				secret("ns1", "secret1", "CERT\n"),
+				{Namespace: "ns2", Name: "secret2", Data: map[string][]byte{}},
 			},
-			{
-				Namespace: "ns2", Name: "secret2",
-				Data: map[string][]byte{},
+			want: "CERT\n",
+		},
+		{
+			name:    "sorts secrets by namespace/name for deterministic output",
+			secrets: []corev1.Secret{secret("ns2", "secret-b", "B"), secret("ns1", "secret-a", "A"), secret("ns2", "secret-a", "C")},
+			want:    "A\nC\nB\n",
+		},
+		{
+			// The operator certificate has no origin and sorts by its own identity.
+			name: "sorts trust sources by originating secret, mixed with directly passed secrets",
+			secrets: []corev1.Secret{
+				trustSourceFor("aaa-client-cert-source", "kb-b", "kb-client-cert", "KB-B"),
+				secret("es-ns", "es-internal-client-cert", "OPERATOR"),
+				trustSourceFor("zzz-client-cert-source", "kb-a", "kb-client-cert", "KB-A"),
 			},
-		}
-
-		bundle := buildTrustBundleFromSecrets(context.Background(), secrets)
-		require.Equal(t, "CERT\n", string(bundle))
-	})
-
-	t.Run("sorts secrets by namespace/name for deterministic output", func(t *testing.T) {
-		secrets := []corev1.Secret{
-			{
-				Namespace: "ns2", Name: "secret-b",
-				Data: map[string][]byte{CertFileName: []byte("B")},
+			want: "OPERATOR\nKB-A\nKB-B\n",
+		},
+		{
+			name: "sorts client CAs along with the other certificates",
+			secrets: []corev1.Secret{
+				secret("es-ns", "es-internal-client-cert", "OPERATOR\n"),
+				secret("es-ns", "z-ca", "ZCA\n"),
+				secret("es-ns", "a-ca", "ACA1\nACA2\n"),
+				trustSourceFor("aaa-client-cert-source", "es-ns", "kb-client-cert", "KB\n"),
 			},
-			{
-				Namespace: "ns1", Name: "secret-a",
-				Data: map[string][]byte{CertFileName: []byte("A")},
+			want: "ACA1\nACA2\nOPERATOR\nKB\nZCA\n",
+		},
+		{
+			name: "client CAs named after the origin of a trust source come first",
+			secrets: []corev1.Secret{
+				secret("es-ns", "shared", "CA\n"),
+				trustSourceFor("aaa-client-cert-source", "es-ns", "shared", "SOURCE\n"),
 			},
-			{
-				Namespace: "ns2", Name: "secret-a",
-				Data: map[string][]byte{CertFileName: []byte("C")},
-			},
-		}
-
-		bundle := buildTrustBundleFromSecrets(context.Background(), secrets)
-		require.Equal(t, "A\nC\nB\n", string(bundle))
-	})
-
-	t.Run("sorts trust sources by originating secret, mixed with directly passed secrets", func(t *testing.T) {
-		// Trust source names are hashed, so sorting by them would not preserve the order of the originating
-		// client certificate secrets. The operator certificate has no origin and sorts by its own identity.
-		trustSourceFor := func(name, origNamespace, origName, cert string) corev1.Secret {
-			return corev1.Secret{
-				Namespace: "es-ns", Name: name,
-				Annotations: map[string]string{
-					clientCertSourceNamespaceAnnotation: origNamespace,
-					clientCertSourceNameAnnotation:      origName,
-				},
-				Data: map[string][]byte{CertFileName: []byte(cert)},
-			}
-		}
-		secrets := []corev1.Secret{
-			trustSourceFor("aaa-client-cert-source", "kb-b", "kb-client-cert", "KB-B"),
-			{
-				Namespace: "es-ns", Name: "es-internal-client-cert",
-				Data: map[string][]byte{CertFileName: []byte("OPERATOR")},
-			},
-			trustSourceFor("zzz-client-cert-source", "kb-a", "kb-client-cert", "KB-A"),
-		}
-
-		bundle := buildTrustBundleFromSecrets(context.Background(), secrets)
-		require.Equal(t, "OPERATOR\nKB-A\nKB-B\n", string(bundle))
-	})
-
-	t.Run("does not double newline when cert already ends with newline", func(t *testing.T) {
-		secrets := []corev1.Secret{
-			{
-				Namespace: "ns1", Name: "a",
-				Data: map[string][]byte{CertFileName: []byte("CERT-1\n")},
-			},
-			{
-				Namespace: "ns1", Name: "b",
-				Data: map[string][]byte{CertFileName: []byte("CERT-2")},
-			},
-		}
-
-		bundle := buildTrustBundleFromSecrets(context.Background(), secrets)
-		require.Equal(t, "CERT-1\nCERT-2\n", string(bundle))
-	})
+			want: "CA\nSOURCE\n",
+		},
+		{
+			name:    "does not double newline when cert already ends with newline",
+			secrets: []corev1.Secret{secret("ns1", "a", "CERT-1\n"), secret("ns1", "b", "CERT-2")},
+			want:    "CERT-1\nCERT-2\n",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			bundle := buildTrustBundleFromSecrets(context.Background(), tt.secrets)
+			require.Equal(t, tt.want, string(bundle))
+		})
+	}
 }
 
 func TestDeleteClientCertResources(t *testing.T) {
@@ -1059,6 +1047,218 @@ func TestDeleteClientCertResources(t *testing.T) {
 				gotTrustSources = append(gotTrustSources, ts.Name)
 			}
 			require.ElementsMatch(t, tt.wantTrustSources, gotTrustSources)
+		})
+	}
+}
+
+func TestReconcileClientCertificateAuthorities(t *testing.T) {
+	server := newTestServer("ns", "es")
+	serverNSN := k8s.ExtractNamespacedName(server)
+	watchKey := ClientCAWatchKey(esv1.ESNamer, serverNSN)
+
+	ca1, err := NewSelfSignedCA(CABuilderOptions{})
+	require.NoError(t, err)
+	ca2, err := NewSelfSignedCA(CABuilderOptions{})
+	require.NoError(t, err)
+	ca1PEM, ca2PEM := EncodePEMCert(ca1.Cert.Raw), EncodePEMCert(ca2.Cert.Raw)
+	keyPEM, err := EncodePEMPKCS8PrivateKey(ca1.PrivateKey)
+	require.NoError(t, err)
+	// a certificate which is not a CA: the HTTP certificate of the test fixtures
+	leafPEM := pemTLS
+
+	caConfigMap := func(name string, data map[string]string) *corev1.ConfigMap {
+		return &corev1.ConfigMap{Namespace: server.Namespace, Name: name, Data: data}
+	}
+	ref := func(name string) commonv1.ConfigMapRef {
+		return commonv1.ConfigMapRef{ConfigMapName: name}
+	}
+
+	for _, tt := range []struct {
+		name string
+		objs []client.Object
+		// unreadable is the name of a config map which cannot be read with an error other than NotFound
+		unreadable string
+		// unreadableErr is the error returned when reading the unreadable config map, an internal API error by default
+		unreadableErr error
+		// previousRef is reconciled before ref, if set
+		previousRef commonv1.ConfigMapRef
+		ref         commonv1.ConfigMapRef
+		// clientAuthNotInUse reconciles ref with client certificate authentication not in use
+		clientAuthNotInUse bool
+		// want is the expected certificates of the config map, if any
+		want []byte
+		// wantInvalidErr is the expected error if the config map does not exist or is invalid
+		wantInvalidErr string
+		// wantErr is the expected error if the config map could not be read
+		wantErr string
+		// wantWarning is whether a warning event is expected, as the reference is set but not used
+		wantWarning bool
+		// wantWatched is the watched config map, empty if the watch is removed
+		wantWatched string
+	}{
+		{
+			name: "no reference: no certificate, no watch",
+			objs: []client.Object{caConfigMap("ca-1", map[string]string{CAFileName: string(ca1PEM)})},
+		},
+		{
+			name:        "several certificates in the config map are all returned",
+			objs:        []client.Object{caConfigMap("ca-1", map[string]string{CAFileName: string(ca1PEM) + string(ca2PEM)})},
+			ref:         ref("ca-1"),
+			want:        append(slices.Clone(ca1PEM), ca2PEM...),
+			wantWatched: "ca-1",
+		},
+		{
+			name: "private keys and other keys of the config map are dropped",
+			objs: []client.Object{caConfigMap("ca-1", map[string]string{
+				CAFileName:   string(keyPEM) + string(ca1PEM),
+				CertFileName: string(ca2PEM),
+				KeyFileName:  string(keyPEM),
+			})},
+			ref:         ref("ca-1"),
+			want:        ca1PEM,
+			wantWatched: "ca-1",
+		},
+		{
+			name:        "the reference changes: the previous config map is not watched anymore",
+			objs:        []client.Object{caConfigMap("ca-1", map[string]string{CAFileName: string(ca1PEM)}), caConfigMap("ca-2", map[string]string{CAFileName: string(ca2PEM)})},
+			previousRef: ref("ca-1"),
+			ref:         ref("ca-2"),
+			want:        ca2PEM,
+			wantWatched: "ca-2",
+		},
+		{
+			name:        "the reference is removed: the watch is removed",
+			objs:        []client.Object{caConfigMap("ca-1", map[string]string{CAFileName: string(ca1PEM)})},
+			previousRef: ref("ca-1"),
+		},
+		{
+			name:               "client authentication not in use: no certificate, the watch is removed, with a warning",
+			objs:               []client.Object{caConfigMap("ca-1", map[string]string{CAFileName: string(ca1PEM)})},
+			previousRef:        ref("ca-1"),
+			ref:                ref("ca-1"),
+			clientAuthNotInUse: true,
+			wantWarning:        true,
+		},
+		{
+			name:               "client authentication not in use, no reference: no warning",
+			clientAuthNotInUse: true,
+		},
+		{
+			name:           "missing config map: error, the watch is kept to reconcile once it is created",
+			ref:            ref("ca-1"),
+			wantInvalidErr: "could not retrieve config map ns/ca-1",
+			wantWatched:    "ca-1",
+		},
+		{
+			name:        "unreadable config map: read error, no certificate is returned",
+			objs:        []client.Object{caConfigMap("ca-1", map[string]string{CAFileName: string(ca1PEM)})},
+			unreadable:  "ca-1",
+			ref:         ref("ca-1"),
+			wantErr:     "could not retrieve config map ns/ca-1",
+			wantWatched: "ca-1",
+		},
+		{
+			name:          "config map read timing out: read error, no certificate is returned",
+			objs:          []client.Object{caConfigMap("ca-1", map[string]string{CAFileName: string(ca1PEM)})},
+			unreadable:    "ca-1",
+			unreadableErr: context.DeadlineExceeded,
+			ref:           ref("ca-1"),
+			wantErr:       "could not retrieve config map ns/ca-1",
+			wantWatched:   "ca-1",
+		},
+		{
+			name:           "config map without ca.crt: error",
+			objs:           []client.Object{caConfigMap("ca-1", map[string]string{CertFileName: string(ca1PEM)})},
+			ref:            ref("ca-1"),
+			wantInvalidErr: "config map ns/ca-1 specified in spec.http.tls.client.certificateAuthorities must contain ca.crt file",
+			wantWatched:    "ca-1",
+		},
+		{
+			name:           "config map without any certificate in ca.crt: error",
+			objs:           []client.Object{caConfigMap("ca-1", map[string]string{CAFileName: string(keyPEM)})},
+			ref:            ref("ca-1"),
+			wantInvalidErr: "no certificate found in ca.crt",
+			wantWatched:    "ca-1",
+		},
+		{
+			name:           "config map with an invalid certificate in ca.crt: error",
+			objs:           []client.Object{caConfigMap("ca-1", map[string]string{CAFileName: string(EncodePEMCert([]byte("not a certificate")))})},
+			ref:            ref("ca-1"),
+			wantInvalidErr: "contains invalid certificates",
+			wantWatched:    "ca-1",
+		},
+		{
+			name:           "config map with a certificate which is not a CA in ca.crt: error",
+			objs:           []client.Object{caConfigMap("ca-1", map[string]string{CAFileName: string(ca1PEM) + string(leafPEM)})},
+			ref:            ref("ca-1"),
+			wantInvalidErr: "is not a CA certificate, it must have the BasicConstraints extension set to CA:TRUE",
+			wantWatched:    "ca-1",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			c := k8s.NewFakeClientBuilder(append(tt.objs, server)...).WithInterceptorFuncs(interceptor.Funcs{
+				Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+					if tt.unreadable != "" && key.Name == tt.unreadable {
+						if tt.unreadableErr != nil {
+							return tt.unreadableErr
+						}
+						return apierrors.NewInternalError(fmt.Errorf("cannot read %s", key))
+					}
+					return c.Get(ctx, key, obj, opts...)
+				},
+			}).Build()
+			r := newTestReconciler(c, server, nil)
+			r.DynamicWatches = watches.NewDynamicWatches("testCtr")
+
+			recorder := toolsevents.NewFakeRecorder(10)
+
+			if tt.previousRef.IsDefined() {
+				previous, err := r.ReconcileClientCertificateAuthorities(t.Context(), recorder, tt.previousRef, true)
+				require.NoError(t, previous.InvalidErr)
+				require.NoError(t, err)
+			}
+			result, err := r.ReconcileClientCertificateAuthorities(t.Context(), recorder, tt.ref, !tt.clientAuthNotInUse)
+			if tt.wantWarning {
+				require.Len(t, recorder.Events, 1)
+				require.Contains(t, <-recorder.Events, "spec.http.tls.client.certificateAuthorities is ineffective because client certificate authentication is not required, or an Enterprise license is not enabled")
+			} else {
+				require.Empty(t, recorder.Events)
+			}
+			if tt.wantInvalidErr != "" {
+				require.ErrorContains(t, result.InvalidErr, tt.wantInvalidErr)
+			} else {
+				require.NoError(t, result.InvalidErr)
+			}
+			// only an API error other than NotFound is a read error
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+			var want []*CertificatesSecret
+			if tt.want != nil {
+				// only the certificates are kept, as the certificate of the entry
+				want = []*CertificatesSecret{{Namespace: server.Namespace, Name: tt.ref.ConfigMapName, Data: map[string][]byte{CertFileName: tt.want}}}
+			}
+			require.Equal(t, want, result.CAs)
+			if tt.wantWatched != "" {
+				require.Contains(t, r.DynamicWatches.ConfigMaps.Registrations(), watchKey)
+			} else {
+				require.NotContains(t, r.DynamicWatches.ConfigMaps.Registrations(), watchKey)
+			}
+			// only the server is reconciled, and only for the config map it references
+			for _, configMapName := range []string{"ca-1", "ca-2"} {
+				q := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[reconcile.Request]())
+				r.DynamicWatches.ConfigMaps.Create(t.Context(), event.TypedCreateEvent[*corev1.ConfigMap]{Object: caConfigMap(configMapName, nil)}, q)
+				if configMapName == tt.wantWatched {
+					require.Equal(t, 1, q.Len())
+					req, _ := q.Get()
+					require.Equal(t, reconcile.Request{NamespacedName: serverNSN}, req)
+				} else {
+					require.Equal(t, 0, q.Len())
+				}
+				q.ShutDown()
+			}
 		})
 	}
 }

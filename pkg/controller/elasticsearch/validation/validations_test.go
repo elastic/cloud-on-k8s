@@ -1742,6 +1742,51 @@ func Test_validPKIRealm(t *testing.T) {
 	}
 }
 
+func Test_validClientCertificateAuthorities(t *testing.T) {
+	esWith := func(clientAuthentication bool, configMapName string) esv1.Elasticsearch {
+		return esv1.Elasticsearch{
+			Spec: esv1.ElasticsearchSpec{
+				HTTP: commonv1.HTTPConfigWithClientOptions{
+					TLS: commonv1.TLSWithClientOptions{
+						Client: commonv1.ClientOptions{
+							Authentication:         clientAuthentication,
+							CertificateAuthorities: commonv1.ConfigMapRef{ConfigMapName: configMapName},
+						},
+					},
+				},
+			},
+		}
+	}
+	tlsDisabled := func(es esv1.Elasticsearch) esv1.Elasticsearch {
+		es.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1.SelfSignedCertificate{Disabled: true}
+		return es
+	}
+	tests := []struct {
+		name       string
+		es         esv1.Elasticsearch
+		wantFields []string
+	}{
+		{name: "no client CAs: OK", es: esWith(false, "")},
+		{name: "no client CAs, TLS disabled: OK", es: tlsDisabled(esWith(false, ""))},
+		{name: "client CAs with client authentication: OK", es: esWith(true, "client-cas")},
+		{name: "client CAs without client authentication in the spec: OK, it can be required by the config", es: esWith(false, "client-cas")},
+		{
+			name:       "client CAs, TLS disabled: NOK",
+			es:         tlsDisabled(esWith(false, "client-cas")),
+			wantFields: []string{"spec.http.tls.client.certificateAuthorities"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var gotFields []string
+			for _, err := range validClientCertificateAuthorities(tt.es) {
+				gotFields = append(gotFields, err.Field)
+			}
+			require.Equal(t, tt.wantFields, gotFields)
+		})
+	}
+}
+
 func Test_checkPauseOrchestrationAnnotation(t *testing.T) {
 	tests := []struct {
 		name         string

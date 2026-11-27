@@ -117,7 +117,7 @@ plans:
 - id: ocp-ci
   operation: create
   clusterName: ci
-  clientVersion: 4.22.2
+  clientVersion: 5.0.2
   provider: ocp
   machineType: e2-standard-8
   serviceAccount: true
@@ -128,7 +128,7 @@ plans:
 - id: ocp-dev
   operation: create
   clusterName: dev
-  clientVersion: 4.22.2
+  clientVersion: 5.0.2
   provider: ocp
   machineType: e2-standard-8
   serviceAccount: true

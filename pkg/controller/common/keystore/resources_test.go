@@ -101,6 +101,11 @@ func wantContainer(wantScript string) *corev1.Container {
 	}
 }
 
+func withCommand(c *corev1.Container, command []string) *corev1.Container {
+	c.Command = command
+	return c
+}
+
 func TestReconcileResources(t *testing.T) {
 	tests := []struct {
 		name                    string
@@ -242,6 +247,24 @@ echo "Keystore initialization successful."
 				SkipInitializedFlag: false,
 			},
 			wantContainers: wantContainer(`echo "custom script"`),
+			// since this will be created, it will be incremented
+			wantHash: "896069204",
+			wantNil:  false,
+		},
+		{
+			name:   "use command instead of script",
+			client: k8s.NewFakeClient(&testSecureSettingsSecret),
+			kb:     testKibanaWithSecureSettings,
+			initContainerParameters: InitContainerParameters{
+				KeystoreCreateCommand:         "/keystore/bin/keystore create",
+				KeystoreAddCommand:            `/keystore/bin/keystore add "$key" "$filename"`,
+				SecureSettingsVolumeMountPath: "/foo/secret",
+				KeystoreVolumePath:            "/bar/data",
+				CustomScript:                  `echo "custom script"`,
+				Command:                       []string{"/keystore/bin/keystore", "add", "--from-dir", "/foo/secret"},
+				Resources:                     testResourceRequirements,
+			},
+			wantContainers: withCommand(wantContainer(""), []string{"/keystore/bin/keystore", "add", "--from-dir", "/foo/secret"}),
 			// since this will be created, it will be incremented
 			wantHash: "896069204",
 			wantNil:  false,

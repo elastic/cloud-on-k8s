@@ -16,11 +16,11 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"text/template"
 
-	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 )
 
@@ -339,6 +339,9 @@ func getSlugName(name string) string {
 	if len(name) > 16 {
 		name = name[:16]
 	}
+	// a trailing dash would give a double dash once the random id is appended,
+	// which the OCP orphan cleanup does not recognise as a cluster name
+	name = strings.TrimRight(name, "-")
 
 	// random id
 	id := make([]rune, 4)

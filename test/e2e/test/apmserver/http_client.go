@@ -167,6 +167,23 @@ func (c *ApmClient) ServerInfo(ctx context.Context) (*ApmServerInfo, error) {
 	return &serverInfo, requester(&serverInfo)
 }
 
+// ResponseHeaders returns the HTTP headers of a request to the Server Information API
+func (c *ApmClient) ResponseHeaders(ctx context.Context) (http.Header, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, c.endpoint, http.NoBody)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.doRequest(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code %d", resp.StatusCode)
+	}
+	return resp.Header, nil
+}
+
 // EventsErrorResponse is the error response format used by the Events API.
 type EventsErrorResponse struct {
 	// Errors describes the events that had errors.
