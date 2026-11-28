@@ -35,6 +35,10 @@ installCRDs: true
 # replicaCount is the number of operator pods to run.
 replicaCount: 1
 
+# revisionHistoryLimit is the number of old revisions of the operator StatefulSet to keep.
+# When unset, Kubernetes keeps 10.
+# revisionHistoryLimit: 10
+
 image:
   # repository is the container image prefixed by the registry name.
   repository: docker.elastic.co/eck/eck-operator
