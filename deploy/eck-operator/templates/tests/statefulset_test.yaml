@@ -534,3 +534,24 @@ tests:
         notMatchRegex:
           path: data["eck.yaml"]
           pattern: "enforce-rbac-on-refs"
+  - it: revisionHistoryLimit is not set by default
+    asserts:
+      - template: statefulset.yaml
+        notExists:
+          path: spec.revisionHistoryLimit
+  - it: revisionHistoryLimit is set when configured
+    set:
+      revisionHistoryLimit: 3
+    asserts:
+      - template: statefulset.yaml
+        equal:
+          path: spec.revisionHistoryLimit
+          value: 3
+  - it: revisionHistoryLimit can be set to 0
+    set:
+      revisionHistoryLimit: 0
+    asserts:
+      - template: statefulset.yaml
+        equal:
+          path: spec.revisionHistoryLimit
+          value: 0
